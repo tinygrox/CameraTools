@@ -1,0 +1,53 @@
+
+All changes below here are by BahamutoD with the exception of my recompile.
+
+v1.6.0 recompiled for 1.1.3 by westamastaflash
+- 1.1 compat and path tool
+- fix loading paths/deleting paths, fix deleting selected key
+- set spatial blend to 3d audio
+
+v1.5.1
+- Dogfight mode auto-resets when a new target is selected or active vessel is switched
+- Auto targeting option with BDArmory AI pilot target
+
+v1.5
+- Dogfight chase mode
+- Autozoom margin slider
+
+v1.4.2
+- Slight UI tweak
+- Incremental buttons for manual offset
+
+v1.4.1
+- Ability to save persistant settings
+- Fixed part audio too loud when stationary
+- Fixed inability to select auto position without unchecking manual position
+- Stopped sonic boom being played when vessel breaks sound barrier after wavefront already passed camera
+- Increased sonic boom volume
+- Temporary fix for silent atmospheric audio when >~600m/s
+
+v1.4
+- Atmospheric audio effects (toggleable)
+- Camera shake (adjustable)
+
+v1.3
+- 1.0+ Compatibility
+- Manual camera position now persists after resetting camera
+- Bind activate/reset key by recording instead of typing button name
+- Camera no longer resets when pausing
+
+
+v1.2
+- Added Orbit frame of reference
+- Fixed issues with setting camera offset to vertically launching vehicles
+
+v1.1
+- 0.25 update
+- Added ability to set location -before- activating camera
+- Fixed text fields in GUI (it won't fight you when entering negatives or decimals)
+- Fixed Toolbar Icon
+- Greatly reduced motion of stationary camera when vessel is accelerating/turning
+
+
+v1.0
+- Initial release

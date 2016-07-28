@@ -230,3 +230,5 @@ KSPUtil.dll
 SaveUpgradePipeline.Core.dll
 Vectrosity.dll
 
+/CameraTools/libs
+/.vs/config

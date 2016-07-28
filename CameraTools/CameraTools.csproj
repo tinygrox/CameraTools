@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="3.5" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -10,6 +10,12 @@
     <RootNamespace>CameraTools</RootNamespace>
     <AssemblyName>CameraTools</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <TargetFrameworkProfile>Unity Subset v3.5</TargetFrameworkProfile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>True</DebugSymbols>
@@ -42,31 +48,60 @@
     <Compile Include="CameraTransformation.cs" />
     <Compile Include="CameraPath.cs" />
     <Compile Include="CameraKeyframe.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RotationAnimation.cs" />
     <Compile Include="Vector3Animation.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\Program Files\Steam\steamapps\common\Kerbal Space Program\KSP_x64_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>libs\Assembly-CSharp.dll</HintPath>
     </Reference>
+    <Reference Include="System.Xml" />
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\Program Files\Steam\steamapps\common\Kerbal Space Program\KSP_x64_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>libs\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="KSPUtil">
-      <HintPath>..\..\..\..\Program Files\Steam\steamapps\common\Kerbal Space Program\KSP_x64_Data\Managed\KSPUtil.dll</HintPath>
+      <HintPath>libs\KSPUtil.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>..\..\..\..\Program Files\Steam\steamapps\common\Kerbal Space Program\KSP_x64_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <HintPath>libs\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\..\..\..\Program Files\Steam\steamapps\common\Kerbal Space Program\KSP_x64_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>libs\Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
     <Reference Include="KSPAssets">
-      <HintPath>..\..\..\..\Program Files\Steam\SteamApps\common\Kerbal Space Program\KSP_x64_Data\Managed\KSPAssets.dll</HintPath>
+      <HintPath>libs\KSPAssets.dll</HintPath>
     </Reference>
     <Reference Include="KSPCore">
-      <HintPath>..\..\..\..\Program Files\Steam\SteamApps\common\Kerbal Space Program\KSP_x64_Data\Managed\KSPCore.dll</HintPath>
+      <HintPath>libs\KSPCore.dll</HintPath>
     </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="GameData\CameraTools\Changelog.txt" />
+    <Content Include="GameData\CameraTools\License.txt" />
+    <Content Include="GameData\CameraTools\Sounds\sonicBoom.wav" />
+    <Content Include="GameData\CameraTools\Sounds\windhowl.wav" />
+    <Content Include="GameData\CameraTools\Sounds\windloop.wav" />
+    <Content Include="GameData\CameraTools\Sounds\windtear.wav" />
+    <Content Include="GameData\CameraTools\Textures\icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GameData\CameraTools\ATM_CameraTools.cfg" />
+    <None Include="GameData\CameraTools\paths.cfg" />
+    <None Include="GameData\CameraTools\settings.cfg" />
+  </ItemGroup>
+  <ItemGroup />
+  <PropertyGroup>
+    <PostBuildEvent>SET KSPTest=Q:\KSP113_win - Test
+SET GameDataTarget=%25KSPTest%25\GameData\$(TargetName)
+IF NOT EXIST %25GameDataTarget%25 (
+   MKDIR "%25GameDataTarget%25"
+)
+
+copy "$(TargetPath)" "%25GameDataTarget%25"
+copy "$(TargetDir)\MiniAVC.dll" "%25GameDataTarget%25"
+robocopy "$(ProjectDir)GameData\$(TargetName)" "%25GameDataTarget%25" /E
+exit 0</PostBuildEvent>
+  </PropertyGroup>
 </Project>
