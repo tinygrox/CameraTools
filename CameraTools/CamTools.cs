@@ -461,11 +461,12 @@ namespace CameraTools
 
 			hasDied = false;
 			vessel = FlightGlobals.ActiveVessel;
-			cameraUp = -FlightGlobals.getGeeForceAtPosition(vessel.GetWorldPos3D()).normalized;
+			cameraUp = -FlightGlobals.getGeeForceAtPosition(vessel.CoM).normalized;
 
-			flightCamera.transform.parent = cameraParent.transform;
-			flightCamera.setTarget(null);
-			cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
+            flightCamera.SetTargetNone();
+            flightCamera.transform.parent = cameraParent.transform;
+            flightCamera.DeactivateUpdate();
+            cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
 
 			cameraToolActive = true;
 
@@ -516,8 +517,7 @@ namespace CameraTools
 			Vector3 offsetDirection = Vector3.Cross(cameraUp, dogfightLastTargetPosition - vessel.CoM).normalized;
 			Vector3 camPos = vessel.CoM + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance) + (dogfightOffsetX * offsetDirection) + (dogfightOffsetY * cameraUp);
 
-
-			Vector3 localCamPos = cameraParent.transform.InverseTransformPoint(camPos);
+            Vector3 localCamPos = cameraParent.transform.InverseTransformPoint(camPos);
 			flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, localCamPos, dogfightLerp * Time.fixedDeltaTime);
 
 			//rotation
@@ -665,9 +665,9 @@ namespace CameraTools
 					flightCamera.transform.rotation = savedRotation;
 				}
 			}
-			if(flightCamera.Target != null) flightCamera.setTarget(null); //dont go to next vessel if vessel is destroyed
+			if(flightCamera.Target != null) flightCamera.SetTargetNone(); //dont go to next vessel if vessel is destroyed
 
-			if(camTarget != null)
+            if (camTarget != null)
 			{
 				Vector3 lookPosition = camTarget.transform.position;
 				if(targetCoM)
@@ -693,7 +693,7 @@ namespace CameraTools
 
 			if(vessel != null)
 			{
-				cameraParent.transform.position = manualPosition + (vessel.findWorldCenterOfMass() - vessel.rb_velocity * Time.fixedDeltaTime);	
+				cameraParent.transform.position = manualPosition + (vessel.CoM - vessel.rb_velocity * Time.fixedDeltaTime);	
 
 				if(referenceMode == ReferenceModes.Surface)
 				{
@@ -841,8 +841,8 @@ namespace CameraTools
 			//retain pos and rot after vessel destruction
 			if (cameraToolActive && flightCamera.transform.parent != cameraParent.transform)	
 			{
-				flightCamera.setTarget(null);
-				flightCamera.transform.parent = null;
+				flightCamera.SetTargetNone();
+                flightCamera.transform.parent = null;
 				flightCamera.transform.position = lastPosition;
 				flightCamera.transform.rotation = lastRotation;
 				hasDied = true;
@@ -871,7 +871,7 @@ namespace CameraTools
 		public void VesselCameraShake(Vessel vessel)
 		{
 			//shake
-			float camDistance = Vector3.Distance(flightCamera.transform.position, vessel.findWorldCenterOfMass());
+			float camDistance = Vector3.Distance(flightCamera.transform.position, vessel.CoM);
 
 			float distanceFactor = 50f / camDistance;
 			float fovFactor = 2f / zoomFactor;
@@ -1009,10 +1009,11 @@ namespace CameraTools
 				{
 					cameraUp = Vector3.up;
 				}
-				
-				flightCamera.transform.parent = cameraParent.transform;
-				flightCamera.setTarget(null);
-				cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
+
+                flightCamera.SetTargetNone();
+                flightCamera.transform.parent = cameraParent.transform;
+                flightCamera.DeactivateUpdate();
+                cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
 				manualPosition = Vector3.zero;
 				
 				
@@ -1135,16 +1136,20 @@ namespace CameraTools
 				}
 			}
 			hasDied = false;
-			if(FlightGlobals.ActiveVessel!=null) flightCamera.setTarget(FlightGlobals.ActiveVessel.transform);
-			flightCamera.transform.position = origPosition;
+		    if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT)
+		    {
+                //flightCamera.SetTargetTransform(FlightGlobals.ActiveVessel.transform);
+                flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Transform);
+            }
+            flightCamera.transform.parent = origParent;
+            flightCamera.transform.position = origPosition;
 			flightCamera.transform.rotation = origRotation;
-			flightCamera.transform.parent = origParent;
-			flightCamera.SetFoV(60);
-			currentFOV = 60;
-			Camera.main.nearClipPlane = origNearClip;
-			
-			
+            Camera.main.nearClipPlane = origNearClip;
 
+			flightCamera.SetFoV(60);
+		    flightCamera.ActivateUpdate();
+			currentFOV = 60;
+		
 			cameraToolActive = false;
 
 			ResetDoppler();
@@ -1898,7 +1903,7 @@ namespace CameraTools
 			}
 		}
 		
-		void OnFloatingOriginShift(Vector3d offset)
+		void OnFloatingOriginShift(Vector3d offset, Vector3d data1)
 		{
 			/*
 			Debug.LogWarning ("======Floating origin shifted.======");
@@ -2125,11 +2130,11 @@ namespace CameraTools
 
 			cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
 			cameraParent.transform.rotation = vessel.transform.rotation;
-			flightCamera.transform.parent = cameraParent.transform;
-			flightCamera.setTarget(null);
+            flightCamera.SetTargetNone();
+            flightCamera.transform.parent = cameraParent.transform;
+            flightCamera.DeactivateUpdate();
 
-
-			cameraToolActive = true;
+               cameraToolActive = true;
 		}
 
 		void PlayPathingCam()
