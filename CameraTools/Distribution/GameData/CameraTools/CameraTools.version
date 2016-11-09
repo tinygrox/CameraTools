@@ -1,6 +1,6 @@
 {
   "NAME": "CameraTools",
-  "URL": "https://github.com/jrodrigv/CameraTools/raw/master/Distribution/GameData/CameraTools/CameraTools.version",
+  "URL": "https://raw.githubusercontent.com/jrodrigv/CameraTools/master/CameraTools/Distribution/GameData/CameraTools/CameraTools.version",
   "DOWNLOAD": "https://github.com/jrodrigv/CameraTools/releases",
   "CHANGE_LOG_URL": "https://github.com/jrodrigv/CameraTools/blob/master/CHANGELOG.md",
   "VERSION": {
