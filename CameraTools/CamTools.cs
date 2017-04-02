@@ -1138,12 +1138,11 @@ namespace CameraTools
 			hasDied = false;
 		    if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT)
 		    {
-                //flightCamera.SetTargetTransform(FlightGlobals.ActiveVessel.transform);
-                flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Transform);
+                flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Vessel);
             }
             flightCamera.transform.parent = origParent;
             flightCamera.transform.position = origPosition;
-			flightCamera.transform.rotation = origRotation;
+            flightCamera.transform.rotation = origRotation;
             Camera.main.nearClipPlane = origNearClip;
 
 			flightCamera.SetFoV(60);
