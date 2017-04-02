@@ -466,7 +466,7 @@ namespace CameraTools
             flightCamera.SetTargetNone();
             flightCamera.transform.parent = cameraParent.transform;
             flightCamera.DeactivateUpdate();
-            cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
+            cameraParent.transform.position = vessel.transform.position+vessel.srf_velocity*Time.fixedDeltaTime;
 
 			cameraToolActive = true;
 
@@ -500,7 +500,7 @@ namespace CameraTools
 				dogfightLastTargetPosition += dogfightLastTargetVelocity * Time.fixedDeltaTime;
 			}
 
-			cameraParent.transform.position = (vessel.CoM - (vessel.rb_velocity * Time.fixedDeltaTime));	
+			cameraParent.transform.position = (vessel.CoM - (vessel.srf_velocity * Time.fixedDeltaTime));	
 
 			if(dogfightVelocityChase)
 			{
@@ -536,7 +536,7 @@ namespace CameraTools
 				}
 				else
 				{
-					float angle = Vector3.Angle((dogfightLastTargetPosition + (dogfightLastTargetVelocity * Time.fixedDeltaTime)) - flightCamera.transform.position, (vessel.CoM + (vessel.rb_velocity * Time.fixedDeltaTime)) - flightCamera.transform.position);
+					float angle = Vector3.Angle((dogfightLastTargetPosition + (dogfightLastTargetVelocity * Time.fixedDeltaTime)) - flightCamera.transform.position, (vessel.CoM + (vessel.srf_velocity * Time.fixedDeltaTime)) - flightCamera.transform.position);
 					targetFoV = Mathf.Clamp(angle + autoZoomMargin, 0.1f, 60f);
 				}
 				manualFOV = targetFoV;
@@ -675,10 +675,10 @@ namespace CameraTools
 					lookPosition = camTarget.vessel.CoM;
 				}
 
-				lookPosition += 2*camTarget.vessel.rb_velocity * Time.fixedDeltaTime;
+				lookPosition += 2*camTarget.vessel.srf_velocity * Time.fixedDeltaTime;
 				if(targetCoM)
 				{
-					lookPosition += camTarget.vessel.rb_velocity * Time.fixedDeltaTime;
+					lookPosition += camTarget.vessel.srf_velocity * Time.fixedDeltaTime;
 				}
 
 				flightCamera.transform.rotation = Quaternion.LookRotation(lookPosition - flightCamera.transform.position, cameraUp);
@@ -693,7 +693,7 @@ namespace CameraTools
 
 			if(vessel != null)
 			{
-				cameraParent.transform.position = manualPosition + (vessel.CoM - vessel.rb_velocity * Time.fixedDeltaTime);	
+				cameraParent.transform.position = manualPosition + (vessel.CoM - vessel.srf_velocity * Time.fixedDeltaTime);	
 
 				if(referenceMode == ReferenceModes.Surface)
 				{
@@ -1013,7 +1013,7 @@ namespace CameraTools
                 flightCamera.SetTargetNone();
                 flightCamera.transform.parent = cameraParent.transform;
                 flightCamera.DeactivateUpdate();
-                cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
+                cameraParent.transform.position = vessel.transform.position+vessel.srf_velocity*Time.fixedDeltaTime;
 				manualPosition = Vector3.zero;
 				
 				
@@ -2128,7 +2128,7 @@ namespace CameraTools
 				cameraUp = Vector3.up;
 			}
 
-			cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
+			cameraParent.transform.position = vessel.transform.position+vessel.srf_velocity*Time.fixedDeltaTime;
 			cameraParent.transform.rotation = vessel.transform.rotation;
             flightCamera.SetTargetNone();
             flightCamera.transform.parent = cameraParent.transform;
@@ -2180,7 +2180,7 @@ namespace CameraTools
 
 		void UpdatePathingCam()
 		{
-			cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
+			cameraParent.transform.position = vessel.transform.position+vessel.srf_velocity*Time.fixedDeltaTime;
 			cameraParent.transform.rotation = vessel.transform.rotation;
 
 			if(isPlayingPath)
