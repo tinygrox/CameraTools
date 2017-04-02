@@ -1,3 +1,8 @@
+v1.8.0
+- Compatibility with KSP 1.2.2 and KSP 1.2.9 BETA
+- Fixing isssue when reverting the camera
+
+
 v1.7.0
 - Compatibility with KSP 1.2.1
 
