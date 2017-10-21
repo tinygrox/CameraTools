@@ -623,12 +623,19 @@ namespace CameraTools
 			//vessel camera shake
 			if(ShakeMultiplier > 0)
 			{
-				foreach(var v in FlightGlobals.Vessels)
-				{
-					if(!v || !v.loaded || v.packed || v.isActiveVessel) continue;
-					VesselCameraShake(v);
-				}
-			}
+			    using (var vesselEnu = FlightGlobals.Vessels.GetEnumerator())
+			    {
+			        while (vesselEnu.MoveNext())
+			        {
+			            var v = vesselEnu.Current;
+			            if(v == null) continue;
+
+                        if (!v || !v.loaded || v.packed || v.isActiveVessel) continue;
+
+			            VesselCameraShake(v);
+                    }
+			    }
+            }
 			UpdateCameraShake();
 
 			if(_hasBdai && UseBdAutoTarget)
@@ -825,12 +832,18 @@ namespace CameraTools
 			//vessel camera shake
 			if(ShakeMultiplier > 0)
 			{
-				foreach(var v in FlightGlobals.Vessels)
-				{
-					if(!v || !v.loaded || v.packed) continue;
-					VesselCameraShake(v);
-				}
-			}
+			    using (var vesselEnu = FlightGlobals.Vessels.GetEnumerator())
+			    {
+			        while (vesselEnu.MoveNext())
+			        {
+			            var v = vesselEnu.Current;
+			            if (v == null) continue;
+
+			            if (!v || !v.loaded || v.packed) continue;
+			            VesselCameraShake(v);
+                    }
+			    }
+            }
 			UpdateCameraShake();
 		}
 
@@ -909,11 +922,17 @@ namespace CameraTools
 		float GetTotalThrust()
 		{
 			float total = 0;
-			foreach(var engine in _vessel.FindPartModulesImplementing<ModuleEngines>())
-			{
-				total += engine.finalThrust;
-			}
-			return total;
+
+		    using (var engineEnu = _vessel.FindPartModulesImplementing<ModuleEngines>().GetEnumerator())
+		    {
+		        while (engineEnu.MoveNext())
+		        {
+                    if(engineEnu.Current == null) continue;
+
+		            total += engineEnu.Current.finalThrust;
+                }
+		    }
+            return total;
 		}
 
 		void AddAtmoAudioControllers(bool includeActiveVessel)
@@ -923,16 +942,21 @@ namespace CameraTools
 				return;
 			}
 
-			foreach(var vessel in FlightGlobals.Vessels)
-			{
-				if(!vessel || !vessel.loaded || vessel.packed || (!includeActiveVessel && vessel.isActiveVessel))
-				{
-					continue;
-				}
+		    using (var vesselEnu = FlightGlobals.Vessels.GetEnumerator())
+		    {
+		        while (vesselEnu.MoveNext())
+		        {
+		            var vessel = vesselEnu.Current;
+                    if( vessel == null) continue;
 
-				vessel.gameObject.AddComponent<CtAtmosphericAudioController>();
-			}
-		}
+		            if (!vessel || !vessel.loaded || vessel.packed || (!includeActiveVessel && vessel.isActiveVessel))
+		            {
+		                continue;
+		            }
+		            vessel.gameObject.AddComponent<CtAtmosphericAudioController>();
+                }
+		    }
+        }
 		
 		void SetDoppler(bool includeActiveVessel)
 		{
@@ -1469,17 +1493,23 @@ namespace CameraTools
 
 				if(_showingVesselList)
 				{
-					foreach(var v in _loadedVessels)
-					{
-						if(!v || !v.loaded) continue;
-						if(GUI.Button(new Rect(_leftIndent + 10, contentTop + (line * _entryHeight), contentWidth - 10, _entryHeight), v.vesselName))
-						{
-							_dogfightTarget = v;
-							_showingVesselList = false;
-						}
-						line++;
-					}
-				}
+				    using (var vesselEnu = _loadedVessels.GetEnumerator())
+				    {
+				        while (vesselEnu.MoveNext())
+				        {
+				            var v = vesselEnu.Current;
+				            if (v == null) continue;
+				            if (!v || !v.loaded) continue;
+				            if (GUI.Button(new Rect(_leftIndent + 10, contentTop + (line * _entryHeight), contentWidth - 10, _entryHeight), v.vesselName))
+				            {
+				                _dogfightTarget = v;
+				                _showingVesselList = false;
+				            }
+				            line++;
+                        }
+				    }
+
+                }
 				line++;
 
 				if(_hasBdai)
@@ -1701,11 +1731,15 @@ namespace CameraTools
 			ConfigNode pathsNode = pathFileNode.GetNode("CAMERAPATHS");
 			pathsNode.RemoveNodes("CAMERAPATH");
 
-			foreach(var path in _availablePaths)
-			{
-				path.Save(pathsNode);
-			}
-			pathFileNode.Save(PathSaveUrl);
+		    using (var pathEnu = _availablePaths.GetEnumerator())
+		    {
+		        while (pathEnu.MoveNext())
+		        {
+		            pathEnu.Current?.Save(pathsNode);
+                }
+		    }
+
+            pathFileNode.Save(PathSaveUrl);
 		}
 
 		void Load()
@@ -1923,14 +1957,21 @@ namespace CameraTools
 				_loadedVessels.Clear();
 			}
 
-			foreach(var v in FlightGlobals.Vessels)
-			{
-				if(v.loaded && v.vesselType != VesselType.Debris && !v.isActiveVessel)
-				{
-					_loadedVessels.Add(v);
-				}
-			}
-		}
+		    using (var vesselEnu = FlightGlobals.Vessels.GetEnumerator())
+		    {
+		        while (vesselEnu.MoveNext())
+		        {
+		            var v = vesselEnu.Current;
+		            if (v == null) continue;
+
+		            if (v.loaded && v.vesselType != VesselType.Debris && !v.isActiveVessel)
+		            {
+		                _loadedVessels.Add(v);
+		            }
+
+                }
+		    }
+        }
 
 		private void CheckForBdai(Vessel v)
 		{
@@ -1938,16 +1979,20 @@ namespace CameraTools
 			_aiComponent = null;
 			if(v)
 			{
-				foreach(Part p in v.parts)
-				{
-					if(p.GetComponent("BDModulePilotAI"))
-					{
-						_hasBdai = true;
-						_aiComponent = (object)p.GetComponent("BDModulePilotAI");
-						return;
-					}
-				}
-			}
+			    using (var partsEnu = v.parts.GetEnumerator())
+			    {
+			        while (partsEnu.MoveNext())
+			        {
+			            if (partsEnu.Current == null) continue;
+			            if (partsEnu.Current.GetComponent("BDModulePilotAI"))
+			            {
+			                _hasBdai = true;
+			                _aiComponent = (object)partsEnu.Current.GetComponent("BDModulePilotAI");
+			                return;
+			            }
+                    }
+			    }
+            }
 		}
 
 		private Vessel GetAiTargetedVessel()
@@ -1966,7 +2011,7 @@ namespace CameraTools
 			foreach(var assy in AssemblyLoader.loadedAssemblies)
 			{
 				//Debug.Log("- "+assy.assembly.FullName);
-				if(assy.assembly.FullName.Contains("BahaTurret,"))
+				if(assy.assembly.FullName.Contains("BDArmory,"))
 				{
 					foreach(var t in assy.assembly.GetTypes())
 					{

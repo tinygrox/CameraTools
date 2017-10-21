@@ -72,31 +72,45 @@ namespace CameraTools
 		public static string WriteVectorList(List<Vector3> list)
 		{
 			string output = string.Empty;
-			foreach(var val in list)
-			{
-				output += ConfigNode.WriteVector(val) + ";";
-			}
+
+		    using (var listEnu = list.GetEnumerator())
+		    {
+		        while (listEnu.MoveNext())
+		        {
+		            output += ConfigNode.WriteVector(listEnu.Current) + ";";
+                }
+		    }
+
 			return output;
 		}
 
 		public static string WriteQuaternionList(List<Quaternion> list)
 		{
 			string output = string.Empty;
-			foreach(var val in list)
-			{
-				output += ConfigNode.WriteQuaternion(val) + ";";
-			}
+
+		    using (var listEnu = list.GetEnumerator())
+		    {
+		        while (listEnu.MoveNext())
+		        {
+		            output += ConfigNode.WriteQuaternion(listEnu.Current) + ";";
+                }
+		    }
+
 			return output;
 		}
 
 		public static string WriteFloatList(List<float> list)
 		{
 			string output = string.Empty;
-			foreach(var val in list)
-			{
-				output += val.ToString() + ";";
-			}
-			return output;
+			
+		    using (var listEnu = list.GetEnumerator())
+		    {
+		        while (listEnu.MoveNext())
+		        {
+		            output += listEnu.Current + ";";
+                }
+		    }
+            return output;
 		}
 
 		public static List<Vector3> ParseVectorList(string arrayString)
