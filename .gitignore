@@ -232,3 +232,5 @@ Vectrosity.dll
 
 /CameraTools/libs
 /.vs/config
+/CameraTools.sln.DotSettings
+/.vs/CameraTools/v15/sqlite3/storage.ide

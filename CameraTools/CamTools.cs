@@ -1966,7 +1966,7 @@ namespace CameraTools
 			foreach(var assy in AssemblyLoader.loadedAssemblies)
 			{
 				//Debug.Log("- "+assy.assembly.FullName);
-				if(assy.assembly.FullName.Contains("BahaTurret,"))
+				if(assy.assembly.FullName.Contains("BDArmory"))
 				{
 					foreach(var t in assy.assembly.GetTypes())
 					{
