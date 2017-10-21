@@ -3,46 +3,46 @@
 namespace CameraTools
 {
 	[AttributeUsage(AttributeTargets.Field)]
-	public class CTPersistantField : Attribute
+	public class CtPersistantField : Attribute
 	{
-		public static string settingsURL = "GameData/CameraTools/settings.cfg";
+		public static string SettingsUrl = "GameData/CameraTools/settings.cfg";
 
-		public CTPersistantField()
+		public CtPersistantField()
 		{
 
 		}
 
 		public static void Save()
 		{
-			ConfigNode fileNode = ConfigNode.Load(settingsURL);
+			ConfigNode fileNode = ConfigNode.Load(SettingsUrl);
 			ConfigNode settings = fileNode.GetNode("CToolsSettings");
 
 
 			foreach(var field in typeof(CamTools).GetFields())
 			{
-				if(!field.IsDefined(typeof(CTPersistantField), false)) continue;
+				if(!field.IsDefined(typeof(CtPersistantField), false)) continue;
 
-				settings.SetValue(field.Name, field.GetValue(CamTools.fetch).ToString(), true);
+				settings.SetValue(field.Name, field.GetValue(CamTools.Fetch).ToString(), true);
 			}
 
-			fileNode.Save(settingsURL);
+			fileNode.Save(SettingsUrl);
 		}
 
 		public static void Load()
 		{
-			ConfigNode fileNode = ConfigNode.Load(settingsURL);
+			ConfigNode fileNode = ConfigNode.Load(SettingsUrl);
 			ConfigNode settings = fileNode.GetNode("CToolsSettings");
 
 			foreach(var field in typeof(CamTools).GetFields())
 			{
-				if(!field.IsDefined(typeof(CTPersistantField), false)) continue;
+				if(!field.IsDefined(typeof(CtPersistantField), false)) continue;
 
 				if(settings.HasValue(field.Name))
 				{
 					object parsedValue = ParseValue(field.FieldType, settings.GetValue(field.Name));
 					if(parsedValue != null)
 					{
-						field.SetValue(CamTools.fetch, parsedValue);
+						field.SetValue(CamTools.Fetch, parsedValue);
 					}
 				}
 			}

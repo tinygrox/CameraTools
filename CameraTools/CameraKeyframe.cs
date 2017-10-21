@@ -4,17 +4,17 @@ namespace CameraTools
 {
 	public struct CameraKeyframe 
 	{
-		public Vector3 position;
-		public Quaternion rotation;
-		public float zoom;
-		public float time;
+		public Vector3 Position;
+		public Quaternion Rotation;
+		public float Zoom;
+		public float Time;
 
 		public CameraKeyframe(Vector3 pos, Quaternion rot, float z, float t)
 		{
-			position = pos;
-			rotation = rot;
-			zoom = z;
-			time = t;
+			Position = pos;
+			Rotation = rot;
+			Zoom = z;
+			Time = t;
 		}
 
 	}
@@ -23,7 +23,7 @@ namespace CameraTools
 	{
 		public int Compare(CameraKeyframe a, CameraKeyframe b)
 		{
-			return a.time.CompareTo(b.time);
+			return a.Time.CompareTo(b.Time);
 		}
 	}
 }

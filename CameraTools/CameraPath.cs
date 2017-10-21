@@ -6,51 +6,51 @@ namespace CameraTools
 {
 	public class CameraPath
 	{
-		public string pathName;
-		int keyCount = 0;
-		public int keyframeCount
+		public string PathName;
+		int _keyCount = 0;
+		public int KeyframeCount
 		{
 			get
 			{
-				return keyCount;
+				return _keyCount;
 			}
 			private set
 			{
-				keyCount = value;
+				_keyCount = value;
 			}
 		}
-		public List<Vector3> points;
-		public List<Quaternion> rotations;
-		public List<float> times;
-		public List<float> zooms;
+		public List<Vector3> Points;
+		public List<Quaternion> Rotations;
+		public List<float> Times;
+		public List<float> Zooms;
 
-		public float lerpRate = 15;
-		public float timeScale = 1;
+		public float LerpRate = 15;
+		public float TimeScale = 1;
 
-		Vector3Animation pointCurve;
-		RotationAnimation rotationCurve;
-		AnimationCurve zoomCurve;
+		Vector3Animation _pointCurve;
+		RotationAnimation _rotationCurve;
+		AnimationCurve _zoomCurve;
 
 		public CameraPath()
 		{
-			pathName = "New Path";
-			points = new List<Vector3>();
-			rotations = new List<Quaternion>();
-			times = new List<float>();
-			zooms = new List<float>();
+			PathName = "New Path";
+			Points = new List<Vector3>();
+			Rotations = new List<Quaternion>();
+			Times = new List<float>();
+			Zooms = new List<float>();
 		}
 
 		public static CameraPath Load(ConfigNode node)
 		{
 			CameraPath newPath = new CameraPath();
 
-			newPath.pathName = node.GetValue("pathName");
-			newPath.points = ParseVectorList(node.GetValue("points"));
-			newPath.rotations = ParseQuaternionList(node.GetValue("rotations"));
-			newPath.times = ParseFloatList(node.GetValue("times"));
-			newPath.zooms = ParseFloatList(node.GetValue("zooms"));
-			newPath.lerpRate = float.Parse(node.GetValue("lerpRate"));
-			newPath.timeScale = float.Parse(node.GetValue("timeScale"));
+			newPath.PathName = node.GetValue("pathName");
+			newPath.Points = ParseVectorList(node.GetValue("points"));
+			newPath.Rotations = ParseQuaternionList(node.GetValue("rotations"));
+			newPath.Times = ParseFloatList(node.GetValue("times"));
+			newPath.Zooms = ParseFloatList(node.GetValue("zooms"));
+			newPath.LerpRate = float.Parse(node.GetValue("lerpRate"));
+			newPath.TimeScale = float.Parse(node.GetValue("timeScale"));
 			newPath.Refresh();
 
 			return newPath;
@@ -58,15 +58,15 @@ namespace CameraTools
 
 		public void Save(ConfigNode node)
 		{
-			Debug.Log("Saving path: " + pathName);
+			Debug.Log("Saving path: " + PathName);
 			ConfigNode pathNode = node.AddNode("CAMERAPATH");
-			pathNode.AddValue("pathName", pathName);
-			pathNode.AddValue("points", WriteVectorList(points));
-			pathNode.AddValue("rotations", WriteQuaternionList(rotations));
-			pathNode.AddValue("times", WriteFloatList(times));
-			pathNode.AddValue("zooms", WriteFloatList(zooms));
-			pathNode.AddValue("lerpRate", lerpRate);
-			pathNode.AddValue("timeScale", timeScale);
+			pathNode.AddValue("pathName", PathName);
+			pathNode.AddValue("points", WriteVectorList(Points));
+			pathNode.AddValue("rotations", WriteQuaternionList(Rotations));
+			pathNode.AddValue("times", WriteFloatList(Times));
+			pathNode.AddValue("zooms", WriteFloatList(Zooms));
+			pathNode.AddValue("lerpRate", LerpRate);
+			pathNode.AddValue("timeScale", TimeScale);
 		}
 
 		public static string WriteVectorList(List<Vector3> list)
@@ -138,83 +138,83 @@ namespace CameraTools
 
 		public void AddTransform(Transform cameraTransform, float zoom, float time)
 		{
-			points.Add(cameraTransform.localPosition);
-			rotations.Add(cameraTransform.localRotation);
-			zooms.Add(zoom);
-			times.Add(time);
-			keyframeCount = times.Count;
+			Points.Add(cameraTransform.localPosition);
+			Rotations.Add(cameraTransform.localRotation);
+			Zooms.Add(zoom);
+			Times.Add(time);
+			KeyframeCount = Times.Count;
 			Sort();
 			UpdateCurves();
 		}
 
 		public void SetTransform(int index, Transform cameraTransform, float zoom, float time)
 		{
-			points[index] = cameraTransform.localPosition;
-			rotations[index] = cameraTransform.localRotation;
-			zooms[index] = zoom;
-			times[index] = time;
+			Points[index] = cameraTransform.localPosition;
+			Rotations[index] = cameraTransform.localRotation;
+			Zooms[index] = zoom;
+			Times[index] = time;
 			Sort();
 			UpdateCurves();
 		}
 
 		public void Refresh()
 		{
-			keyframeCount = times.Count;
+			KeyframeCount = Times.Count;
 			Sort();
 			UpdateCurves();
 		}
 
 		public void RemoveKeyframe(int index)
 		{
-			points.RemoveAt(index);
-			rotations.RemoveAt(index);
-			zooms.RemoveAt(index);
-			times.RemoveAt(index);
-			keyframeCount = times.Count;
+			Points.RemoveAt(index);
+			Rotations.RemoveAt(index);
+			Zooms.RemoveAt(index);
+			Times.RemoveAt(index);
+			KeyframeCount = Times.Count;
 			UpdateCurves();
 		}
 
 		public void Sort()
 		{
 			List<CameraKeyframe> keyframes = new List<CameraKeyframe>();
-			for(int i = 0; i < points.Count; i++)
+			for(int i = 0; i < Points.Count; i++)
 			{
-				keyframes.Add(new CameraKeyframe(points[i], rotations[i], zooms[i], times[i]));
+				keyframes.Add(new CameraKeyframe(Points[i], Rotations[i], Zooms[i], Times[i]));
 			}
 			keyframes.Sort(new CameraKeyframeComparer());
 
 			for(int i = 0; i < keyframes.Count; i++)
 			{
-				points[i] = keyframes[i].position;
-				rotations[i] = keyframes[i].rotation;
-				zooms[i] = keyframes[i].zoom;
-				times[i] = keyframes[i].time;
+				Points[i] = keyframes[i].Position;
+				Rotations[i] = keyframes[i].Rotation;
+				Zooms[i] = keyframes[i].Zoom;
+				Times[i] = keyframes[i].Time;
 			}
 		}
 
 		public CameraKeyframe GetKeyframe(int index)
 		{
 			int i = index;
-			return new CameraKeyframe(points[i], rotations[i], zooms[i], times[i]);
+			return new CameraKeyframe(Points[i], Rotations[i], Zooms[i], Times[i]);
 		}
 
 		public void UpdateCurves()
 		{
-			pointCurve = new Vector3Animation(points.ToArray(), times.ToArray());
-			rotationCurve = new RotationAnimation(rotations.ToArray(), times.ToArray());
-			zoomCurve = new AnimationCurve();
-			for(int i = 0; i < zooms.Count; i++)
+			_pointCurve = new Vector3Animation(Points.ToArray(), Times.ToArray());
+			_rotationCurve = new RotationAnimation(Rotations.ToArray(), Times.ToArray());
+			_zoomCurve = new AnimationCurve();
+			for(int i = 0; i < Zooms.Count; i++)
 			{
-				zoomCurve.AddKey(new Keyframe(times[i], zooms[i]));
+				_zoomCurve.AddKey(new Keyframe(Times[i], Zooms[i]));
 			}
 		}
 
 		public CameraTransformation Evaulate(float time)
 		{
 			CameraTransformation tf = new CameraTransformation();
-			tf.position = pointCurve.Evaluate(time);
-			tf.rotation = rotationCurve.Evaluate(time);
-			tf.zoom = zoomCurve.Evaluate(time);
+			tf.Position = _pointCurve.Evaluate(time);
+			tf.Rotation = _rotationCurve.Evaluate(time);
+			tf.Zoom = _zoomCurve.Evaluate(time);
 
 			return tf;
 		}
