@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Reflection;
+
 namespace CameraTools
 {
 	[AttributeUsage(AttributeTargets.Field)]
