@@ -229,8 +229,6 @@ KSPCore.dll
 KSPUtil.dll
 SaveUpgradePipeline.Core.dll
 Vectrosity.dll
-/bin/Release
+
 /CameraTools/libs
 /.vs/config
-/CameraTools.sln.DotSettings
-/.vs/CameraTools/v15/sqlite3
