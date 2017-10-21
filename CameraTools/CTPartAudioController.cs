@@ -1,82 +1,82 @@
 ﻿using UnityEngine;
 namespace CameraTools
 {
-	public class CtPartAudioController : MonoBehaviour
+	public class CTPartAudioController : MonoBehaviour
 	{
-		Vessel _vessel;
-		Part _part;
+		Vessel vessel;
+		Part part;
 
-		public AudioSource AudioSource;
+		public AudioSource audioSource;
 
 
-		float _origMinDist = 1;
-		float _origMaxDist = 1;
+		float origMinDist = 1;
+		float origMaxDist = 1;
 
-		float _modMinDist = 10;
-		float _modMaxDist = 10000;
+		float modMinDist = 10;
+		float modMaxDist = 10000;
 
-		AudioRolloffMode _origRolloffMode;
+		AudioRolloffMode origRolloffMode;
 
 		void Awake()
 		{
-			_part = GetComponentInParent<Part>();
-			_vessel = _part.vessel;
+			part = GetComponentInParent<Part>();
+			vessel = part.vessel;
 
 			CamTools.OnResetCTools += OnResetCTools;
 		}
 
 		void Start()
 		{
-			if(!AudioSource)
+			if(!audioSource)
 			{
 				Destroy(this);
 				return;
 			}
 
-			_origMinDist = AudioSource.minDistance;
-			_origMaxDist = AudioSource.maxDistance;
-			_origRolloffMode = AudioSource.rolloffMode;
-			AudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
-			AudioSource.spatialBlend = 1;
+			origMinDist = audioSource.minDistance;
+			origMaxDist = audioSource.maxDistance;
+			origRolloffMode = audioSource.rolloffMode;
+			audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+			audioSource.spatialBlend = 1;
 	
 		}
 
 		void FixedUpdate()
 		{
-			if(!AudioSource)
+			if(!audioSource)
 			{
 				Destroy(this);
 				return;
 			}
 
-			if(!_part || !_vessel)
+			if(!part || !vessel)
 			{
 				Destroy(this);
 				return;
 			}
 
 
-			float angleToCam = Vector3.Angle(_vessel.srf_velocity, FlightCamera.fetch.mainCamera.transform.position - _vessel.transform.position);
+			float angleToCam = Vector3.Angle(vessel.srf_velocity, FlightCamera.fetch.mainCamera.transform.position - vessel.transform.position);
 			angleToCam = Mathf.Clamp(angleToCam, 1, 180);
 
-			float srfSpeed = (float)_vessel.srfSpeed;
+			float srfSpeed = (float)vessel.srfSpeed;
 			srfSpeed = Mathf.Min(srfSpeed, 550f);
 
-			float lagAudioFactor = (75000 / (Vector3.Distance(_vessel.transform.position, FlightCamera.fetch.mainCamera.transform.position) * srfSpeed * angleToCam / 90));
+			float lagAudioFactor = (75000 / (Vector3.Distance(vessel.transform.position, FlightCamera.fetch.mainCamera.transform.position) * srfSpeed * angleToCam / 90));
 			lagAudioFactor = Mathf.Clamp(lagAudioFactor * lagAudioFactor * lagAudioFactor, 0, 4);
 			lagAudioFactor += srfSpeed / 230;
 
 			float waveFrontFactor = ((3.67f * angleToCam)/srfSpeed);
 			waveFrontFactor = Mathf.Clamp(waveFrontFactor * waveFrontFactor * waveFrontFactor, 0, 2);
-			if(_vessel.srfSpeed > CamTools.SpeedOfSound)
+			if(vessel.srfSpeed > CamTools.speedOfSound)
 			{
-				waveFrontFactor = (srfSpeed / (angleToCam) < 3.67f) ? waveFrontFactor + ((srfSpeed/(float)CamTools.SpeedOfSound)*waveFrontFactor): 0;
+				waveFrontFactor = (srfSpeed / (angleToCam) < 3.67f) ? waveFrontFactor + ((srfSpeed/(float)CamTools.speedOfSound)*waveFrontFactor): 0;
 			}
 
 			lagAudioFactor *= waveFrontFactor;
 		
-			AudioSource.minDistance = Mathf.Lerp(_origMinDist, _modMinDist * lagAudioFactor, Mathf.Clamp01((float)_vessel.srfSpeed/30));
-			AudioSource.maxDistance = Mathf.Lerp(_origMaxDist,Mathf.Clamp(_modMaxDist * lagAudioFactor, AudioSource.minDistance, 16000), Mathf.Clamp01((float)_vessel.srfSpeed/30));
+			audioSource.minDistance = Mathf.Lerp(origMinDist, modMinDist * lagAudioFactor, Mathf.Clamp01((float)vessel.srfSpeed/30));
+			audioSource.maxDistance = Mathf.Lerp(origMaxDist,Mathf.Clamp(modMaxDist * lagAudioFactor, audioSource.minDistance, 16000), Mathf.Clamp01((float)vessel.srfSpeed/30));
 				
 		}
 
@@ -89,9 +89,9 @@ namespace CameraTools
 
 		void OnResetCTools()
 		{
-			AudioSource.minDistance = _origMinDist;
-			AudioSource.maxDistance = _origMaxDist;
-			AudioSource.rolloffMode = _origRolloffMode;
+			audioSource.minDistance = origMinDist;
+			audioSource.maxDistance = origMaxDist;
+			audioSource.rolloffMode = origRolloffMode;
 			Destroy(this);
 		}
 
