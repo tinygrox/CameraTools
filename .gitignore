@@ -236,3 +236,6 @@ Vectrosity.dll
 /.vs/CameraTools/v15/sqlite3/storage.ide
 /.vs/CameraTools
 /.vs
+/CameraTools/bin/Release/KSPTrackIR.dll
+/CameraTools/bin/Release/KSPAssets.XmlSerializers.dll
+/CameraTools/bin/Release/Ionic.Zip.dll
