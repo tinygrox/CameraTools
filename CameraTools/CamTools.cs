@@ -53,6 +53,12 @@ namespace CameraTools
 		[CTPersistantField]
 		public ToolModes toolMode = ToolModes.StationaryCamera;
 
+		[CTPersistantField]
+		public bool randomMode = false;
+
+		bool temporaryRevert = false;
+
+
 		Rect windowRect = new Rect(0,0,0,0);
 		bool gameUIToggle = true;
 		float incrButtonWidth = 26;
@@ -183,6 +189,7 @@ namespace CameraTools
 		object aiComponent = null;
 		FieldInfo bdAiTargetField;
 
+		double targetUpdateTime = 0;
 
 		//pathing
 		int selectedPathIndex = -1;
@@ -216,6 +223,8 @@ namespace CameraTools
 		}
 		Vector2 keysScrollPos;
 
+		private System.Random rng;
+
 		void Awake()
 		{
 			if(fetch)
@@ -232,6 +241,7 @@ namespace CameraTools
 			guiOffsetUp = manualOffsetUp.ToString();
 			guiKeyZoomSpeed = keyZoomSpeed.ToString();
 			guiFreeMoveSpeed = freeMoveSpeed.ToString();
+			rng = new System.Random();
 		}
 
 		void Start()
@@ -281,47 +291,14 @@ namespace CameraTools
 				
 				if(Input.GetKeyDown(revertKey))
 				{
+					temporaryRevert = false;
 					RevertCamera();	
 				}
 				else if(Input.GetKeyDown(cameraKey))
 				{
-					if(toolMode == ToolModes.StationaryCamera)
-					{
-						if(!cameraToolActive)
-						{
-							SaveOriginalCamera();
-							StartStationaryCamera();
-						}
-						else
-						{
-							//RevertCamera();
-							StartStationaryCamera();
-						}
-					}
-					else if(toolMode == ToolModes.DogfightCamera)
-					{
-						if(!cameraToolActive)
-						{
-							SaveOriginalCamera();
-							StartDogfightCamera();
-						}
-						else
-						{
-							StartDogfightCamera();
-						}
-					}
-					else if(toolMode == ToolModes.Pathing)
-					{
-						if(!cameraToolActive)
-						{
-							SaveOriginalCamera();
-						}
-						StartPathingCam();
-						PlayPathingCam();
-					}
+					temporaryRevert = true;
+					cameraActivate();
 				}
-
-
 			}
 
 			if(Input.GetMouseButtonUp(0))
@@ -365,17 +342,56 @@ namespace CameraTools
 				
 				waitingForPosition = false;
 			}
-			
-			
-			
+
+
+
+		}
+
+
+		private void cameraActivate()
+		{
+			if (toolMode == ToolModes.StationaryCamera)
+			{
+				if (!cameraToolActive)
+				{
+					SaveOriginalCamera();
+					StartStationaryCamera();
+				}
+				else
+				{
+					//RevertCamera();
+					StartStationaryCamera();
+				}
+			}
+			else if (toolMode == ToolModes.DogfightCamera)
+			{
+				if (!cameraToolActive)
+				{
+					SaveOriginalCamera();
+					StartDogfightCamera();
+				}
+				else
+				{
+					StartDogfightCamera();
+				}
+			}
+			else if (toolMode == ToolModes.Pathing)
+			{
+				if (!cameraToolActive)
+				{
+					SaveOriginalCamera();
+				}
+				StartPathingCam();
+				PlayPathingCam();
+			}
+
 		}
 
 		public void ShakeCamera(float magnitude)
 		{
 			shakeMagnitude = Mathf.Max(shakeMagnitude, magnitude);
 		}
-		
-		
+
 		int posCounter = 0;//debug
 		void FixedUpdate()
 		{
@@ -426,13 +442,14 @@ namespace CameraTools
 					dogfightTarget = null;
 					if(cameraToolActive)
 					{
+						Debug.Log("[CameraTools] Reverting Because dogfightTarget is null");
 						RevertCamera();
 					}
 				}
 			}
 			
 			
-			if(hasDied && Time.time-diedTime > 2)
+			if(hasDied && Time.time-diedTime > 3)
 			{
 				RevertCamera();	
 			}
@@ -450,7 +467,13 @@ namespace CameraTools
 
 			if(!dogfightTarget)
 			{
-				dogfightVelocityChase = true;
+				if (rng.Next(3) == 0)
+				{
+					dogfightVelocityChase = false; // sometimes throw in a non chase angle
+				}
+				else { 
+					dogfightVelocityChase = true;
+				} 
 			}
 			else
 			{
@@ -484,6 +507,7 @@ namespace CameraTools
 		{
 			if(!vessel || (!dogfightTarget && !dogfightLastTarget && !dogfightVelocityChase))
 			{
+				Debug.Log("[CameraTools] Reverting during UpdateDogfightCamera()");
 				RevertCamera();
 				return;
 			}
@@ -633,10 +657,15 @@ namespace CameraTools
 
 			if(hasBDAI && useBDAutoTarget)
 			{
-				Vessel newAITarget = GetAITargetedVessel();
-				if(newAITarget)
+				// don't update targets too quickly
+				if (Planetarium.GetUniversalTime() - targetUpdateTime > 5)
 				{
-					dogfightTarget = newAITarget;
+					Vessel newAITarget = GetAITargetedVessel();
+					if (newAITarget)
+					{
+						dogfightTarget = newAITarget;
+					}
+					targetUpdateTime = Planetarium.GetUniversalTime();
 				}
 			}
 
@@ -1015,8 +1044,11 @@ namespace CameraTools
                 flightCamera.DeactivateUpdate();
                 cameraParent.transform.position = vessel.transform.position+vessel.rb_velocity*Time.fixedDeltaTime;
 				manualPosition = Vector3.zero;
-				
-				
+				if(randomMode)
+				{
+					camTarget = FlightGlobals.ActiveVessel.GetReferenceTransformPart();
+					hasTarget = true;
+				}
 				hasTarget = (camTarget != null) ? true : false;
 				
 				
@@ -1024,7 +1056,7 @@ namespace CameraTools
 				//Vector3 upAxis = flightCamera.transform.up;
 				
 
-				if(autoFlybyPosition)
+				if(autoFlybyPosition || randomMode)
 				{
 					setPresetOffset = false;
 					Vector3 velocity = vessel.srf_velocity;
@@ -1036,6 +1068,7 @@ namespace CameraTools
 					float distanceAhead = Mathf.Clamp(4 * clampedSpeed, 30, 3500);
 					
 					flightCamera.transform.rotation = Quaternion.LookRotation(vessel.transform.position - flightCamera.transform.position, cameraUp);
+					
 					
 					
 					if(referenceMode == ReferenceModes.Surface && vessel.srfSpeed > 0)
@@ -1109,6 +1142,7 @@ namespace CameraTools
 
 				SetDoppler(true);
 				AddAtmoAudioControllers(true);
+
 			}
 			else
 			{
@@ -1151,13 +1185,22 @@ namespace CameraTools
 		
 			cameraToolActive = false;
 
-			ResetDoppler();
-			if(OnResetCTools != null)
-			{
-				OnResetCTools();
-			}
 
 			StopPlayingPath();
+
+			ResetDoppler();
+
+			try
+			{
+				if (OnResetCTools != null)
+				{
+					OnResetCTools();
+				}
+			} catch (Exception e)
+			{
+				Debug.Log("[CamTools] Caught exception resetting CTools " + e.ToString());
+			}
+
 		}
 		
 		void SaveOriginalCamera()
@@ -1586,7 +1629,9 @@ namespace CameraTools
 			}
 
 			line += 1.25f;
+			randomMode = GUI.Toggle(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth, entryHeight), randomMode, "Random Mode");
 
+			line += 1.25f;
 			enableKeypad = GUI.Toggle(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth, entryHeight), enableKeypad, "Keypad Control");
 			if(enableKeypad)
 			{
@@ -2006,20 +2051,82 @@ namespace CameraTools
 			vessel = v;
 
 			CheckForBDAI(v);
-
+			// reactivate camera if it was reverted
+			if(temporaryRevert && randomMode)
+			{
+				cameraToolActive = true;
+				toolMode = ToolModes.Pathing;
+			}
 			if(cameraToolActive)
 			{
-				if(toolMode == ToolModes.DogfightCamera)
+				targetUpdateTime = Planetarium.GetUniversalTime();
+
+				if (hasBDAI && useBDAutoTarget)
+				{
+					Vessel newAITarget = GetAITargetedVessel();
+					if (newAITarget)
+					{
+						dogfightTarget = newAITarget;
+					}
+				}
+				if (randomMode)
+				{
+					var lowAlt = 100.0;
+					if(vessel.verticalSpeed < -20)
+					{
+						lowAlt = vessel.verticalSpeed * -5;
+					}
+					if (vessel != null && vessel.terrainAltitude < lowAlt)
+					{
+						RevertCamera();
+					}
+					else
+					{
+						var oldToolMode = toolMode;
+						var rand = rng.Next(5);
+						if (rand == 0)
+						{
+							toolMode = ToolModes.StationaryCamera;
+							StartStationaryCamera();
+						}
+						else if (rand == 1)
+						{
+							RevertCamera(); // but temporaryRevert will remain true
+						}
+						else
+						{
+							toolMode = ToolModes.DogfightCamera;
+						}
+						if (cameraToolActive && toolMode != oldToolMode)
+						{
+							// recover and change to new mode
+							RevertCamera();
+							cameraActivate();
+						}
+					}
+				}
+				
+				if (toolMode == ToolModes.DogfightCamera)
 				{
 					StartCoroutine(ResetDogfightCamRoutine());
 				}
+
 			}
 		}
 
 		IEnumerator ResetDogfightCamRoutine()
 		{
 			yield return new WaitForEndOfFrame();
+
 			RevertCamera();
+			if (hasBDAI && useBDAutoTarget)
+			{
+				Vessel newAITarget = GetAITargetedVessel();
+				if (newAITarget)
+				{
+					dogfightTarget = newAITarget;
+				}
+			}
 			StartDogfightCamera();
 		}
 
