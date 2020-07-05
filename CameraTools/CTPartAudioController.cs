@@ -89,9 +89,12 @@ namespace CameraTools
 
 		void OnResetCTools()
 		{
-			audioSource.minDistance = origMinDist;
-			audioSource.maxDistance = origMaxDist;
-			audioSource.rolloffMode = origRolloffMode;
+			if (audioSource != null)
+			{
+				audioSource.minDistance = origMinDist;
+				audioSource.maxDistance = origMaxDist;
+				audioSource.rolloffMode = origRolloffMode;
+			}
 			Destroy(this);
 		}
 

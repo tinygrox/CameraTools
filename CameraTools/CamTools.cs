@@ -467,7 +467,7 @@ namespace CameraTools
 
 			if(!dogfightTarget)
 			{
-				if (rng.Next(3) == 0)
+				if (randomMode && rng.Next(3) == 0)
 				{
 					dogfightVelocityChase = false; // sometimes throw in a non chase angle
 				}
