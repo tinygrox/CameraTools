@@ -184,10 +184,16 @@ namespace CameraTools
 		bool dogfightVelocityChase = false;
 		//bdarmory
 		bool hasBDAI = false;
+		bool hasBDWM = false;
 		[CTPersistantField]
 		public bool useBDAutoTarget = false;
 		object aiComponent = null;
+		object wmComponent = null;
 		FieldInfo bdAiTargetField;
+		FieldInfo bdWmThreatField;
+		FieldInfo bdWmMissileField;
+		FieldInfo bdWmUnderFireField;
+		FieldInfo bdWmUnderAttackField;
 
 		double targetUpdateTime = 0;
 
@@ -270,8 +276,13 @@ namespace CameraTools
 				vessel = FlightGlobals.ActiveVessel;
 
 				CheckForBDAI(FlightGlobals.ActiveVessel);
+				CheckForBDWM(FlightGlobals.ActiveVessel);
 			}
 			bdAiTargetField = GetAITargetField();
+			bdWmThreatField = GetThreatField();
+			bdWmMissileField = GetMissileField();
+			bdWmUnderFireField = GetUnderFireField();
+			bdWmUnderAttackField = GetUnderAttackField();
 			GameEvents.onVesselChange.Add(SwitchToVessel);
 		}
 
@@ -1995,6 +2006,24 @@ namespace CameraTools
 			}
 		}
 
+		private void CheckForBDWM(Vessel v)
+		{
+			hasBDWM = false;
+			wmComponent = null;
+			if (v)
+			{
+				foreach (Part p in v.parts)
+				{
+					if (p.GetComponent("MissileFire"))
+					{
+						hasBDWM = true;
+						wmComponent = (object)p.GetComponent("MissileFire");
+						return;
+					}
+				}
+			}
+		}
+
 		private Vessel GetAITargetedVessel()
 		{
 			if(!hasBDAI || aiComponent==null || bdAiTargetField==null)
@@ -2002,7 +2031,20 @@ namespace CameraTools
 				return null;
 			}
 
-			return (Vessel) bdAiTargetField.GetValue(aiComponent);
+			if (hasBDWM && wmComponent != null && bdWmThreatField != null)
+			{
+				bool underFire = (bool)bdWmUnderFireField.GetValue(wmComponent);
+				bool underAttack = (bool)bdWmUnderAttackField.GetValue(wmComponent);
+
+				if (bdWmMissileField != null)
+					return (Vessel)bdWmMissileField.GetValue(wmComponent);
+				else if (underFire || underAttack)
+					return (Vessel)bdWmThreatField.GetValue(wmComponent);
+				else
+					return (Vessel)bdAiTargetField.GetValue(aiComponent);
+			}
+
+			return (Vessel)bdAiTargetField.GetValue(aiComponent);
 		}
 
 		private Type AIModuleType()
@@ -2020,6 +2062,104 @@ namespace CameraTools
 							return t;
 						}
 					}
+				}
+			}
+
+			return null;
+		}
+
+
+		private Type WeaponManagerType()
+		{
+			Debug.Log("loaded assy's: ");
+			foreach (var assy in AssemblyLoader.loadedAssemblies)
+			{
+				Debug.Log("- "+assy.assembly.FullName);
+				if (assy.assembly.FullName.Contains("BDArmory"))
+				{
+					foreach (var t in assy.assembly.GetTypes())
+					{
+						if (t.Name == "MissileFire")
+						{
+							return t;
+						}
+					}
+				}
+			}
+
+			return null;
+		}
+
+		private FieldInfo GetThreatField()
+		{
+			Type wmModType = WeaponManagerType();
+			if (wmModType == null) return null;
+
+			FieldInfo[] fields = wmModType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+			//Debug.Log("bdai fields: ");
+			foreach (var f in fields)
+			{
+				// Debug.Log("- " + f.Name);
+				if (f.Name == "incomingThreatVessel")
+				{
+					return f;
+				}
+			}
+			
+			return null;
+		}
+
+		private FieldInfo GetMissileField()
+		{
+			Type wmModType = WeaponManagerType();
+			if (wmModType == null) return null;
+
+			FieldInfo[] fields = wmModType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+			//Debug.Log("bdai fields: ");
+			foreach (var f in fields)
+			{
+				// Debug.Log("- " + f.Name);
+				if (f.Name == "incomingMissileVessel")
+				{
+					return f;
+				}
+			}
+
+			return null;
+		}
+
+		private FieldInfo GetUnderFireField()
+		{
+			Type wmModType = WeaponManagerType();
+			if (wmModType == null) return null;
+
+			FieldInfo[] fields = wmModType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+			//Debug.Log("bdai fields: ");
+			foreach (var f in fields)
+			{
+				//Debug.Log("- " + f.Name);
+				if (f.Name == "underFire")
+				{
+					return f;
+				}
+			}
+
+			return null;
+		}
+
+		private FieldInfo GetUnderAttackField()
+		{
+			Type wmModType = WeaponManagerType();
+			if (wmModType == null) return null;
+
+			FieldInfo[] fields = wmModType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+			//Debug.Log("bdai fields: ");
+			foreach (var f in fields)
+			{
+				//Debug.Log("- " + f.Name);
+				if (f.Name == "underAttack")
+				{
+					return f;
 				}
 			}
 
@@ -2063,6 +2203,7 @@ namespace CameraTools
 
 				if (hasBDAI && useBDAutoTarget)
 				{
+					CheckForBDWM(v);
 					Vessel newAITarget = GetAITargetedVessel();
 					if (newAITarget)
 					{
