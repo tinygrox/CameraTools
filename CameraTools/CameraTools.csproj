@@ -2,7 +2,7 @@
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{446E2470-00DC-4835-B62D-9DB8A7D41F4A}</ProjectGuid>
@@ -47,14 +47,14 @@
     <DebugType>full</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <!-- <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet> -->
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
     <OutputPath>bin\Release\</OutputPath>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <!-- <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet> -->
     <Optimize>true</Optimize>
     <Prefer32Bit>false</Prefer32Bit>
     <DebugType>portable</DebugType>
@@ -152,11 +152,6 @@
     <Content Include="Distribution\GameData\CameraTools\Sounds\windloop.wav" />
     <Content Include="Distribution\GameData\CameraTools\Sounds\windtear.wav" />
     <Content Include="Distribution\GameData\CameraTools\Textures\icon.png" />
-    <Content Include="LocalDev\7za_dir.txt" />
-    <Content Include="LocalDev\dist_dir.txt" />
-    <Content Include="LocalDev\ksp_dir.txt" />
-    <Content Include="LocalDev\mono_exe.txt" />
-    <Content Include="LocalDev\pdb2mdb_exe.txt" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Distribution\GameData\CameraTools\ATM_CameraTools.cfg" />
@@ -165,7 +160,7 @@
     <None Include="Distribution\GameData\CameraTools\settings.cfg" />
   </ItemGroup>
   <ItemGroup />
-  <PropertyGroup>
+<!--  <PropertyGroup>
     <PostBuildEvent>@echo $(Targetname)
 @echo ...
 @echo set lpath vars from LocalDev storage...
@@ -196,5 +191,5 @@ copy /Y "$(TargetDir)$(Targetname).pdb" "%25KSP_DIR%25\GameData\CameraTools\Plug
 )
 
 @echo Build/deploy complete!</PostBuildEvent>
-  </PropertyGroup>
+  </PropertyGroup> -->
 </Project>
