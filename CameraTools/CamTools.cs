@@ -668,9 +668,18 @@ namespace CameraTools
 
 			if(hasBDAI && useBDAutoTarget)
 			{
-				// don't update targets too quickly
-				if (Planetarium.GetUniversalTime() - targetUpdateTime > 5)
+				// Check for missile
+				if (Planetarium.GetUniversalTime() - targetUpdateTime > 0.1f)
+					bdWmMissileField = GetMissileField();
+
+				// don't update targets too quickly, unless we're under attack by a missile
+				if ((bdWmMissileField != null) || (Planetarium.GetUniversalTime() - targetUpdateTime > 3))
 				{
+					// Update fields
+					bdAiTargetField = GetAITargetField();
+					bdWmThreatField = GetThreatField();
+					bdWmUnderFireField = GetUnderFireField();
+					bdWmUnderAttackField = GetUnderAttackField();
 					Vessel newAITarget = GetAITargetedVessel();
 					if (newAITarget)
 					{
@@ -2071,10 +2080,10 @@ namespace CameraTools
 
 		private Type WeaponManagerType()
 		{
-			Debug.Log("loaded assy's: ");
+			// Debug.Log("loaded assy's: ");
 			foreach (var assy in AssemblyLoader.loadedAssemblies)
 			{
-				Debug.Log("- "+assy.assembly.FullName);
+				// Debug.Log("- "+assy.assembly.FullName);
 				if (assy.assembly.FullName.Contains("BDArmory"))
 				{
 					foreach (var t in assy.assembly.GetTypes())
