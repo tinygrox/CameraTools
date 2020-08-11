@@ -2209,7 +2209,7 @@ namespace CameraTools
 			if (!temporaryRevert && randomMode)
 			{
 				cameraToolActive = true;
-				toolMode = ToolModes.DogfightCamera;
+				toolMode = ToolModes.Pathing;
 			}
 			if (cameraToolActive)
 			{
