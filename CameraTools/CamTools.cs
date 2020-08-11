@@ -2203,7 +2203,13 @@ namespace CameraTools
 			vessel = v;
 
 			CheckForBDAI(v);
-			if(cameraToolActive)
+			// reactivate camera if it was reverted
+			if (!temporaryRevert && randomMode)
+			{
+				cameraToolActive = true;
+				toolMode = ToolModes.DogfightCamera;
+			}
+			if (cameraToolActive)
 			{
 				targetUpdateTime = Planetarium.GetUniversalTime();
 
@@ -2223,7 +2229,7 @@ namespace CameraTools
 					{
 						lowAlt = vessel.verticalSpeed * -5;
 					}
-					if (vessel != null && vessel.terrainAltitude < lowAlt)
+					if (vessel != null && vessel.radarAltitude < lowAlt)
 					{
 						RevertCamera();
 					}
