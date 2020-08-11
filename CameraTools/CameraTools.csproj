@@ -78,228 +78,228 @@
   <ItemGroup>
     <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\KSP DLLs\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\..\..\KSP DLLs\Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
     <Reference Include="KSPAssets, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\KSP DLLs\KSPAssets.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\KSPAssets.dll</HintPath>
     </Reference>
     <Reference Include="KSPAssets.XmlSerializers">
-      <HintPath>..\..\..\KSP DLLs\KSPAssets.XmlSerializers.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\KSPAssets.XmlSerializers.dll</HintPath>
     </Reference>
     <Reference Include="KSPTrackIR">
-      <HintPath>..\..\..\KSP DLLs\KSPTrackIR.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\KSPTrackIR.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Xml" />
     <Reference Include="Unity.Analytics.DataPrivacy">
-      <HintPath>..\..\..\KSP DLLs\Unity.Analytics.DataPrivacy.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\Unity.Analytics.DataPrivacy.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Analytics.StandardEvents">
-      <HintPath>..\..\..\KSP DLLs\Unity.Analytics.StandardEvents.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\Unity.Analytics.StandardEvents.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Analytics.Tracker">
-      <HintPath>..\..\..\KSP DLLs\Unity.Analytics.Tracker.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\Unity.Analytics.Tracker.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.Core.Runtime">
-      <HintPath>..\..\..\KSP DLLs\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.Core.ShaderLibrary">
-      <HintPath>..\..\..\KSP DLLs\Unity.RenderPipelines.Core.ShaderLibrary.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\Unity.RenderPipelines.Core.ShaderLibrary.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary">
-      <HintPath>..\..\..\KSP DLLs\Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Timeline">
-      <HintPath>..\..\..\KSP DLLs\Unity.Timeline.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\Unity.Timeline.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AccessibilityModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.AccessibilityModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.AccessibilityModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AIModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.AIModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.AIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AndroidJNIModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.AndroidJNIModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.AndroidJNIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AnimationModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.AnimationModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.AnimationModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ARModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.ARModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.ARModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AssetBundleModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.AssetBundleModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.AssetBundleModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AudioModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.AudioModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.AudioModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ClothModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.ClothModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.ClothModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ClusterInputModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.ClusterInputModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.ClusterInputModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ClusterRendererModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.ClusterRendererModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.ClusterRendererModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CrashReportingModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.CrashReportingModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.CrashReportingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.DirectorModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.DirectorModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.DirectorModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.DSPGraphModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.DSPGraphModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.DSPGraphModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.FileSystemHttpModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.FileSystemHttpModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.FileSystemHttpModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.GameCenterModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.GameCenterModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.GameCenterModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.GridModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.GridModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.GridModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.HotReloadModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.HotReloadModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.HotReloadModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ImageConversionModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.ImageConversionModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.ImageConversionModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.IMGUIModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.IMGUIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.InputLegacyModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.InputLegacyModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.InputModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.InputModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.InputModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.JSONSerializeModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.JSONSerializeModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.JSONSerializeModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.LocalizationModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.LocalizationModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.LocalizationModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ParticleSystemModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.ParticleSystemModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.PerformanceReportingModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.PerformanceReportingModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.PerformanceReportingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.Physics2DModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.Physics2DModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.Physics2DModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.PhysicsModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.PhysicsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ProfilerModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.ProfilerModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.ProfilerModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ScreenCaptureModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.ScreenCaptureModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.ScreenCaptureModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.SharedInternalsModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.SharedInternalsModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.SharedInternalsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.SpriteMaskModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.SpriteMaskModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.SpriteMaskModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.SpriteShapeModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.SpriteShapeModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.SpriteShapeModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.StreamingModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.StreamingModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.StreamingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.SubstanceModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.SubstanceModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.SubstanceModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TerrainModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.TerrainModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.TerrainModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TerrainPhysicsModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.TerrainPhysicsModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.TerrainPhysicsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TextCoreModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.TextCoreModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.TextCoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.TextRenderingModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.TextRenderingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TilemapModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.TilemapModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.TilemapModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TLSModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.TLSModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.TLSModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UI.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIElementsModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UIElementsModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UIElementsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UIModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UmbraModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UmbraModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UmbraModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UNETModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UNETModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UNETModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityAnalyticsModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UnityAnalyticsModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UnityAnalyticsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityConnectModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UnityConnectModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UnityConnectModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityTestProtocolModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UnityTestProtocolModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UnityTestProtocolModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestAssetBundleModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UnityWebRequestAssetBundleModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UnityWebRequestAssetBundleModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestAudioModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UnityWebRequestModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UnityWebRequestModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestTextureModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestWWWModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.UnityWebRequestWWWModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.UnityWebRequestWWWModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.VehiclesModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.VehiclesModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.VehiclesModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.VFXModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.VFXModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.VFXModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.VideoModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.VideoModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.VideoModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.VRModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.VRModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.VRModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.WindModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.WindModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.WindModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.XRModule">
-      <HintPath>..\..\..\KSP DLLs\UnityEngine.XRModule.dll</HintPath>
+      <HintPath>..\..\_LocalDev\KSPRefs\UnityEngine.XRModule.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
