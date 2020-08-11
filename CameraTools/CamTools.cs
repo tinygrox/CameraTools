@@ -675,11 +675,7 @@ namespace CameraTools
 				// don't update targets too quickly, unless we're under attack by a missile
 				if ((bdWmMissileField != null) || (Planetarium.GetUniversalTime() - targetUpdateTime > 3))
 				{
-					// Update fields
-					bdAiTargetField = GetAITargetField();
-					bdWmThreatField = GetThreatField();
-					bdWmUnderFireField = GetUnderFireField();
-					bdWmUnderAttackField = GetUnderAttackField();
+					
 					Vessel newAITarget = GetAITargetedVessel();
 					if (newAITarget)
 					{
@@ -2035,7 +2031,13 @@ namespace CameraTools
 
 		private Vessel GetAITargetedVessel()
 		{
-			if(!hasBDAI || aiComponent==null || bdAiTargetField==null)
+			// Update fields
+			bdAiTargetField = GetAITargetField();
+			bdWmThreatField = GetThreatField();
+			bdWmUnderFireField = GetUnderFireField();
+			bdWmUnderAttackField = GetUnderAttackField();
+
+			if (!hasBDAI || aiComponent==null || bdAiTargetField==null)
 			{
 				return null;
 			}
@@ -2201,7 +2203,7 @@ namespace CameraTools
 
 			CheckForBDAI(v);
 			// reactivate camera if it was reverted
-			if(temporaryRevert && randomMode)
+			if((temporaryRevert && randomMode) && false) // Fix whatever this is doing later
 			{
 				cameraToolActive = true;
 				toolMode = ToolModes.Pathing;
