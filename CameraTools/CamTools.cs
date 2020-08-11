@@ -2203,12 +2203,6 @@ namespace CameraTools
 			vessel = v;
 
 			CheckForBDAI(v);
-			// reactivate camera if it was reverted
-			if(temporaryRevert && randomMode)
-			{
-				cameraToolActive = true;
-				toolMode = ToolModes.Pathing;
-			}
 			if(cameraToolActive)
 			{
 				targetUpdateTime = Planetarium.GetUniversalTime();
