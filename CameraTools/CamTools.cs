@@ -2036,6 +2036,7 @@ namespace CameraTools
 			bdWmThreatField = GetThreatField();
 			bdWmUnderFireField = GetUnderFireField();
 			bdWmUnderAttackField = GetUnderAttackField();
+			bdWmMissileField = GetMissileField();
 
 			if (!hasBDAI || aiComponent==null || bdAiTargetField==null)
 			{
