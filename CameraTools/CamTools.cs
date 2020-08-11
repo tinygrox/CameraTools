@@ -2203,7 +2203,7 @@ namespace CameraTools
 
 			CheckForBDAI(v);
 			// reactivate camera if it was reverted
-			if((temporaryRevert && randomMode) && false) // Fix whatever this is doing later
+			if(temporaryRevert && randomMode)
 			{
 				cameraToolActive = true;
 				toolMode = ToolModes.Pathing;
