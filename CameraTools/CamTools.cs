@@ -21,8 +21,7 @@ namespace CameraTools
 
 		Part camTarget = null;
 
-		[CTPersistantField]
-		public ReferenceModes referenceMode = ReferenceModes.Surface;
+		[CTPersistantField] public ReferenceModes referenceMode = ReferenceModes.Surface;
 		Vector3 cameraUp = Vector3.up;
 
 		string fmUpKey = "[7]";
@@ -50,11 +49,9 @@ namespace CameraTools
 		float leftIndent = 12;
 		float entryHeight = 20;
 
-		[CTPersistantField]
-		public ToolModes toolMode = ToolModes.StationaryCamera;
+		[CTPersistantField] public ToolModes toolMode = ToolModes.StationaryCamera;
 
-		[CTPersistantField]
-		public bool randomMode = false;
+		[CTPersistantField] public bool randomMode = false;
 
 		bool temporaryRevert = false;
 
@@ -64,39 +61,28 @@ namespace CameraTools
 		float incrButtonWidth = 26;
 
 		//stationary camera vars
-		[CTPersistantField]
-		public bool autoFlybyPosition = false;
-		[CTPersistantField]
-		public bool autoFOV = false;
+		[CTPersistantField] public bool autoFlybyPosition = false;
+		[CTPersistantField] public bool autoFOV = false;
 		float manualFOV = 60;
 		float currentFOV = 60;
 		Vector3 manualPosition = Vector3.zero;
-		[CTPersistantField]
-		public float freeMoveSpeed = 10;
+		[CTPersistantField] public float freeMoveSpeed = 10;
 		string guiFreeMoveSpeed = "10";
-		[CTPersistantField]
-		public float keyZoomSpeed = 1;
+		[CTPersistantField] public float keyZoomSpeed = 1;
 		string guiKeyZoomSpeed = "1";
 		float zoomFactor = 1;
-		[CTPersistantField]
-		public float zoomExp = 1;
-		[CTPersistantField]
-		public bool enableKeypad = false;
-		[CTPersistantField]
-		public float maxRelV = 2500;
+		[CTPersistantField] public float zoomExp = 1;
+		[CTPersistantField] public bool enableKeypad = false;
+		[CTPersistantField] public float maxRelV = 2500;
 
 		bool setPresetOffset = false;
 		Vector3 presetOffset = Vector3.zero;
 		bool hasSavedRotation = false;
 		Quaternion savedRotation;
-		[CTPersistantField]
-		public bool manualOffset = false;
-		[CTPersistantField]
-		public float manualOffsetForward = 500;
-		[CTPersistantField]
-		public float manualOffsetRight = 50;
-		[CTPersistantField]
-		public float manualOffsetUp = 5;
+		[CTPersistantField] public bool manualOffset = false;
+		[CTPersistantField] public float manualOffsetForward = 500;
+		[CTPersistantField] public float manualOffsetRight = 50;
+		[CTPersistantField] public float manualOffsetUp = 5;
 		string guiOffsetForward = "500";
 		string guiOffsetRight = "50";
 		string guiOffsetUp = "5";
@@ -105,11 +91,9 @@ namespace CameraTools
 		Vector3 lastTargetPosition = Vector3.zero;
 		bool hasTarget = false;
 
-		[CTPersistantField]
-		public bool useOrbital = false;
+		[CTPersistantField] public bool useOrbital = false;
 
-		[CTPersistantField]
-		public bool targetCoM = false;
+		[CTPersistantField] public bool targetCoM = false;
 
 		bool hasDied = false;
 		float diedTime = 0;
@@ -131,10 +115,8 @@ namespace CameraTools
 		bool mouseUp = false;
 
 		//Keys
-		[CTPersistantField]
-		public string cameraKey = "home";
-		[CTPersistantField]
-		public string revertKey = "end";
+		[CTPersistantField] public string cameraKey = "home";
+		[CTPersistantField] public string revertKey = "end";
 
 		//recording input for key binding
 		bool isRecordingInput = false;
@@ -150,14 +132,12 @@ namespace CameraTools
 		float[] originalAudioSourceDoppler;
 		bool hasSetDoppler = false;
 
-		[CTPersistantField]
-		public bool useAudioEffects = true;
+		[CTPersistantField] public bool useAudioEffects = true;
 
 		//camera shake
 		Vector3 shakeOffset = Vector3.zero;
 		float shakeMagnitude = 0;
-		[CTPersistantField]
-		public float shakeMultiplier = 1;
+		[CTPersistantField] public float shakeMultiplier = 1;
 
 		public delegate void ResetCTools();
 		public static event ResetCTools OnResetCTools;
@@ -166,16 +146,12 @@ namespace CameraTools
 		//dogfight cam
 		Vessel dogfightPrevTarget;
 		Vessel dogfightTarget;
-		[CTPersistantField]
-		float dogfightDistance = 30;
-		[CTPersistantField]
-		float dogfightOffsetX = 10;
-		[CTPersistantField]
-		float dogfightOffsetY = 4;
+		[CTPersistantField] public float dogfightDistance = 30;
+		[CTPersistantField] public float dogfightOffsetX = 10;
+		[CTPersistantField] public float dogfightOffsetY = 4;
 		float dogfightMaxOffset = 50;
 		float dogfightLerp = 20;
-		[CTPersistantField]
-		float autoZoomMargin = 20;
+		[CTPersistantField] public float autoZoomMargin = 20;
 		List<Vessel> loadedVessels;
 		bool showingVesselList = false;
 		bool dogfightLastTarget = false;
@@ -185,8 +161,7 @@ namespace CameraTools
 		//bdarmory
 		bool hasBDAI = false;
 		bool hasBDWM = false;
-		[CTPersistantField]
-		public bool useBDAutoTarget = false;
+		[CTPersistantField] public bool useBDAutoTarget = false;
 		object aiComponent = null;
 		object wmComponent = null;
 		FieldInfo bdAiTargetField;
@@ -1352,7 +1327,7 @@ namespace CameraTools
 			{
 				GUI.Label(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth / 2, entryHeight), "Autozoom Margin: ");
 				line++;
-				autoZoomMargin = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((line) * entryHeight), contentWidth - 45, entryHeight), autoZoomMargin, 0, 50);
+				autoZoomMargin = (int)(GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((line) * entryHeight), contentWidth - 45, entryHeight), autoZoomMargin, 0, 50) * 2) / 2f;
 				GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.15f) * entryHeight), 40, entryHeight), autoZoomMargin.ToString("0.0"), leftLabel);
 			}
 			else
@@ -1561,17 +1536,17 @@ namespace CameraTools
 				line++;
 				GUI.Label(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth / 2, entryHeight), "Distance: " + dogfightDistance.ToString("0.0"));
 				line++;
-				dogfightDistance = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth, entryHeight), dogfightDistance, 1, 100);
+				dogfightDistance = (int)(GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth, entryHeight), dogfightDistance, 1, 100) * 2) / 2f;
 				line += 1.5f;
 
 				GUI.Label(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth, entryHeight), "Offset:");
 				line++;
 				GUI.Label(new Rect(leftIndent, contentTop + (line * entryHeight), 15, entryHeight), "X: ");
-				dogfightOffsetX = GUI.HorizontalSlider(new Rect(leftIndent + 15, contentTop + (line * entryHeight) + 6, contentWidth - 45, entryHeight), dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
+				dogfightOffsetX = (int)(GUI.HorizontalSlider(new Rect(leftIndent + 15, contentTop + (line * entryHeight) + 6, contentWidth - 45, entryHeight), dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset) * 2) / 2f;
 				GUI.Label(new Rect(leftIndent + contentWidth - 25, contentTop + (line * entryHeight), 25, entryHeight), dogfightOffsetX.ToString("0.0"));
 				line++;
 				GUI.Label(new Rect(leftIndent, contentTop + (line * entryHeight), 15, entryHeight), "Y: ");
-				dogfightOffsetY = GUI.HorizontalSlider(new Rect(leftIndent + 15, contentTop + (line * entryHeight) + 6, contentWidth - 45, entryHeight), dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
+				dogfightOffsetY = (int)(GUI.HorizontalSlider(new Rect(leftIndent + 15, contentTop + (line * entryHeight) + 6, contentWidth - 45, entryHeight), dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset) * 2) / 2f;
 				GUI.Label(new Rect(leftIndent + contentWidth - 25, contentTop + (line * entryHeight), 25, entryHeight), dogfightOffsetY.ToString("0.0"));
 				line += 1.5f;
 			}
@@ -1928,6 +1903,7 @@ namespace CameraTools
 		void DisableGui()
 		{
 			guiEnabled = false;
+			Save();
 			Debug.Log("Hiding CamTools GUI");
 		}
 
