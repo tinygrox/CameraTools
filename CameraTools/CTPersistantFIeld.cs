@@ -7,20 +7,17 @@ namespace CameraTools
 	{
 		public static string settingsURL = "GameData/CameraTools/settings.cfg";
 
-		public CTPersistantField()
-		{
-
-		}
+		public CTPersistantField() { }
 
 		public static void Save()
 		{
 			ConfigNode fileNode = ConfigNode.Load(settingsURL);
 			ConfigNode settings = fileNode.GetNode("CToolsSettings");
 
-
-			foreach(var field in typeof(CamTools).GetFields())
+			foreach (var field in typeof(CamTools).GetFields())
 			{
-				if(!field.IsDefined(typeof(CTPersistantField), false)) continue;
+				if (field == null) continue;
+				if (!field.IsDefined(typeof(CTPersistantField), false)) continue;
 
 				settings.SetValue(field.Name, field.GetValue(CamTools.fetch).ToString(), true);
 			}
@@ -33,14 +30,15 @@ namespace CameraTools
 			ConfigNode fileNode = ConfigNode.Load(settingsURL);
 			ConfigNode settings = fileNode.GetNode("CToolsSettings");
 
-			foreach(var field in typeof(CamTools).GetFields())
+			foreach (var field in typeof(CamTools).GetFields())
 			{
-				if(!field.IsDefined(typeof(CTPersistantField), false)) continue;
+				if (field == null) continue;
+				if (!field.IsDefined(typeof(CTPersistantField), false)) continue;
 
-				if(settings.HasValue(field.Name))
+				if (settings.HasValue(field.Name))
 				{
 					object parsedValue = ParseValue(field.FieldType, settings.GetValue(field.Name));
-					if(parsedValue != null)
+					if (parsedValue != null)
 					{
 						field.SetValue(CamTools.fetch, parsedValue);
 					}
@@ -50,30 +48,30 @@ namespace CameraTools
 
 		public static object ParseValue(Type type, string value)
 		{
-			if(type == typeof(string))
+			if (type == typeof(string))
 			{
 				return value;
 			}
 
-			if(type == typeof(bool))
+			if (type == typeof(bool))
 			{
 				return bool.Parse(value);
 			}
-			else if(type.IsEnum)
+			else if (type.IsEnum)
 			{
 				return Enum.Parse(type, value);
 			}
-			else if(type == typeof(float))
+			else if (type == typeof(float))
 			{
 				return float.Parse(value);
 			}
-			else if(type == typeof(Single))
+			else if (type == typeof(Single))
 			{
 				return Single.Parse(value);
 			}
 
 
-			UnityEngine.Debug.LogError("CameraTools failed to parse settings field of type "+type.ToString()+" and value "+value);
+			UnityEngine.Debug.LogError("CameraTools failed to parse settings field of type " + type.ToString() + " and value " + value);
 
 			return null;
 		}
