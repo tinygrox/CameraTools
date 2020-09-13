@@ -1169,43 +1169,52 @@ namespace CameraTools
 			Debug.Log("flightCamera position post init: " + flightCamera.transform.position);
 		}
 
-		void RevertCamera()
+		public void RevertCamera()
 		{
-			posCounter = 0;
-
-			if (cameraToolActive)
+			try
 			{
-				presetOffset = flightCamera.transform.position;
-				if (camTarget == null)
+				posCounter = 0;
+
+				if (cameraToolActive)
 				{
-					savedRotation = flightCamera.transform.rotation;
-					hasSavedRotation = true;
+					presetOffset = flightCamera.transform.position;
+					if (camTarget == null)
+					{
+						savedRotation = flightCamera.transform.rotation;
+						hasSavedRotation = true;
+					}
+					else
+					{
+						hasSavedRotation = false;
+					}
 				}
-				else
+				hasDied = false;
+				if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT)
 				{
-					hasSavedRotation = false;
+					flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Vessel);
 				}
+				flightCamera.transform.parent = origParent;
+				flightCamera.transform.position = origPosition;
+				flightCamera.transform.rotation = origRotation;
+				Camera.main.nearClipPlane = origNearClip;
+
+				flightCamera.SetFoV(60);
+				flightCamera.ActivateUpdate();
+				currentFOV = 60;
+
+				cameraToolActive = false;
+
+
+				StopPlayingPath();
+
+				ResetDoppler();
 			}
-			hasDied = false;
-			if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT)
+			catch
 			{
-				flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Vessel);
+				Debug.LogError("DEBUG flightCamera " + flightCamera);
+				Debug.LogError("DEBUG FlightGlobals.ActiveVessel " + FlightGlobals.ActiveVessel);
+				throw;
 			}
-			flightCamera.transform.parent = origParent;
-			flightCamera.transform.position = origPosition;
-			flightCamera.transform.rotation = origRotation;
-			Camera.main.nearClipPlane = origNearClip;
-
-			flightCamera.SetFoV(60);
-			flightCamera.ActivateUpdate();
-			currentFOV = 60;
-
-			cameraToolActive = false;
-
-
-			StopPlayingPath();
-
-			ResetDoppler();
 
 			try
 			{
@@ -2226,10 +2235,10 @@ namespace CameraTools
 				}
 				if (randomMode)
 				{
-					var lowAlt = 100.0;
+					var lowAlt = 50.0; // With the new terrain avoidance, being lower than 50m is better than 100m for being interesting.
 					if (vessel.verticalSpeed < -20)
 					{
-						lowAlt = vessel.verticalSpeed * -5;
+						lowAlt = vessel.verticalSpeed * -3; // 3s is plenty
 					}
 					if (vessel != null && vessel.radarAltitude < lowAlt)
 					{
