@@ -1146,50 +1146,44 @@ namespace CameraTools
 
 		public void RevertCamera()
 		{
-			try
-			{
-				posCounter = 0;
+			posCounter = 0;
 
-				if (cameraToolActive)
+			if (cameraToolActive)
+			{
+				presetOffset = flightCamera.transform.position;
+				if (camTarget == null)
 				{
-					presetOffset = flightCamera.transform.position;
-					if (camTarget == null)
-					{
-						savedRotation = flightCamera.transform.rotation;
-						hasSavedRotation = true;
-					}
-					else
-					{
-						hasSavedRotation = false;
-					}
+					savedRotation = flightCamera.transform.rotation;
+					hasSavedRotation = true;
 				}
-				hasDied = false;
-				if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT)
+				else
 				{
-					flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Vessel);
+					hasSavedRotation = false;
 				}
-				flightCamera.transform.parent = origParent;
-				flightCamera.transform.position = origPosition;
-				flightCamera.transform.rotation = origRotation;
+			}
+			hasDied = false;
+			if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT)
+			{
+				flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Vessel);
+			}
+			flightCamera.transform.parent = origParent;
+			flightCamera.transform.position = origPosition;
+			flightCamera.transform.rotation = origRotation;
+			if (HighLogic.LoadedSceneIsFlight)
+				flightCamera.mainCamera.nearClipPlane = origNearClip;
+			else
 				Camera.main.nearClipPlane = origNearClip;
 
-				flightCamera.SetFoV(60);
-				flightCamera.ActivateUpdate();
-				currentFOV = 60;
+			flightCamera.SetFoV(60);
+			flightCamera.ActivateUpdate();
+			currentFOV = 60;
 
-				cameraToolActive = false;
+			cameraToolActive = false;
 
 
-				StopPlayingPath();
+			StopPlayingPath();
 
-				ResetDoppler();
-			}
-			catch
-			{
-				Debug.LogError("DEBUG flightCamera " + flightCamera);
-				Debug.LogError("DEBUG FlightGlobals.ActiveVessel " + FlightGlobals.ActiveVessel);
-				throw;
-			}
+			ResetDoppler();
 
 			try
 			{
@@ -1210,7 +1204,7 @@ namespace CameraTools
 			origPosition = flightCamera.transform.position;
 			origRotation = flightCamera.transform.localRotation;
 			origParent = flightCamera.transform.parent;
-			origNearClip = Camera.main.nearClipPlane;
+			origNearClip = HighLogic.LoadedSceneIsFlight ? flightCamera.mainCamera.nearClipPlane : Camera.main.nearClipPlane;
 		}
 
 		Part GetPartFromMouse()
