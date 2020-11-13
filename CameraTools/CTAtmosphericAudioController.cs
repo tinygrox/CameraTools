@@ -120,7 +120,7 @@ namespace CameraTools
 				if(!windAudioSource.isPlaying)
 				{
 					windAudioSource.Play();
-					//Debug.Log("vessel dynamic pressure: " + vessel.dynamicPressurekPa);
+					//Debug.Log("[CameraTools]: vessel dynamic pressure: " + vessel.dynamicPressurekPa);
 				}
 				float pressureFactor = Mathf.Clamp01((float)vessel.dynamicPressurekPa / 50f);
 				float massFactor = Mathf.Clamp01(vessel.GetTotalMass() / 60f);
