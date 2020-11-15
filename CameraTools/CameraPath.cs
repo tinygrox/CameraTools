@@ -24,7 +24,7 @@ namespace CameraTools
 		public List<float> times;
 		public List<float> zooms;
 
-		public float lerpRate = 15;
+		public float lerpRate = 0.3f;
 		public float timeScale = 1;
 
 		Vector3Animation pointCurve;

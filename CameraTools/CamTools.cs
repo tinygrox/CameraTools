@@ -118,7 +118,7 @@ namespace CameraTools
 		[CTPersistantField] public float dogfightOffsetX = 10;
 		[CTPersistantField] public float dogfightOffsetY = 4;
 		float dogfightMaxOffset = 50;
-		float dogfightLerp = 20;
+		[CTPersistantField] public float dogfightLerp = 0.2f;
 		[CTPersistantField] public float autoZoomMargin = 20;
 		List<Vessel> loadedVessels;
 		bool showingVesselList = false;
@@ -227,8 +227,6 @@ namespace CameraTools
 			GameEvents.onGameSceneLoadRequested.Add(PostDeathRevert);
 
 			cameraParent = new GameObject("StationaryCameraParent");
-			//cameraParent.SetActive(true);
-			//cameraParent = (GameObject) Instantiate(cameraParent, Vector3.zero, Quaternion.identity);
 			deathCam = new GameObject("DeathCam");
 
 			if (FlightGlobals.ActiveVessel != null)
@@ -321,10 +319,10 @@ namespace CameraTools
 
 		void FixedUpdate()
 		{
+			// Note: we have to perform the camera adjustments during FixedUpdate to avoid jitter in the Lerps in the camera position and rotation due to inconsistent numbers of physics updates per frame.
 			if (!FlightGlobals.ready) return;
 
-			// When the current target vessel dies, something external to CameraTools fights for control of the flightCamera, which is what causes the spazzing out. So, do nothing until a vessel change occurs.
-			if (hasDied && cameraToolActive) return;
+			if (hasDied && cameraToolActive) return; // Do nothing until we have an active vessel.
 
 			if (FlightGlobals.ActiveVessel != null && (vessel == null || vessel != FlightGlobals.ActiveVessel))
 			{
@@ -464,10 +462,13 @@ namespace CameraTools
 			vessel = FlightGlobals.ActiveVessel;
 			cameraUp = -FlightGlobals.getGeeForceAtPosition(vessel.CoM).normalized;
 
+			cameraParent.transform.position = deathCam.transform.position; // First update the cameraParent to the last deathCam configuration
+			cameraParent.transform.rotation = deathCam.transform.rotation;
 			flightCamera.SetTargetNone();
 			flightCamera.transform.parent = cameraParent.transform;
 			flightCamera.DeactivateUpdate();
-			cameraParent.transform.position = vessel.transform.position + vessel.rb_velocity * Time.fixedDeltaTime;
+			cameraParent.transform.position = vessel.transform.position; // Then adjust the flightCamera for the new parent.
+			flightCamera.transform.localRotation = Quaternion.identity;
 
 			cameraToolActive = true;
 
@@ -501,7 +502,7 @@ namespace CameraTools
 				dogfightLastTargetPosition += dogfightLastTargetVelocity * Time.fixedDeltaTime;
 			}
 
-			cameraParent.transform.position = (vessel.CoM - (vessel.rb_velocity * Time.fixedDeltaTime));
+			cameraParent.transform.position = vessel.CoM;
 
 			if (dogfightVelocityChase)
 			{
@@ -519,13 +520,13 @@ namespace CameraTools
 			Vector3 camPos = vessel.CoM + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance) + (dogfightOffsetX * offsetDirection) + (dogfightOffsetY * cameraUp);
 
 			Vector3 localCamPos = cameraParent.transform.InverseTransformPoint(camPos);
-			flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, localCamPos, dogfightLerp * Time.fixedDeltaTime);
+			flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, localCamPos, dogfightLerp);
 
 			//rotation
 			Quaternion vesselLook = Quaternion.LookRotation(vessel.CoM - flightCamera.transform.position, cameraUp);
 			Quaternion targetLook = Quaternion.LookRotation(dogfightLastTargetPosition - flightCamera.transform.position, cameraUp);
 			Quaternion camRot = Quaternion.Lerp(vesselLook, targetLook, 0.5f);
-			flightCamera.transform.rotation = Quaternion.Lerp(flightCamera.transform.rotation, camRot, dogfightLerp * Time.fixedDeltaTime);
+			flightCamera.transform.rotation = Quaternion.Lerp(flightCamera.transform.rotation, camRot, dogfightLerp);
 
 			//autoFov
 			if (autoFOV)
@@ -537,7 +538,7 @@ namespace CameraTools
 				}
 				else
 				{
-					float angle = Vector3.Angle((dogfightLastTargetPosition + (dogfightLastTargetVelocity * Time.fixedDeltaTime)) - flightCamera.transform.position, (vessel.CoM + (vessel.rb_velocity * Time.fixedDeltaTime)) - flightCamera.transform.position);
+					float angle = Vector3.Angle(dogfightLastTargetPosition - flightCamera.transform.position, vessel.CoM - flightCamera.transform.position);
 					targetFoV = Mathf.Clamp(angle + autoZoomMargin, 0.1f, 60f);
 				}
 				manualFOV = targetFoV;
@@ -671,10 +672,14 @@ namespace CameraTools
 					cameraUp = Vector3.up;
 				}
 
+				cameraParent.transform.position = deathCam.transform.position; // First update the cameraParent to the last deathCam configuration
+				cameraParent.transform.rotation = deathCam.transform.rotation;
 				flightCamera.SetTargetNone();
 				flightCamera.transform.parent = cameraParent.transform;
 				flightCamera.DeactivateUpdate();
-				cameraParent.transform.position = vessel.transform.position + vessel.rb_velocity * Time.fixedDeltaTime;
+				cameraParent.transform.position = vessel.transform.position; // Then adjust the flightCamera for the new parent.
+				flightCamera.transform.localRotation = Quaternion.identity;
+
 				manualPosition = Vector3.zero;
 				if (randomMode)
 				{
@@ -781,7 +786,6 @@ namespace CameraTools
 				Debug.Log("[CameraTools]: Stationary Camera failed. Active Vessel is null.");
 			}
 			resetPositionFix = flightCamera.transform.position;
-			Debug.Log("[CameraTools]: flightCamera position post init: " + flightCamera.transform.position);
 		}
 
 		void UpdateStationaryCamera()
@@ -812,12 +816,6 @@ namespace CameraTools
 					lookPosition = camTarget.vessel.CoM;
 				}
 
-				lookPosition += 2 * camTarget.vessel.rb_velocity * Time.fixedDeltaTime;
-				if (targetCoM)
-				{
-					lookPosition += camTarget.vessel.rb_velocity * Time.fixedDeltaTime;
-				}
-
 				flightCamera.transform.rotation = Quaternion.LookRotation(lookPosition - flightCamera.transform.position, cameraUp);
 				lastTargetPosition = lookPosition;
 			}
@@ -828,7 +826,7 @@ namespace CameraTools
 
 			if (vessel != null)
 			{
-				cameraParent.transform.position = manualPosition + (vessel.CoM - vessel.rb_velocity * Time.fixedDeltaTime);
+				cameraParent.transform.position = manualPosition + vessel.CoM;
 
 				if (referenceMode == ReferenceModes.Surface)
 				{
@@ -973,7 +971,7 @@ namespace CameraTools
 				cameraUp = Vector3.up;
 			}
 
-			cameraParent.transform.position = vessel.transform.position + vessel.rb_velocity * Time.fixedDeltaTime;
+			cameraParent.transform.position = vessel.transform.position;
 			cameraParent.transform.rotation = vessel.transform.rotation;
 			flightCamera.SetTargetNone();
 			flightCamera.transform.parent = cameraParent.transform;
@@ -984,15 +982,15 @@ namespace CameraTools
 
 		void UpdatePathingCam()
 		{
-			cameraParent.transform.position = vessel.transform.position + vessel.rb_velocity * Time.fixedDeltaTime;
+			cameraParent.transform.position = vessel.transform.position;
 			cameraParent.transform.rotation = vessel.transform.rotation;
 
 			if (isPlayingPath)
 			{
 				CameraTransformation tf = currentPath.Evaulate(pathTime * currentPath.timeScale);
-				flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, tf.position, currentPath.lerpRate * Time.fixedDeltaTime);
-				flightCamera.transform.localRotation = Quaternion.Slerp(flightCamera.transform.localRotation, tf.rotation, currentPath.lerpRate * Time.fixedDeltaTime);
-				zoomExp = Mathf.Lerp(zoomExp, tf.zoom, currentPath.lerpRate * Time.fixedDeltaTime);
+				flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, tf.position, currentPath.lerpRate);
+				flightCamera.transform.localRotation = Quaternion.Slerp(flightCamera.transform.localRotation, tf.rotation, currentPath.lerpRate);
+				zoomExp = Mathf.Lerp(zoomExp, tf.zoom, currentPath.lerpRate);
 			}
 			else
 			{
@@ -1243,7 +1241,7 @@ namespace CameraTools
 				flightCamera.transform.rotation = Quaternion.AngleAxis((shakeMultiplier / 2) * shakeMagnitude / 50f, Vector3.ProjectOnPlane(UnityEngine.Random.onUnitSphere, flightCamera.transform.forward)) * flightCamera.transform.rotation;
 			}
 
-			shakeMagnitude = Mathf.Lerp(shakeMagnitude, 0, 5 * Time.fixedDeltaTime);
+			shakeMagnitude = Mathf.Lerp(shakeMagnitude, 0, 0.1f);
 		}
 
 		public void VesselCameraShake(Vessel vessel)
@@ -1840,6 +1838,11 @@ namespace CameraTools
 				dogfightOffsetY = (int)(GUI.HorizontalSlider(new Rect(leftIndent + 15, contentTop + (line * entryHeight) + 6, contentWidth - 45, entryHeight), dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset) * 2) / 2f;
 				GUI.Label(new Rect(leftIndent + contentWidth - 25, contentTop + (line * entryHeight), 25, entryHeight), dogfightOffsetY.ToString("0.0"));
 				line += 1.5f;
+
+				GUI.Label(new Rect(leftIndent, contentTop + (line * entryHeight), 30, entryHeight), "Lerp: ");
+				dogfightLerp = (int)GUI.HorizontalSlider(new Rect(leftIndent + 30, contentTop + (line * entryHeight) + 6, contentWidth - 60, entryHeight), dogfightLerp * 100f, 1f, 50f) / 100f;
+				GUI.Label(new Rect(leftIndent + contentWidth - 25, contentTop + (line * entryHeight), 25, entryHeight), dogfightLerp.ToString("0.00"));
+				line += 1f;
 			}
 			else if (toolMode == ToolModes.Pathing)
 			{
