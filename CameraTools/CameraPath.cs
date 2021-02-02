@@ -24,7 +24,7 @@ namespace CameraTools
 		public List<float> times;
 		public List<float> zooms;
 
-		public float lerpRate = 15;
+		public float lerpRate = 0.3f;
 		public float timeScale = 1;
 
 		Vector3Animation pointCurve;
@@ -58,7 +58,7 @@ namespace CameraTools
 
 		public void Save(ConfigNode node)
 		{
-			Debug.Log("Saving path: " + pathName);
+			Debug.Log("[CameraTools]: Saving path: " + pathName);
 			ConfigNode pathNode = node.AddNode("CAMERAPATH");
 			pathNode.AddValue("pathName", pathName);
 			pathNode.AddValue("points", WriteVectorList(points));
@@ -105,7 +105,7 @@ namespace CameraTools
 			List<Vector3> vList = new List<Vector3>();
 			for(int i = 0; i < vectorStrings.Length; i++)
 			{
-				Debug.Log("attempting to parse vector: --" + vectorStrings[i] + "--");
+				Debug.Log("[CameraTools]: attempting to parse vector: --" + vectorStrings[i] + "--");
 				vList.Add(ConfigNode.ParseVector3(vectorStrings[i]));
 			}
 

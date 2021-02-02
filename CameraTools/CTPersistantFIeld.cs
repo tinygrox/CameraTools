@@ -71,7 +71,7 @@ namespace CameraTools
 			}
 
 
-			UnityEngine.Debug.LogError("CameraTools failed to parse settings field of type " + type.ToString() + " and value " + value);
+			UnityEngine.Debug.LogError("[CameraTools]: Failed to parse settings field of type " + type.ToString() + " and value " + value);
 
 			return null;
 		}
