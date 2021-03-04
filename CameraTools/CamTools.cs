@@ -100,8 +100,6 @@ namespace CameraTools
 		Vector3 resetPositionFix;//fixes position movement after setting and resetting camera
 		public delegate void ResetCTools();
 		public static event ResetCTools OnResetCTools;
-		double noDogfightTargetDelay = 5;
-		double noDogfightTargetTimer = -1;
 		#endregion
 
 		#region Recording
@@ -364,7 +362,7 @@ namespace CameraTools
 						break;
 					case ToolModes.DogfightCamera:
 						UpdateDogfightCamera();
-						if (noDogfightTargetTimer < 0 && dogfightTarget && dogfightTarget.isActiveVessel)
+						if (dogfightTarget && dogfightTarget.isActiveVessel)
 						{
 							dogfightTarget = null;
 							if (cameraToolActive)
@@ -488,7 +486,6 @@ namespace CameraTools
 			dogfightPrevTarget = dogfightTarget;
 
 			hasDied = false;
-			noDogfightTargetTimer = -1;
 			vessel = FlightGlobals.ActiveVessel;
 			cameraUp = -FlightGlobals.getGeeForceAtPosition(vessel.CoM).normalized;
 
@@ -688,23 +685,7 @@ namespace CameraTools
 
 			if (dogfightTarget != dogfightPrevTarget)
 			{
-				if (false && dogfightTarget == null) // WIP
-				{
-					if (noDogfightTargetTimer < 0)
-					{
-						noDogfightTargetTimer = Time.time;
-						Debug.Log("[CameraTools]: Dogfight target is null, waiting briefly before restarting dogfight camera.");
-					}
-					if (noDogfightTargetTimer > 0 && Time.time - noDogfightTargetTimer > noDogfightTargetDelay)
-					{
-						Debug.Log("[CameraTools]: Finished waiting. Re-starting dogfight camera.");
-						StartDogfightCamera();
-					}
-				}
-				else
-				{
-					StartDogfightCamera();
-				}
+				StartDogfightCamera();
 			}
 		}
 		#endregion
