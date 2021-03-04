@@ -34,6 +34,8 @@ namespace CameraTools
 		Type bdVesselSpawnerType = null;
 		object bdVesselSpawnerInstance = null;
 		FieldInfo bdVesselsSpawningField = null;
+		[CTPersistantField] public bool DEBUG = false;
+		bool vesselSwitched = false;
 
 		#region Input
 		[CTPersistantField] public string cameraKey = "home";
@@ -98,6 +100,8 @@ namespace CameraTools
 		Vector3 resetPositionFix;//fixes position movement after setting and resetting camera
 		public delegate void ResetCTools();
 		public static event ResetCTools OnResetCTools;
+		double noDogfightTargetDelay = 5;
+		double noDogfightTargetTimer = -1;
 		#endregion
 
 		#region Recording
@@ -347,7 +351,7 @@ namespace CameraTools
 				lastVesselPosition = vessel.transform.position;
 			}
 
-			if (autoEnableForBDA && !autoEnableOverriden)
+			if (autoEnableForBDA && !autoEnableOverriden && (toolMode != ToolModes.Pathing || (selectedPathIndex >= 0 && currentPath.keyframeCount > 0)))
 			{
 				AutoEnableForBDA();
 			}
@@ -360,6 +364,15 @@ namespace CameraTools
 						break;
 					case ToolModes.DogfightCamera:
 						UpdateDogfightCamera();
+						if (noDogfightTargetTimer < 0 && dogfightTarget && dogfightTarget.isActiveVessel)
+						{
+							dogfightTarget = null;
+							if (cameraToolActive)
+							{
+								Debug.Log("[CameraTools]: Reverting because dogfightTarget is null");
+								RevertCamera();
+							}
+						}
 						break;
 					case ToolModes.Pathing:
 						UpdatePathingCam();
@@ -373,19 +386,6 @@ namespace CameraTools
 				if (!autoFOV)
 				{
 					zoomFactor = Mathf.Exp(zoomExp) / Mathf.Exp(1);
-				}
-			}
-
-			if (toolMode == ToolModes.DogfightCamera)
-			{
-				if (dogfightTarget && dogfightTarget.isActiveVessel)
-				{
-					dogfightTarget = null;
-					if (cameraToolActive)
-					{
-						Debug.Log("[CameraTools]: Reverting because dogfightTarget is null");
-						RevertCamera();
-					}
 				}
 			}
 		}
@@ -403,46 +403,57 @@ namespace CameraTools
 				flightCamera.transform.localPosition = Vector3.zero;
 				flightCamera.transform.localRotation = Quaternion.identity;
 			}
-			else
+			else if (!vesselSwitched)
 			{
 				deathCam.transform.position = flightCamera.transform.position;
 				deathCam.transform.rotation = flightCamera.transform.rotation;
+			}
+			if (vesselSwitched) // We perform this here instead of waiting for the next frame to avoid a flicker of the camera being switched.
+			{
+				vesselSwitched = false;
+				switch (toolMode)
+				{
+					case ToolModes.DogfightCamera:
+						if (hasBDAI && useBDAutoTarget)
+						{
+							Vessel newAITarget = GetAITargetedVessel();
+							if (newAITarget)
+							{
+								dogfightTarget = newAITarget;
+							}
+						}
+						StartDogfightCamera();
+						break;
+					case ToolModes.StationaryCamera:
+						StartStationaryCamera();
+						break;
+					case ToolModes.Pathing:
+						StartPathingCam();
+						PlayPathingCam();
+						break;
+				}
 			}
 		}
 
 		private void cameraActivate()
 		{
+			if (DEBUG) Debug.Log("[CameraTools]: Activating camera.");
+			if (!cameraToolActive)
+			{
+				SaveOriginalCamera();
+			}
+			deathCam.transform.position = flightCamera.transform.position;
+			deathCam.transform.rotation = flightCamera.transform.rotation;
 			if (toolMode == ToolModes.StationaryCamera)
 			{
-				if (!cameraToolActive)
-				{
-					SaveOriginalCamera();
-					StartStationaryCamera();
-				}
-				else
-				{
-					//RevertCamera();
-					StartStationaryCamera();
-				}
+				StartStationaryCamera();
 			}
 			else if (toolMode == ToolModes.DogfightCamera)
 			{
-				if (!cameraToolActive)
-				{
-					SaveOriginalCamera();
-					StartDogfightCamera();
-				}
-				else
-				{
-					StartDogfightCamera();
-				}
+				StartDogfightCamera();
 			}
 			else if (toolMode == ToolModes.Pathing)
 			{
-				if (!cameraToolActive)
-				{
-					SaveOriginalCamera();
-				}
 				StartPathingCam();
 				PlayPathingCam();
 			}
@@ -456,6 +467,7 @@ namespace CameraTools
 				Debug.Log("[CameraTools]: No active vessel.");
 				return;
 			}
+			if (DEBUG) Debug.Log("[CameraTools]: Starting dogfight camera.");
 
 			if (!dogfightTarget)
 			{
@@ -476,16 +488,22 @@ namespace CameraTools
 			dogfightPrevTarget = dogfightTarget;
 
 			hasDied = false;
+			noDogfightTargetTimer = -1;
 			vessel = FlightGlobals.ActiveVessel;
 			cameraUp = -FlightGlobals.getGeeForceAtPosition(vessel.CoM).normalized;
 
-			cameraParent.transform.position = deathCam.transform.position; // First update the cameraParent to the last deathCam configuration
-			cameraParent.transform.rotation = deathCam.transform.rotation;
-			flightCamera.SetTargetNone();
-			flightCamera.transform.parent = cameraParent.transform;
-			flightCamera.DeactivateUpdate();
-			cameraParent.transform.position = vessel.transform.position; // Then adjust the flightCamera for the new parent.
-			flightCamera.transform.localRotation = Quaternion.identity;
+			if (flightCamera.transform.parent != cameraParent.transform)
+			{
+				if (DEBUG) Debug.Log("[CameraTools]: Resetting flightCamera parent.");
+				cameraParent.transform.position = deathCam.transform.position; // First update the cameraParent to the last deathCam configuration
+				cameraParent.transform.rotation = deathCam.transform.rotation;
+				flightCamera.SetTargetNone();
+				flightCamera.transform.parent = cameraParent.transform;
+				flightCamera.DeactivateUpdate();
+				cameraParent.transform.position = vessel.CoM; // Then adjust the flightCamera for the new parent.
+				flightCamera.transform.localPosition = cameraParent.transform.InverseTransformPoint(deathCam.transform.position);
+				flightCamera.transform.localRotation = Quaternion.identity;
+			}
 
 			cameraToolActive = true;
 
@@ -503,7 +521,7 @@ namespace CameraTools
 		{
 			if (!vessel || (!dogfightTarget && !dogfightLastTarget && !dogfightVelocityChase))
 			{
-				Debug.Log("[CameraTools]: Reverting during UpdateDogfightCamera()");
+				Debug.Log("[CameraTools]: Reverting during UpdateDogfightCamera");
 				RevertCamera();
 				return;
 			}
@@ -670,8 +688,23 @@ namespace CameraTools
 
 			if (dogfightTarget != dogfightPrevTarget)
 			{
-				//RevertCamera();
-				StartDogfightCamera();
+				if (false && dogfightTarget == null) // WIP
+				{
+					if (noDogfightTargetTimer < 0)
+					{
+						noDogfightTargetTimer = Time.time;
+						Debug.Log("[CameraTools]: Dogfight target is null, waiting briefly before restarting dogfight camera.");
+					}
+					if (noDogfightTargetTimer > 0 && Time.time - noDogfightTargetTimer > noDogfightTargetDelay)
+					{
+						Debug.Log("[CameraTools]: Finished waiting. Re-starting dogfight camera.");
+						StartDogfightCamera();
+					}
+				}
+				else
+				{
+					StartDogfightCamera();
+				}
 			}
 		}
 		#endregion
@@ -681,6 +714,7 @@ namespace CameraTools
 		{
 			if (FlightGlobals.ActiveVessel != null)
 			{
+				if (DEBUG) Debug.Log("[CameraTools]: Starting stationary camera.");
 				hasDied = false;
 				vessel = FlightGlobals.ActiveVessel;
 				cameraUp = -FlightGlobals.getGeeForceAtPosition(vessel.GetWorldPos3D()).normalized;
@@ -689,13 +723,18 @@ namespace CameraTools
 					cameraUp = Vector3.up;
 				}
 
-				cameraParent.transform.position = deathCam.transform.position; // First update the cameraParent to the last deathCam configuration
-				cameraParent.transform.rotation = deathCam.transform.rotation;
-				flightCamera.SetTargetNone();
-				flightCamera.transform.parent = cameraParent.transform;
-				flightCamera.DeactivateUpdate();
-				cameraParent.transform.position = vessel.transform.position; // Then adjust the flightCamera for the new parent.
-				flightCamera.transform.localRotation = Quaternion.identity;
+				if (flightCamera.transform.parent != cameraParent.transform)
+				{
+					if (DEBUG) Debug.Log("[CameraTools]: Resetting flightCamera parent.");
+					cameraParent.transform.position = deathCam.transform.position; // First update the cameraParent to the last deathCam configuration
+					cameraParent.transform.rotation = deathCam.transform.rotation;
+					flightCamera.SetTargetNone();
+					flightCamera.transform.parent = cameraParent.transform;
+					flightCamera.DeactivateUpdate();
+					cameraParent.transform.position = vessel.CoM; // Then adjust the flightCamera for the new parent.
+					flightCamera.transform.localPosition = cameraParent.transform.InverseTransformPoint(deathCam.transform.position);
+					flightCamera.transform.localRotation = Quaternion.identity;
+				}
 
 				manualPosition = Vector3.zero;
 				if (randomMode)
@@ -796,7 +835,6 @@ namespace CameraTools
 
 				SetDoppler(true);
 				AddAtmoAudioControllers(true);
-
 			}
 			else
 			{
@@ -981,6 +1019,13 @@ namespace CameraTools
 		#region Pathing Camera
 		void StartPathingCam()
 		{
+			if (DEBUG) Debug.Log("[CameraTools]: Starting pathing camera.");
+			if (selectedPathIndex < 0 || currentPath.keyframeCount <= 0)
+			{
+				if (DEBUG) Debug.Log("[CameraTools]: Unable to start pathing camera due to no valid paths.");
+				RevertCamera();
+				return;
+			}
 			vessel = FlightGlobals.ActiveVessel;
 			cameraUp = -FlightGlobals.getGeeForceAtPosition(vessel.GetWorldPos3D()).normalized;
 			if (FlightCamera.fetch.mode == FlightCamera.Modes.ORBITAL || (FlightCamera.fetch.mode == FlightCamera.Modes.AUTO && FlightCamera.GetAutoModeForVessel(vessel) == FlightCamera.Modes.ORBITAL))
@@ -1198,14 +1243,17 @@ namespace CameraTools
 
 		void PlayPathingCam()
 		{
+			if (DEBUG) Debug.Log("[CameraTools]: Playing pathing camera.");
 			if (selectedPathIndex < 0)
 			{
+				if (DEBUG) Debug.Log("[CameraTools]: selectedPathIndex < 0, reverting.");
 				RevertCamera();
 				return;
 			}
 
 			if (currentPath.keyframeCount <= 0)
 			{
+				if (DEBUG) Debug.Log("[CameraTools]: keyframeCount <= 0, reverting.");
 				RevertCamera();
 				return;
 			}
@@ -1397,6 +1445,12 @@ namespace CameraTools
 		#region Revert/Reset
 		void SwitchToVessel(Vessel v)
 		{
+			if (v == null)
+			{
+				RevertCamera();
+				return;
+			}
+			if (DEBUG) Debug.Log("[CameraTools]: Switching to vessel " + v.vesselName);
 			vessel = v;
 
 			CheckForBDAI(v);
@@ -1456,31 +1510,13 @@ namespace CameraTools
 					}
 				}
 
-				if (toolMode == ToolModes.DogfightCamera)
-				{
-					StartCoroutine(ResetDogfightCamRoutine());
-				}
+				vesselSwitched = true;
 			}
-		}
-
-		IEnumerator ResetDogfightCamRoutine()
-		{
-			yield return new WaitForEndOfFrame();
-
-			RevertCamera();
-			if (hasBDAI && useBDAutoTarget)
-			{
-				Vessel newAITarget = GetAITargetedVessel();
-				if (newAITarget)
-				{
-					dogfightTarget = newAITarget;
-				}
-			}
-			StartDogfightCamera();
 		}
 
 		public void RevertCamera()
 		{
+			if (DEBUG) Debug.Log("[CameraTools]: Reverting camera.");
 			posCounter = 0;
 
 			if (cameraToolActive)
@@ -1501,9 +1537,12 @@ namespace CameraTools
 			{
 				flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Vessel);
 			}
-			flightCamera.transform.parent = origParent;
-			flightCamera.transform.position = origPosition;
-			flightCamera.transform.rotation = origRotation;
+			if (cameraToolActive)
+			{
+				flightCamera.transform.parent = origParent;
+				flightCamera.transform.position = origPosition;
+				flightCamera.transform.rotation = origRotation;
+			}
 			if (HighLogic.LoadedSceneIsFlight)
 				flightCamera.mainCamera.nearClipPlane = origNearClip;
 			else
@@ -1616,16 +1655,15 @@ namespace CameraTools
 			//tool mode switcher
 			GUI.Label(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth, entryHeight), "Tool: " + toolMode.ToString(), leftLabelBold);
 			line++;
-			if (!cameraToolActive)
+			if (GUI.Button(new Rect(leftIndent, contentTop + (line * entryHeight), 25, entryHeight - 2), "<"))
 			{
-				if (GUI.Button(new Rect(leftIndent, contentTop + (line * entryHeight), 25, entryHeight - 2), "<"))
-				{
-					CycleToolMode(false);
-				}
-				if (GUI.Button(new Rect(leftIndent + 25 + 4, contentTop + (line * entryHeight), 25, entryHeight - 2), ">"))
-				{
-					CycleToolMode(true);
-				}
+				CycleToolMode(false);
+				cameraActivate();
+			}
+			if (GUI.Button(new Rect(leftIndent + 25 + 4, contentTop + (line * entryHeight), 25, entryHeight - 2), ">"))
+			{
+				CycleToolMode(true);
+				cameraActivate();
 			}
 			line++;
 			line++;
@@ -2245,6 +2283,7 @@ namespace CameraTools
 				hasDied = true;
 				diedTime = Time.time;
 
+				if (DEBUG) Debug.Log("[CameraTools]: Activating death camera.");
 				// Something borks the camera position/rotation when the target/parent is set to none/null. This fixes that.
 				deathCamVelocity = (vessel.radarAltitude > 10d ? vessel.srf_velocity : Vector3d.zero) / 2f; // Track the explosion a bit.
 				flightCamera.SetTargetNone();
@@ -2655,6 +2694,7 @@ namespace CameraTools
 			{
 				availablePaths.Add(CameraPath.Load(node));
 			}
+			if (DEBUG) Debug.Log("[CameraTools]: Verbose debugging enabled.");
 		}
 		#endregion
 	}
