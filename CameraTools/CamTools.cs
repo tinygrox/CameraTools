@@ -359,7 +359,7 @@ namespace CameraTools
 			flightCamera.transform.position -= FloatingOrigin.Offset; // This fixed the floating origin shifts. (Vessel positions are updated by KSP automatically, but not other position vectors.)
 			// I am uncertain whether there are any other Kraken velocity corrections that need to be applied.
 
-			if (DEBUG && FloatingOrigin.fetch.offset.sqrMagnitude > 0.2f || Krakensbane.GetLastCorrection().sqrMagnitude > 100f)
+			if (DEBUG && (FloatingOrigin.fetch.offset.sqrMagnitude > 0.2f || Krakensbane.GetLastCorrection().sqrMagnitude > 100f))
 			{
 				var message = "FloatingOrigin offset Δ: " + FloatingOrigin.Offset.magnitude.ToString("0.00") + ", Krakensbane velocity Δ: " + Krakensbane.GetLastCorrection().magnitude.ToString("0.0") + ", " + (dogfightTarget != null) + ", " + dogfightLastTarget + ", " + dogfightVelocityChase + ", Δ: " + (vessel.CoM - flightCamera.transform.position).magnitude.ToString("0.00") + ", Δ': " + lastCamVesselΔ.magnitude.ToString("0.00");
 				Debug.Log("[CameraTools]: " + message);
