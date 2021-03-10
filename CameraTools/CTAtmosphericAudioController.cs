@@ -74,7 +74,7 @@ namespace CameraTools
 
 		void FixedUpdate()
 		{
-			if (!vessel)
+			if (!vessel || !vessel.loaded || !vessel.isActiveAndEnabled)
 			{
 				return;
 			}
