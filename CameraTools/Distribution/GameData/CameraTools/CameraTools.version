@@ -1,18 +1,18 @@
 {
   "NAME": "CameraTools",
-  "URL": "https://raw.githubusercontent.com/jrodrigv/CameraTools/master/CameraTools/Distribution/GameData/CameraTools/CameraTools.version",
-  "DOWNLOAD": "https://github.com/jrodrigv/CameraTools/releases/tag/v1.14.0",
-  "CHANGE_LOG_URL": "https://github.com/jrodrigv/CameraTools/blob/master/CameraTools/Distribution/GameData/CameraTools/Changelog.txt",
+  "URL": "https://raw.githubusercontent.com/BrettRyland/CameraTools/master/CameraTools/Distribution/GameData/CameraTools/CameraTools.version",
+  "DOWNLOAD": "https://github.com/BrettRyland/CameraTools",
+  "CHANGE_LOG_URL": "https://github.com/BrettRyland/CameraTools/blob/master/CameraTools/Distribution/GameData/CameraTools/Changelog.txt",
   "VERSION": {
     "MAJOR": 1,
-    "MINOR": 14,
+    "MINOR": 15,
     "PATCH": 0,
     "BUILD": 0
   },
   "KSP_VERSION": {
     "MAJOR": 1,
-    "MINOR": 9,
-    "PATCH": 0
+    "MINOR": 11,
+    "PATCH": 1
   },
   "KSP_VERSION_MIN": {
     "MAJOR": 1,
@@ -21,7 +21,7 @@
   },
   "KSP_VERSION_MAX": {
     "MAJOR": 1,
-    "MINOR": 9,
+    "MINOR": 11,
     "PATCH": 99
   }
 }

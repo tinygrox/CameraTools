@@ -1,3 +1,12 @@
+v1.15.0
+- A bunch of bugfixes.
+- Save settings properly.
+- Death camera: when in dogfight mode, temporarily follow the explosion when the followed plane gets destroyed.
+- Adjustable lerp (interpolation) rate for dogfight mode.
+- Adjustable roll amount (based on the followed craft) for dogfight mode.
+- Smoother transitions into dogfight mode.
+- Auto-enable for BDArmory.
+
 v1.14.0
 - Compatibility with KSP 1.9.x
 
