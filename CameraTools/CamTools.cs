@@ -135,11 +135,14 @@ namespace CameraTools
 		#region Dogfight Camera Fields
 		Vessel dogfightPrevTarget;
 		Vessel dogfightTarget;
-		[CTPersistantField] public float dogfightDistance = 30;
-		[CTPersistantField] public float dogfightOffsetX = 10;
-		[CTPersistantField] public float dogfightOffsetY = 4;
+		[CTPersistantField] public float dogfightDistance = 30f;
+		[CTPersistantField] public float dogfightOffsetX = 10f;
+		[CTPersistantField] public float dogfightOffsetY = 4f;
 		float dogfightMaxOffset = 50;
 		[CTPersistantField] public float dogfightLerp = 0.2f;
+		[CTPersistantField] public float dogfightRoll = 0f;
+		Quaternion dogfightCameraRoll = Quaternion.identity;
+		Vector3 dogfightCameraRollUp = Vector3.up;
 		[CTPersistantField] public float autoZoomMargin = 20;
 		List<Vessel> loadedVessels;
 		bool showingVesselList = false;
@@ -357,7 +360,7 @@ namespace CameraTools
 			if (!FlightGlobals.ready) return;
 
 			flightCamera.transform.position -= FloatingOrigin.Offset; // This fixed the floating origin shifts. (Vessel positions are updated by KSP automatically, but not other position vectors.)
-			// I am uncertain whether there are any other Kraken velocity corrections that need to be applied.
+																	  // I am uncertain whether there are any other Kraken velocity corrections that need to be applied.
 
 			if (DEBUG && (FloatingOrigin.fetch.offset.sqrMagnitude > 0.2f || Krakensbane.GetLastCorrection().sqrMagnitude > 100f))
 			{
@@ -421,6 +424,7 @@ namespace CameraTools
 				// Something else keeps trying to steal the camera after the vessel has died, so we need to keep overriding it.
 				flightCamera.SetTargetNone();
 				deathCam.transform.position += deathCamVelocity * Time.deltaTime;
+				deathCamVelocity *= 0.95f;
 				flightCamera.transform.parent = deathCam.transform;
 				flightCamera.DeactivateUpdate();
 				flightCamera.transform.localPosition = Vector3.zero;
@@ -573,15 +577,27 @@ namespace CameraTools
 				}
 			}
 
-			Vector3 offsetDirection = Vector3.Cross(cameraUp, dogfightLastTargetPosition - vessel.CoM).normalized;
-			Vector3 camPos = vessel.CoM + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance) + (dogfightOffsetX * offsetDirection) + (dogfightOffsetY * cameraUp);
+			//roll
+			if (dogfightRoll > 0)
+			{
+				var vesselRollTarget = Quaternion.RotateTowards(Quaternion.identity, Quaternion.FromToRotation(cameraUp, -vessel.ReferenceTransform.forward), dogfightRoll * Vector3.Angle(cameraUp, -vessel.ReferenceTransform.forward));
+				dogfightCameraRoll = Quaternion.Lerp(dogfightCameraRoll, vesselRollTarget, dogfightLerp);
+				dogfightCameraRollUp = dogfightCameraRoll * cameraUp;
+			}
+			else
+			{
+				dogfightCameraRollUp = cameraUp;
+			}
+
+			Vector3 offsetDirection = Vector3.Cross(dogfightCameraRollUp, dogfightLastTargetPosition - vessel.CoM).normalized;
+			Vector3 camPos = vessel.CoM + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance) + (dogfightOffsetX * offsetDirection) + (dogfightOffsetY * dogfightCameraRollUp);
 
 			Vector3 localCamPos = cameraParent.transform.InverseTransformPoint(camPos);
 			flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, localCamPos, dogfightLerp);
 
 			//rotation
-			Quaternion vesselLook = Quaternion.LookRotation(vessel.CoM - flightCamera.transform.position, cameraUp);
-			Quaternion targetLook = Quaternion.LookRotation(dogfightLastTargetPosition - flightCamera.transform.position, cameraUp);
+			Quaternion vesselLook = Quaternion.LookRotation(vessel.CoM - flightCamera.transform.position, dogfightCameraRollUp);
+			Quaternion targetLook = Quaternion.LookRotation(dogfightLastTargetPosition - flightCamera.transform.position, dogfightCameraRollUp);
 			Quaternion camRot = Quaternion.Lerp(vesselLook, targetLook, 0.5f);
 			flightCamera.transform.rotation = Quaternion.Lerp(flightCamera.transform.rotation, camRot, dogfightLerp);
 
@@ -1950,7 +1966,11 @@ namespace CameraTools
 				GUI.Label(new Rect(leftIndent, contentTop + (line * entryHeight), 30, entryHeight), "Lerp: ");
 				dogfightLerp = (int)GUI.HorizontalSlider(new Rect(leftIndent + 30, contentTop + (line * entryHeight) + 6, contentWidth - 60, entryHeight), dogfightLerp * 100f, 1f, 50f) / 100f;
 				GUI.Label(new Rect(leftIndent + contentWidth - 25, contentTop + (line * entryHeight), 25, entryHeight), dogfightLerp.ToString("0.00"));
-				line += 1f;
+				line++;
+				GUI.Label(new Rect(leftIndent, contentTop + (line * entryHeight), 30, entryHeight), "Roll: ");
+				dogfightRoll = (int)GUI.HorizontalSlider(new Rect(leftIndent + 30, contentTop + (line * entryHeight) + 6, contentWidth - 60, entryHeight), dogfightRoll * 20f, 0f, 20f) / 20f;
+				GUI.Label(new Rect(leftIndent + contentWidth - 25, contentTop + (line * entryHeight), 25, entryHeight), dogfightRoll.ToString("0.00"));
+				line++;
 			}
 			else if (toolMode == ToolModes.Pathing)
 			{
