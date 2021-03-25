@@ -1,3 +1,8 @@
+v1.15.1
+Bugfixes:
+ - Fix missing config file load/save bug.
+ - Update all version numbers properly.
+
 v1.15.0
 - A bunch of bugfixes.
 - Save settings properly.
