@@ -286,6 +286,7 @@ namespace CameraTools
 		{
 			GameEvents.onVesselChange.Remove(SwitchToVessel);
 			GameEvents.onVesselWillDestroy.Remove(CurrentVesselWillDestroy);
+			Save();
 		}
 
 		void Update()

@@ -12,6 +12,12 @@ namespace CameraTools
 		public static void Save()
 		{
 			ConfigNode fileNode = ConfigNode.Load(settingsURL);
+			if (fileNode == null)
+				fileNode = new ConfigNode();
+
+			if (!fileNode.HasNode("CToolsSettings"))
+				fileNode.AddNode("CToolsSettings");
+
 			ConfigNode settings = fileNode.GetNode("CToolsSettings");
 
 			foreach (var field in typeof(CamTools).GetFields())
@@ -28,19 +34,24 @@ namespace CameraTools
 		public static void Load()
 		{
 			ConfigNode fileNode = ConfigNode.Load(settingsURL);
-			ConfigNode settings = fileNode.GetNode("CToolsSettings");
+			if (fileNode == null) return; // No config file.
 
-			foreach (var field in typeof(CamTools).GetFields())
+			if (fileNode.HasNode("CToolsSettings"))
 			{
-				if (field == null) continue;
-				if (!field.IsDefined(typeof(CTPersistantField), false)) continue;
+				ConfigNode settings = fileNode.GetNode("CToolsSettings");
 
-				if (settings.HasValue(field.Name))
+				foreach (var field in typeof(CamTools).GetFields())
 				{
-					object parsedValue = ParseValue(field.FieldType, settings.GetValue(field.Name));
-					if (parsedValue != null)
+					if (field == null) continue;
+					if (!field.IsDefined(typeof(CTPersistantField), false)) continue;
+
+					if (settings.HasValue(field.Name))
 					{
-						field.SetValue(CamTools.fetch, parsedValue);
+						object parsedValue = ParseValue(field.FieldType, settings.GetValue(field.Name));
+						if (parsedValue != null)
+						{
+							field.SetValue(CamTools.fetch, parsedValue);
+						}
 					}
 				}
 			}
