@@ -1,3 +1,10 @@
+v1.15.2
+Bugfixes:
+ - Don't touch the camera when we're not in control of it!
+ - Use TimeWarp times instead of Time times for velocity calculations.
+Improvements:
+ - Allow switching into and out of IVA and Map modes.
+
 v1.15.1
 Bugfixes:
  - Fix missing config file load/save bug.
@@ -34,7 +41,6 @@ v1.9.0
 v1.8.0
 - Compatibility with KSP 1.2.2 and KSP 1.2.9 BETA
 - Fixing isssue when reverting the camera
-
 
 v1.7.0
 - Compatibility with KSP 1.2.1

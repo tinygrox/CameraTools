@@ -1,10 +1,9 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using System.Reflection;
 using KSP.UI.Screens;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System;
+using UnityEngine;
 
 namespace CameraTools
 {
@@ -43,6 +42,7 @@ namespace CameraTools
 		#region Input
 		[CTPersistantField] public string cameraKey = "home";
 		[CTPersistantField] public string revertKey = "end";
+		[CTPersistantField] public bool enableKeypad = false;
 		string fmUpKey = "[7]";
 		string fmDownKey = "[1]";
 		string fmForwardKey = "[8]";
@@ -94,6 +94,7 @@ namespace CameraTools
 		bool hasSavedRotation = false;
 		Quaternion savedRotation;
 		bool temporaryRevert = false;
+		bool wasActiveBeforeModeChange = false;
 		Vector3 lastTargetPosition = Vector3.zero;
 		bool hasTarget = false;
 		bool hasDied = false;
@@ -177,7 +178,6 @@ namespace CameraTools
 		string guiKeyZoomSpeed = "1";
 		float zoomFactor = 1;
 		[CTPersistantField] public float zoomExp = 1;
-		[CTPersistantField] public bool enableKeypad = false;
 		[CTPersistantField] public float maxRelV = 2500;
 		#endregion
 
@@ -270,6 +270,7 @@ namespace CameraTools
 			bdWmUnderAttackField = GetUnderAttackField();
 			GameEvents.onVesselChange.Add(SwitchToVessel);
 			GameEvents.onVesselWillDestroy.Add(CurrentVesselWillDestroy);
+			GameEvents.OnCameraChange.Add(CameraModeChange);
 
 			cStyle = new GUIStyle(HighLogic.Skin.label);
 			cStyle.fontStyle = UnityEngine.FontStyle.Bold;
@@ -286,7 +287,29 @@ namespace CameraTools
 		{
 			GameEvents.onVesselChange.Remove(SwitchToVessel);
 			GameEvents.onVesselWillDestroy.Remove(CurrentVesselWillDestroy);
+			GameEvents.OnCameraChange.Remove(CameraModeChange);
 			Save();
+		}
+
+		void CameraModeChange(CameraManager.CameraMode mode)
+		{
+			if (mode != CameraManager.CameraMode.Flight && CameraManager.Instance.previousCameraMode == CameraManager.CameraMode.Flight)
+			{
+				wasActiveBeforeModeChange = cameraToolActive;
+				cameraToolActive = false;
+			}
+			else if (mode == CameraManager.CameraMode.Flight)
+			{
+				if (wasActiveBeforeModeChange && !autoEnableOverriden)
+				{
+					Debug.Log("[CameraTools]: Camera mode changed to " + mode + ", reactivating " + toolMode + ".");
+					cameraToolActive = true;
+					RevertCamera();
+					flightCamera.transform.position = deathCam.transform.position;
+					flightCamera.transform.rotation = deathCam.transform.rotation;
+					cameraActivate();
+				}
+			}
 		}
 
 		void Update()
@@ -359,15 +382,24 @@ namespace CameraTools
 		{
 			// Note: we have to perform the camera adjustments during FixedUpdate to avoid jitter in the Lerps in the camera position and rotation due to inconsistent numbers of physics updates per frame.
 			if (!FlightGlobals.ready) return;
+			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight) return;
 
-			flightCamera.transform.position -= FloatingOrigin.Offset; // This fixed the floating origin shifts. (Vessel positions are updated by KSP automatically, but not other position vectors.)
-																	  // I am uncertain whether there are any other Kraken velocity corrections that need to be applied.
-
-			if (DEBUG && (FloatingOrigin.fetch.offset.sqrMagnitude > 0.2f || Krakensbane.GetLastCorrection().sqrMagnitude > 100f))
+			if (cameraToolActive)
 			{
-				var message = "FloatingOrigin offset Δ: " + FloatingOrigin.Offset.magnitude.ToString("0.00") + ", Krakensbane velocity Δ: " + Krakensbane.GetLastCorrection().magnitude.ToString("0.0") + ", " + (dogfightTarget != null) + ", " + dogfightLastTarget + ", " + dogfightVelocityChase + ", Δ: " + (vessel.CoM - flightCamera.transform.position).magnitude.ToString("0.00") + ", Δ': " + lastCamVesselΔ.magnitude.ToString("0.00");
-				Debug.Log("[CameraTools]: " + message);
-				DebugLog(message);
+				if ((!hasDied && flightCamera.transform.parent != cameraParent.transform) || (hasDied && flightCamera.transform.parent != deathCam.transform))
+				{
+					message = "Someone has stolen the camera parent! Abort!";
+					Debug.Log("[CameraTools]: " + message); DebugLog(message);
+					cameraToolActive = false;
+					RevertCamera();
+				}
+
+				// if (DEBUG && (FloatingOrigin.fetch.offset.sqrMagnitude > 10f || Krakensbane.GetLastCorrection().sqrMagnitude > 100f))
+				// {
+				// 	var message = "FloatingOrigin offset Δ: " + FloatingOrigin.Offset.magnitude.ToString("0.00") + ", Krakensbane velocity Δ: " + Krakensbane.GetLastCorrection().magnitude.ToString("0.0") + ", " + (dogfightTarget != null) + ", " + dogfightLastTarget + ", " + dogfightVelocityChase + ", Δ: " + (vessel.CoM - flightCamera.transform.position).magnitude.ToString("0.00") + ", Δ': " + lastCamVesselΔ.magnitude.ToString("0.00");
+				// 	Debug.Log("[CameraTools]: " + message);
+				// 	DebugLog(message);
+				// }
 			}
 
 			if (hasDied && cameraToolActive) return; // Do nothing until we have an active vessel.
@@ -414,7 +446,7 @@ namespace CameraTools
 					zoomFactor = Mathf.Exp(zoomExp) / Mathf.Exp(1);
 				}
 			}
-			lastCamVesselΔ = vessel.CoM - flightCamera.transform.position;
+			if (DEBUG) lastCamVesselΔ = vessel.CoM - flightCamera.transform.position;
 		}
 
 		void LateUpdate()
@@ -422,21 +454,33 @@ namespace CameraTools
 			UpdateCameraShake(); // Update camera shake each frame so that it dies down.
 			if (hasDied && cameraToolActive)
 			{
-				// Something else keeps trying to steal the camera after the vessel has died, so we need to keep overriding it.
-				flightCamera.SetTargetNone();
-				deathCam.transform.position += deathCamVelocity * Time.deltaTime;
+				deathCam.transform.position += deathCamVelocity * TimeWarp.deltaTime;
 				deathCamVelocity *= 0.95f;
-				flightCamera.transform.parent = deathCam.transform;
-				flightCamera.DeactivateUpdate();
-				flightCamera.transform.localPosition = Vector3.zero;
-				flightCamera.transform.localRotation = Quaternion.identity;
+				if (flightCamera.transform.parent != deathCam.transform) // Something else keeps trying to steal the camera after the vessel has died, so we need to keep overriding it.
+				{
+					flightCamera.SetTargetNone();
+					flightCamera.transform.parent = deathCam.transform;
+					flightCamera.DeactivateUpdate();
+					flightCamera.transform.localPosition = Vector3.zero;
+					flightCamera.transform.localRotation = Quaternion.identity;
+				}
 			}
 			else if (!vesselSwitched)
 			{
-				deathCam.transform.position = flightCamera.transform.position;
-				deathCam.transform.rotation = flightCamera.transform.rotation;
+				switch (CameraManager.Instance.currentCameraMode)
+				{
+					case CameraManager.CameraMode.IVA:
+						var IVACamera = CameraManager.GetCurrentCamera();
+						deathCam.transform.position = IVACamera.transform.position;
+						deathCam.transform.rotation = IVACamera.transform.rotation;
+						break;
+					case CameraManager.CameraMode.Flight:
+						deathCam.transform.position = flightCamera.transform.position;
+						deathCam.transform.rotation = flightCamera.transform.rotation;
+						break;
+				}
 			}
-			if (vesselSwitched) // We perform this here instead of waiting for the next frame to avoid a flicker of the camera being switched.
+			if (cameraToolActive && vesselSwitched) // We perform this here instead of waiting for the next frame to avoid a flicker of the camera being switched.
 			{
 				vesselSwitched = false;
 				switch (toolMode)
@@ -517,7 +561,7 @@ namespace CameraTools
 
 			hasDied = false;
 			vessel = FlightGlobals.ActiveVessel;
-			cameraUp = -FlightGlobals.getGeeForceAtPosition(vessel.CoM).normalized;
+			cameraUp = -FlightGlobals.getGeeForceAtPosition(vessel.CoM - FloatingOrigin.Offset).normalized;
 
 			if (flightCamera.transform.parent != cameraParent.transform)
 			{
@@ -526,7 +570,7 @@ namespace CameraTools
 				flightCamera.SetTargetNone();
 				flightCamera.transform.parent = cameraParent.transform;
 				flightCamera.DeactivateUpdate();
-				cameraParent.transform.position = vessel.CoM; // Then adjust the flightCamera for the new parent.
+				cameraParent.transform.position = vessel.CoM - FloatingOrigin.Offset; // Then adjust the flightCamera for the new parent.
 				flightCamera.transform.localPosition = cameraParent.transform.InverseTransformPoint(deathCam.transform.position);
 				flightCamera.transform.localRotation = Quaternion.identity;
 			}
@@ -543,6 +587,8 @@ namespace CameraTools
 			AddAtmoAudioControllers(false);
 		}
 
+		Vector3 debugCameraPos = Vector3.zero;
+		Quaternion debugCameraRot = Quaternion.identity;
 		void UpdateDogfightCamera()
 		{
 			if (!vessel || (!dogfightTarget && !dogfightLastTarget && !dogfightVelocityChase))
@@ -552,29 +598,30 @@ namespace CameraTools
 				return;
 			}
 
+			var vesselCoM = vessel.CoM - FloatingOrigin.Offset; // vessel.CoM hasn't been updated for floating origin shifts yet.
 			if (dogfightTarget)
 			{
 				dogfightLastTarget = true;
-				dogfightLastTargetPosition = dogfightTarget.CoM;
+				dogfightLastTargetPosition = dogfightTarget.CoM - FloatingOrigin.Offset;
 				dogfightLastTargetVelocity = dogfightTarget.rb_velocity;
 			}
 			else if (dogfightLastTarget)
 			{
 				dogfightLastTargetVelocity += Krakensbane.GetLastCorrection();
-				dogfightLastTargetPosition += dogfightLastTargetVelocity * Time.fixedDeltaTime - FloatingOrigin.Offset;
+				dogfightLastTargetPosition += dogfightLastTargetVelocity * TimeWarp.fixedDeltaTime - FloatingOrigin.Offset;
 			}
 
-			cameraParent.transform.position = vessel.CoM;
+			cameraParent.transform.position = vesselCoM;
 
 			if (dogfightVelocityChase)
 			{
-				if (vessel.srfSpeed > 1)
+				if (vessel.speed > 1)
 				{
-					dogfightLastTargetPosition = vessel.CoM + (vessel.srf_velocity.normalized * 5000);
+					dogfightLastTargetPosition = vesselCoM + vessel.Velocity().normalized * 5000;
 				}
 				else
 				{
-					dogfightLastTargetPosition = vessel.CoM + (vessel.ReferenceTransform.up * 5000);
+					dogfightLastTargetPosition = vesselCoM + vessel.ReferenceTransform.up * 5000;
 				}
 			}
 
@@ -590,14 +637,23 @@ namespace CameraTools
 				dogfightCameraRollUp = cameraUp;
 			}
 
-			Vector3 offsetDirection = Vector3.Cross(dogfightCameraRollUp, dogfightLastTargetPosition - vessel.CoM).normalized;
-			Vector3 camPos = vessel.CoM + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance) + (dogfightOffsetX * offsetDirection) + (dogfightOffsetY * dogfightCameraRollUp);
+			Vector3 offsetDirection = Vector3.Cross(dogfightCameraRollUp, dogfightLastTargetPosition - vesselCoM).normalized;
+			Vector3 camPos = vesselCoM + ((vesselCoM - dogfightLastTargetPosition).normalized * dogfightDistance) + (dogfightOffsetX * offsetDirection) + (dogfightOffsetY * dogfightCameraRollUp);
 
 			Vector3 localCamPos = cameraParent.transform.InverseTransformPoint(camPos);
 			flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, localCamPos, dogfightLerp);
+			// if (DEBUG)
+			// {
+			// 	debugMessages.Clear();
+			// 	DebugLog("localCamPos: " + localCamPos.ToString("0.0") + ", " + flightCamera.transform.localPosition.ToString("0.0"));
+			// 	DebugLog("offset from vessel CoM: " + (flightCamera.transform.position - vesselCoM).ToString("0.0"));
+			// 	DebugLog("camPos: " + camPos.ToString("0.0") + ", floating origin offset: " + FloatingOrigin.Offset.ToString("0.0"));
+			// 	DebugLog("camPos - vesselCoM: " + (camPos - vesselCoM).ToString("0.0"));
+			// 	DebugLog("vel: " + vessel.Velocity().ToString("0.0") + ", Kraken velocity: " + Krakensbane.GetFrameVelocity().ToString("0.0") + ", ΔKv: " + Krakensbane.GetLastCorrection().ToString("0.0"));
+			// }
 
 			//rotation
-			Quaternion vesselLook = Quaternion.LookRotation(vessel.CoM - flightCamera.transform.position, dogfightCameraRollUp);
+			Quaternion vesselLook = Quaternion.LookRotation(vesselCoM - flightCamera.transform.position, dogfightCameraRollUp);
 			Quaternion targetLook = Quaternion.LookRotation(dogfightLastTargetPosition - flightCamera.transform.position, dogfightCameraRollUp);
 			Quaternion camRot = Quaternion.Lerp(vesselLook, targetLook, 0.5f);
 			flightCamera.transform.rotation = Quaternion.Lerp(flightCamera.transform.rotation, camRot, dogfightLerp);
@@ -612,7 +668,7 @@ namespace CameraTools
 				}
 				else
 				{
-					float angle = Vector3.Angle(dogfightLastTargetPosition - flightCamera.transform.position, vessel.CoM - flightCamera.transform.position);
+					float angle = Vector3.Angle(dogfightLastTargetPosition - flightCamera.transform.position, vesselCoM - flightCamera.transform.position);
 					targetFoV = Mathf.Clamp(angle + autoZoomMargin, 0.1f, 60f);
 				}
 				manualFOV = targetFoV;
@@ -918,11 +974,11 @@ namespace CameraTools
 
 				if (referenceMode == ReferenceModes.Surface)
 				{
-					flightCamera.transform.position -= Time.fixedDeltaTime * Mathf.Clamp((float)vessel.srf_velocity.magnitude, 0, maxRelV) * vessel.srf_velocity.normalized;
+					flightCamera.transform.position -= TimeWarp.fixedDeltaTime * Mathf.Clamp((float)vessel.srf_velocity.magnitude, 0, maxRelV) * vessel.srf_velocity.normalized;
 				}
 				else if (referenceMode == ReferenceModes.Orbit)
 				{
-					flightCamera.transform.position -= Time.fixedDeltaTime * Mathf.Clamp((float)vessel.obt_velocity.magnitude, 0, maxRelV) * vessel.obt_velocity.normalized;
+					flightCamera.transform.position -= TimeWarp.fixedDeltaTime * Mathf.Clamp((float)vessel.obt_velocity.magnitude, 0, maxRelV) * vessel.obt_velocity.normalized;
 				}
 				else if (referenceMode == ReferenceModes.InitialVelocity)
 				{
@@ -935,7 +991,7 @@ namespace CameraTools
 					{
 						camVelocity = (initialVelocity - vessel.srf_velocity);
 					}
-					flightCamera.transform.position += camVelocity * Time.fixedDeltaTime;
+					flightCamera.transform.position += camVelocity * TimeWarp.fixedDeltaTime;
 				}
 			}
 
@@ -1501,6 +1557,11 @@ namespace CameraTools
 				DebugLog(message);
 			}
 			vessel = v;
+			// Switch to a usable camera mode if necessary.
+			if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA)
+			{
+				CameraManager.Instance.SetCameraFlight();
+			}
 
 			CheckForBDAI(v);
 			// reactivate camera if it was reverted
