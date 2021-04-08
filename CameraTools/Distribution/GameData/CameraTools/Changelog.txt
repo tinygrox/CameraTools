@@ -1,3 +1,11 @@
+v1.15.3
+Bugfixes:
+ - Disable slider discretisation when keypad control is enabled.
+ - Properly correct for time-warp under almost all conditions for dogfight mode. (It only gets the offset wrong between 70km and 100km above Kerbin and similarly on other bodies.)
+Improvements:
+ - Change the keypad move/zoom speeds to sliders for easier access.
+ - Add option to turn on lots of debugging.
+
 v1.15.2
 Bugfixes:
  - Don't touch the camera when we're not in control of it!

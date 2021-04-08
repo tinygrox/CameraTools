@@ -39,9 +39,28 @@ namespace CameraTools
 			catch (Exception e)
 			{
 				Debug.LogWarning("[CameraTools.VesselExtensions]: Exception thrown in Velocity: " + e.Message + "\n" + e.StackTrace);
-				//return v.srf_velocity;
 				return new Vector3d(0, 0, 0);
 			}
 		}
-	}
+
+		public static double Speed(this Vessel v)
+		{
+			try
+			{
+				if (v == null) return 0;
+				if (!v.InOrbit())
+				{
+					return v.srfSpeed;
+				}
+				else
+				{
+					return v.obt_speed;
+				}
+			}
+			catch (Exception e)
+			{
+				Debug.LogWarning("[CameraTools.VesselExtensions]: Exception thrown in Speed: " + e.Message + "\n" + e.StackTrace);
+				return 0;
+			}
+		}	}
 }
