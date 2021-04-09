@@ -1,3 +1,32 @@
+v1.15.3
+Bugfixes:
+ - Disable slider discretisation when keypad control is enabled.
+ - Properly correct for time-warp under almost all conditions for dogfight mode. (It only gets the offset wrong between 70km and 100km above Kerbin and similarly on other bodies.)
+Improvements:
+ - Change the keypad move/zoom speeds to sliders for easier access.
+ - Add option to turn on lots of debugging.
+
+v1.15.2
+Bugfixes:
+ - Don't touch the camera when we're not in control of it!
+ - Use TimeWarp times instead of Time times for velocity calculations.
+Improvements:
+ - Allow switching into and out of IVA and Map modes.
+
+v1.15.1
+Bugfixes:
+ - Fix missing config file load/save bug.
+ - Update all version numbers properly.
+
+v1.15.0
+- A bunch of bugfixes.
+- Save settings properly.
+- Death camera: when in dogfight mode, temporarily follow the explosion when the followed plane gets destroyed.
+- Adjustable lerp (interpolation) rate for dogfight mode.
+- Adjustable roll amount (based on the followed craft) for dogfight mode.
+- Smoother transitions into dogfight mode.
+- Auto-enable for BDArmory.
+
 v1.14.0
 - Compatibility with KSP 1.9.x
 
@@ -20,7 +49,6 @@ v1.9.0
 v1.8.0
 - Compatibility with KSP 1.2.2 and KSP 1.2.9 BETA
 - Fixing isssue when reverting the camera
-
 
 v1.7.0
 - Compatibility with KSP 1.2.1
