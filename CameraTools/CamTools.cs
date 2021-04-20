@@ -678,19 +678,18 @@ namespace CameraTools
 				debug2Messages.Clear();
 				Debug2Log("situation: " + vessel.situation);
 				Debug2Log("speed: " + vessel.Speed().ToString("0.0") + ", vel: " + vessel.Velocity().ToString("0.0"));
-				Debug2Log("chase: " + dogfightVelocityChase + ", floatKrakenAdjust: " + floatingKrakenAdjustment.ToString("0.0"));
-				Debug2Log("offsetDirection: " + offsetDirection.ToString("0.00"));
+				Debug2Log("offsetDirection: " + offsetDirection.ToString("0.000"));
 				Debug2Log("target offset: " + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance).ToString("0.0"));
 				Debug2Log("xOff: " + (dogfightOffsetX * offsetDirection).ToString("0.0"));
 				Debug2Log("yOff: " + (dogfightOffsetY * dogfightCameraRollUp).ToString("0.0"));
-				Debug2Log("camPos: " + camPos.ToString("0.0") + ", floating origin offset: " + FloatingOrigin.Offset.ToString("0.0"));
 				Debug2Log("camPos - vessel.CoM: " + (camPos - vessel.CoM).ToString("0.0"));
 				Debug2Log("localCamPos: " + localCamPos.ToString("0.0") + ", " + flightCamera.transform.localPosition.ToString("0.0"));
 				Debug2Log("offset from vessel CoM: " + (flightCamera.transform.position - vessel.CoM).ToString("0.0"));
-				Debug2Log("vel: " + vessel.Velocity().ToString("0.0") + ", Kraken velocity: " + Krakensbane.GetFrameVelocity().ToString("0.0") + ", ΔKv: " + Krakensbane.GetLastCorrection().ToString("0.0"));
-				Debug2Log("warp mode: " + TimeWarp.WarpMode + ", warp factor: " + TimeWarp.CurrentRate);
 				Debug2Log("camParentPos - flightCamPos: " + (cameraParent.transform.position - flightCamera.transform.position).ToString("0.0"));
-				Debug2Log("floating origin offset: " + FloatingOrigin.Offset.ToString("0.00") + ", offsetNonKB: " + FloatingOrigin.OffsetNonKrakensbane.ToString("0.00"));
+				Debug2Log("vessel velocity: " + vessel.Velocity().ToString("0.0") + ", Kraken velocity: " + Krakensbane.GetFrameVelocity().ToString("0.0") + ", ΔKv: " + Krakensbane.GetLastCorrection().ToString("0.0"));
+				Debug2Log("warp mode: " + TimeWarp.WarpMode + ", warp factor: " + TimeWarp.CurrentRate);
+				Debug2Log("floating origin offset: " + FloatingOrigin.Offset.ToString("0.000") + ", offsetNonKB: " + FloatingOrigin.OffsetNonKrakensbane.ToString("0.000"));
+				Debug2Log("floatingKrakenAdjustment: " + floatingKrakenAdjustment.ToString("0.000"));
 			}
 
 			//rotation
