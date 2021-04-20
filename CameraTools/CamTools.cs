@@ -340,6 +340,12 @@ namespace CameraTools
 						break;
 						// FIXME Add in other tool mode corrections.
 				}
+				if (DEBUG && TimeWarp.WarpMode == TimeWarp.Modes.LOW && FloatingOrigin.Offset.sqrMagnitude > 10)
+				{
+					message = "Floating origin offset: " + FloatingOrigin.Offset.ToString("0.0") + ", Krakensbane velocity correction: " + Krakensbane.GetLastCorrection().ToString("0.0");
+					DebugLog(message);
+					Debug.Log("[CameraTools]: DEBUG " + message);
+				}
 			}
 		}
 
@@ -684,6 +690,7 @@ namespace CameraTools
 				Debug2Log("vel: " + vessel.Velocity().ToString("0.0") + ", Kraken velocity: " + Krakensbane.GetFrameVelocity().ToString("0.0") + ", ΔKv: " + Krakensbane.GetLastCorrection().ToString("0.0"));
 				Debug2Log("warp mode: " + TimeWarp.WarpMode + ", warp factor: " + TimeWarp.CurrentRate);
 				Debug2Log("camParentPos - flightCamPos: " + (cameraParent.transform.position - flightCamera.transform.position).ToString("0.0"));
+				Debug2Log("floating origin offset: " + FloatingOrigin.Offset.ToString("0.00") + ", offsetNonKB: " + FloatingOrigin.OffsetNonKrakensbane.ToString("0.00"));
 			}
 
 			//rotation
