@@ -1,3 +1,9 @@
+v1.15.4
+Bugfixes:
+ - Exclude music volume levels from volumes based on distance from the camera.
+Improvements:
+ - Migrate non-static config files to PluginData to avoid invalidating the ModuleManager cache (should give slightly faster start-up times).
+
 v1.15.3
 Bugfixes:
  - Disable slider discretisation when keypad control is enabled.
