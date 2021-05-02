@@ -316,7 +316,6 @@
   <ItemGroup>
     <None Include="Distribution\GameData\CameraTools\ATM_CameraTools.cfg" />
     <None Include="Distribution\GameData\CameraTools\CameraTools.version" />
-    <None Include="Distribution\GameData\CameraTools\paths.cfg" />
   </ItemGroup>
   <ItemGroup />
   <!--  <PropertyGroup>

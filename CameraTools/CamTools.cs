@@ -1,7 +1,7 @@
 using KSP.UI.Screens;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.IO;
 using System.Reflection;
 using System;
 using UnityEngine;
@@ -128,6 +128,7 @@ namespace CameraTools
 		#region Audio Fields
 		AudioSource[] audioSources;
 		float[] originalAudioSourceDoppler;
+		HashSet<string> excludeAudioSources = new HashSet<string> { "MusicLogic" };
 		bool hasSetDoppler = false;
 		[CTPersistantField] public bool useAudioEffects = true;
 		public static double speedOfSound = 330;
@@ -677,19 +678,19 @@ namespace CameraTools
 			{
 				debug2Messages.Clear();
 				Debug2Log("situation: " + vessel.situation);
-				Debug2Log("speed: " + vessel.Speed().ToString("0.0") + ", vel: " + vessel.Velocity().ToString("0.0"));
-				Debug2Log("offsetDirection: " + offsetDirection.ToString("0.000"));
-				Debug2Log("target offset: " + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance).ToString("0.0"));
-				Debug2Log("xOff: " + (dogfightOffsetX * offsetDirection).ToString("0.0"));
-				Debug2Log("yOff: " + (dogfightOffsetY * dogfightCameraRollUp).ToString("0.0"));
-				Debug2Log("camPos - vessel.CoM: " + (camPos - vessel.CoM).ToString("0.0"));
-				Debug2Log("localCamPos: " + localCamPos.ToString("0.0") + ", " + flightCamera.transform.localPosition.ToString("0.0"));
-				Debug2Log("offset from vessel CoM: " + (flightCamera.transform.position - vessel.CoM).ToString("0.0"));
-				Debug2Log("camParentPos - flightCamPos: " + (cameraParent.transform.position - flightCamera.transform.position).ToString("0.0"));
-				Debug2Log("vessel velocity: " + vessel.Velocity().ToString("0.0") + ", Kraken velocity: " + Krakensbane.GetFrameVelocity().ToString("0.0") + ", ΔKv: " + Krakensbane.GetLastCorrection().ToString("0.0"));
+				Debug2Log("speed: " + vessel.Speed().ToString("G3") + ", vel: " + vessel.Velocity().ToString("G3"));
+				Debug2Log("offsetDirection: " + offsetDirection.ToString("G3"));
+				Debug2Log("target offset: " + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance).ToString("G3"));
+				Debug2Log("xOff: " + (dogfightOffsetX * offsetDirection).ToString("G3"));
+				Debug2Log("yOff: " + (dogfightOffsetY * dogfightCameraRollUp).ToString("G3"));
+				Debug2Log("camPos - vessel.CoM: " + (camPos - vessel.CoM).ToString("G3"));
+				Debug2Log("localCamPos: " + localCamPos.ToString("G3") + ", " + flightCamera.transform.localPosition.ToString("G3"));
+				Debug2Log("offset from vessel CoM: " + (flightCamera.transform.position - vessel.CoM).ToString("G3"));
+				Debug2Log("camParentPos - flightCamPos: " + (cameraParent.transform.position - flightCamera.transform.position).ToString("G3"));
+				Debug2Log("vessel velocity: " + vessel.Velocity().ToString("G3") + ", Kraken velocity: " + Krakensbane.GetFrameVelocity().ToString("G3") + ", ΔKv: " + Krakensbane.GetLastCorrection().ToString("G3"));
 				Debug2Log("warp mode: " + TimeWarp.WarpMode + ", warp factor: " + TimeWarp.CurrentRate);
-				Debug2Log("floating origin offset: " + FloatingOrigin.Offset.ToString("0.000") + ", offsetNonKB: " + FloatingOrigin.OffsetNonKrakensbane.ToString("0.000"));
-				Debug2Log("floatingKrakenAdjustment: " + floatingKrakenAdjustment.ToString("0.000"));
+				Debug2Log("floating origin offset: " + FloatingOrigin.Offset.ToString("G3") + ", offsetNonKB: " + FloatingOrigin.OffsetNonKrakensbane.ToString("G3"));
+				Debug2Log("floatingKrakenAdjustment: " + floatingKrakenAdjustment.ToString("G3"));
 			}
 
 			//rotation
@@ -1536,6 +1537,8 @@ namespace CameraTools
 
 			for (int i = 0; i < audioSources.Length; i++)
 			{
+				// Debug.Log("CameraTools.DEBUG audioSources: " + string.Join(", ", audioSources.Select(a => a.name)));
+				if (excludeAudioSources.Contains(audioSources[i].name)) continue;
 				originalAudioSourceDoppler[i] = audioSources[i].dopplerLevel;
 
 				if (!includeActiveVessel)
@@ -1569,11 +1572,9 @@ namespace CameraTools
 
 			for (int i = 0; i < audioSources.Length; i++)
 			{
-				if (audioSources[i] != null)
-				{
-					audioSources[i].dopplerLevel = originalAudioSourceDoppler[i];
-					audioSources[i].velocityUpdateMode = AudioVelocityUpdateMode.Auto;
-				}
+				if (audioSources[i] == null || excludeAudioSources.Contains(audioSources[i].name)) continue;
+				audioSources[i].dopplerLevel = originalAudioSourceDoppler[i];
+				audioSources[i].velocityUpdateMode = AudioVelocityUpdateMode.Auto;
 			}
 
 
@@ -1802,7 +1803,7 @@ namespace CameraTools
 			{
 				if (debug2Messages.Count > 0)
 				{
-					GUI.Label(new Rect(Screen.width - 650, 100, 600, 400), string.Join("\n", debug2Messages.Select(m => m.Item1.ToString("0.000") + " " + m.Item2)));
+					GUI.Label(new Rect(Screen.width - 750, 100, 700, 400), string.Join("\n", debug2Messages.Select(m => m.Item1.ToString("0.000") + " " + m.Item2)));
 				}
 			}
 		}
@@ -2840,12 +2841,20 @@ namespace CameraTools
 		#endregion
 
 		#region Load/Save
-		public static string pathSaveURL = "GameData/CameraTools/paths.cfg";
+		public static string oldPathSaveURL = "GameData/CameraTools/paths.cfg";
+		public static string pathSaveURL = "GameData/CameraTools/PluginData/paths.cfg";
 		void Save()
 		{
 			CTPersistantField.Save();
 
 			ConfigNode pathFileNode = ConfigNode.Load(pathSaveURL);
+
+			if (pathFileNode == null)
+				pathFileNode = new ConfigNode();
+
+			if (!pathFileNode.HasNode("CAMERAPATHS"))
+				pathFileNode.AddNode("CAMERAPATHS");
+
 			ConfigNode pathsNode = pathFileNode.GetNode("CAMERAPATHS");
 			pathsNode.RemoveNodes("CAMERAPATH");
 
@@ -2853,7 +2862,12 @@ namespace CameraTools
 			{
 				path.Save(pathsNode);
 			}
-			pathFileNode.Save(pathSaveURL);
+			if (!Directory.GetParent(pathSaveURL).Exists)
+			{ Directory.GetParent(pathSaveURL).Create(); }
+			var success = pathFileNode.Save(pathSaveURL);
+			if (success && File.Exists(oldPathSaveURL)) // Remove the old settings if it exists and the new settings were saved.
+			{ File.Delete(oldPathSaveURL); }
+
 		}
 
 		void Load()
@@ -2869,9 +2883,41 @@ namespace CameraTools
 			selectedPathIndex = -1;
 			availablePaths = new List<CameraPath>();
 			ConfigNode pathFileNode = ConfigNode.Load(pathSaveURL);
-			foreach (var node in pathFileNode.GetNode("CAMERAPATHS").GetNodes("CAMERAPATH"))
+			if (pathFileNode == null)
 			{
-				availablePaths.Add(CameraPath.Load(node));
+				pathFileNode = ConfigNode.Load(oldPathSaveURL);
+			}
+			if (pathFileNode != null)
+			{
+				foreach (var node in pathFileNode.GetNode("CAMERAPATHS").GetNodes("CAMERAPATH"))
+				{
+					availablePaths.Add(CameraPath.Load(node));
+				}
+			}
+			else
+			{
+				availablePaths.Add(
+					new CameraPath
+					{
+						pathName = "Example Path",
+						points = new List<Vector3> {
+							new Vector3(13.40305f, -16.60615f, -4.274539f),
+							new Vector3(14.48815f, -13.88801f, -4.26651f),
+							new Vector3(14.48839f, -13.88819f, -4.267331f),
+							new Vector3(15.52922f, -14.25925f, -4.280066f)
+						},
+						rotations = new List<Quaternion>{
+							new Quaternion( 0.5759971f, 0.2491289f,  -0.2965982f, -0.7198553f),
+							new Quaternion(-0.6991884f, 0.09197949f, -0.08556388f, 0.7038141f),
+							new Quaternion(-0.6991884f, 0.09197949f, -0.08556388f, 0.7038141f),
+							new Quaternion(-0.6506922f, 0.2786613f,  -0.271617f,   0.6520521f)
+						},
+						times = new List<float> { 0f, 1f, 2f, 6f },
+						zooms = new List<float> { 1f, 2.035503f, 3.402367f, 3.402367f },
+						lerpRate = 3.1f,
+						timeScale = 0.29f
+					}
+				);
 			}
 			freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
 			zoomSpeedRaw = Mathf.Log10(keyZoomSpeed);
