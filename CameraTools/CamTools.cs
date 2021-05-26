@@ -41,6 +41,7 @@ namespace CameraTools
 
 		string message;
 		bool vesselSwitched = false;
+		bool BDAIFieldsNeedUpdating = true;
 
 		#region Input
 		[CTPersistantField] public string cameraKey = "home";
@@ -279,6 +280,7 @@ namespace CameraTools
 			bdWmUnderAttackField = GetUnderAttackField();
 			GameEvents.onVesselChange.Add(SwitchToVessel);
 			GameEvents.onVesselWillDestroy.Add(CurrentVesselWillDestroy);
+			GameEvents.onVesselPartCountChanged.Add(VesselPartCountChanged);
 			GameEvents.OnCameraChange.Add(CameraModeChange);
 			TimingManager.FixedUpdateAdd(TimingManager.TimingStage.BetterLateThanNever, KrakensbaneCorrection); // Perform our Krakensbane corrections after KSP's floating origin/Krakensbane corrections have run.
 
@@ -300,6 +302,7 @@ namespace CameraTools
 		{
 			GameEvents.onVesselChange.Remove(SwitchToVessel);
 			GameEvents.onVesselWillDestroy.Remove(CurrentVesselWillDestroy);
+			GameEvents.onVesselPartCountChanged.Remove(VesselPartCountChanged);
 			GameEvents.OnCameraChange.Remove(CameraModeChange);
 			TimingManager.FixedUpdateRemove(TimingManager.TimingStage.FlightIntegrator, KrakensbaneCorrection);
 			Save();
@@ -516,20 +519,7 @@ namespace CameraTools
 				switch (toolMode)
 				{
 					case ToolModes.DogfightCamera:
-						if (hasBDAI && useBDAutoTarget)
-						{
-							Vessel newAITarget = GetAITargetedVessel();
-							if (newAITarget)
-							{
-								if (DEBUG && dogfightTarget != newAITarget)
-								{
-									message = "Switching dogfight target to " + newAITarget.vesselName + (dogfightTarget != null ? " from " + dogfightTarget.vesselName : "");
-									Debug.Log("[CameraTools]: " + message);
-									DebugLog(message);
-								}
-								dogfightTarget = newAITarget;
-							}
-						}
+						UpdateAIDogfightTarget();
 						StartDogfightCamera();
 						break;
 					case ToolModes.StationaryCamera:
@@ -812,25 +802,32 @@ namespace CameraTools
 				// don't update targets too quickly, unless we're under attack by a missile
 				if ((bdWmMissileField != null) || (Planetarium.GetUniversalTime() - targetUpdateTime > 3))
 				{
-
-					Vessel newAITarget = GetAITargetedVessel();
-					if (newAITarget)
-					{
-						if (DEBUG && dogfightTarget != newAITarget)
-						{
-							message = "Switching dogfight target to " + newAITarget.vesselName + (dogfightTarget != null ? " from " + dogfightTarget.vesselName : "");
-							Debug.Log("[CameraTools]: " + message);
-							DebugLog(message);
-						}
-						dogfightTarget = newAITarget;
-					}
-					targetUpdateTime = Planetarium.GetUniversalTime();
+					UpdateAIDogfightTarget();
 				}
 			}
 
 			if (dogfightTarget != dogfightPrevTarget)
 			{
 				StartDogfightCamera();
+			}
+		}
+
+		void UpdateAIDogfightTarget()
+		{
+			if (hasBDAI && hasBDWM && useBDAutoTarget)
+			{
+				Vessel newAITarget = GetAITargetedVessel();
+				if (newAITarget)
+				{
+					if (DEBUG && dogfightTarget != newAITarget)
+					{
+						message = "Switching dogfight target to " + newAITarget.vesselName + (dogfightTarget != null ? " from " + dogfightTarget.vesselName : "");
+						Debug.Log("[CameraTools]: " + message);
+						DebugLog(message);
+					}
+					dogfightTarget = newAITarget;
+				}
+				targetUpdateTime = Planetarium.GetUniversalTime();
 			}
 		}
 		#endregion
@@ -1509,12 +1506,14 @@ namespace CameraTools
 				return;
 			}
 
+			var ignoreVesselTypes = new HashSet<VesselType> { VesselType.Debris, VesselType.SpaceObject, VesselType.Unknown, VesselType.Flag }; // Ignore some vessel types to avoid using up all the SoundManager's channels.
 			foreach (var vessel in FlightGlobals.Vessels)
 			{
 				if (!vessel || !vessel.loaded || vessel.packed || (!includeActiveVessel && vessel.isActiveVessel))
 				{
 					continue;
 				}
+				if (ignoreVesselTypes.Contains(vessel.vesselType)) continue;
 
 				vessel.gameObject.AddComponent<CTAtmosphericAudioController>();
 			}
@@ -1598,6 +1597,7 @@ namespace CameraTools
 				DebugLog(message);
 			}
 			vessel = v;
+			BDAIFieldsNeedUpdating = true;
 			// Switch to a usable camera mode if necessary.
 			if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA)
 			{
@@ -1613,23 +1613,10 @@ namespace CameraTools
 			}
 			if (cameraToolActive)
 			{
-				targetUpdateTime = Planetarium.GetUniversalTime();
-
 				if (hasBDAI && useBDAutoTarget)
-				{
 					CheckForBDWM(v);
-					Vessel newAITarget = GetAITargetedVessel();
-					if (newAITarget)
-					{
-						if (DEBUG && dogfightTarget != newAITarget)
-						{
-							message = "Switching dogfight target to " + newAITarget.vesselName + (dogfightTarget != null ? " from " + dogfightTarget.vesselName : "");
-							Debug.Log("[CameraTools]: " + message);
-							DebugLog(message);
-						}
-						dogfightTarget = newAITarget;
-					}
-				}
+				UpdateAIDogfightTarget();
+
 				if (randomMode)
 				{
 					var lowAlt = 50.0; // With the new terrain avoidance, being lower than 50m is better than 100m for being interesting.
@@ -2484,6 +2471,11 @@ namespace CameraTools
 			}
 		}
 
+		void VesselPartCountChanged(Vessel v)
+		{
+			if (vessel == v) { BDAIFieldsNeedUpdating = true; }
+		}
+
 		Part GetPartFromMouse()
 		{
 			Vector3 mouseAim = new Vector3(Input.mousePosition.x / Screen.width, Input.mousePosition.y / Screen.height, 0);
@@ -2567,12 +2559,16 @@ namespace CameraTools
 
 		private Vessel GetAITargetedVessel()
 		{
-			// Update fields
-			bdAiTargetField = GetAITargetField();
-			bdWmThreatField = GetThreatField();
-			bdWmUnderFireField = GetUnderFireField();
-			bdWmUnderAttackField = GetUnderAttackField();
-			bdWmMissileField = GetMissileField();
+			if (BDAIFieldsNeedUpdating)
+			{
+				// Update fields
+				bdAiTargetField = GetAITargetField();
+				bdWmThreatField = GetThreatField();
+				bdWmUnderFireField = GetUnderFireField();
+				bdWmUnderAttackField = GetUnderAttackField();
+				bdWmMissileField = GetMissileField();
+				BDAIFieldsNeedUpdating = false;
+			}
 
 			if (!hasBDAI || aiComponent == null || bdAiTargetField == null)
 			{
@@ -2722,16 +2718,23 @@ namespace CameraTools
 						cameraActivate();
 						return;
 					}
-					else if ((bool)bdCompetitionIsActiveField.GetValue(bdCompetitionInstance) && !(toolMode == ToolModes.DogfightCamera && dogfightTarget == null)) // Don't activate dogfight mode without a target once the competition is active.
+					else if ((bool)bdCompetitionIsActiveField.GetValue(bdCompetitionInstance))
 					{
-						Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is active.");
-						cameraActivate();
-						return;
+						if (!(toolMode == ToolModes.DogfightCamera && dogfightTarget == null)) // Don't activate dogfight mode without a target once the competition is active.
+						{
+							Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is active.");
+							cameraActivate();
+							return;
+						}
+						else // Try to acquire a valid dogfightTarget so we can re-enable the camera.
+						{
+							UpdateAIDogfightTarget();
+						}
 					}
 				}
 				catch (Exception e)
 				{
-					Debug.Log("[CameraTools]: Checking competition state of BDArmory failed: " + e.Message);
+					Debug.LogError("[CameraTools]: Checking competition state of BDArmory failed: " + e.Message);
 					bdCompetitionIsActiveField = null;
 					bdCompetitionStartingField = null;
 					bdCompetitionInstance = null;

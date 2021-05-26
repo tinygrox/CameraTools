@@ -13,6 +13,9 @@ namespace CameraTools
 		Vessel vessel;
 
 		bool playedBoom = false;
+		bool sleep = false; // For when the SoundManager freaks out about running out of virtual channels.
+		float startedSleepAt = 0f;
+		float sleepDuration = 0f;
 
 		void Awake()
 		{
@@ -71,14 +74,15 @@ namespace CameraTools
 			CamTools.OnResetCTools += OnResetCTools;
 		}
 
-
 		void FixedUpdate()
 		{
 			if (!vessel || !vessel.loaded || !vessel.isActiveAndEnabled)
 			{
 				return;
 			}
-			if (Time.timeScale > 0 && vessel.dynamicPressurekPa > 0)
+			if (sleep && Time.time - startedSleepAt < sleepDuration) return;
+			sleep = false;
+			if (!PauseMenu.isOpen && Time.timeScale > 0 && vessel.dynamicPressurekPa > 0)
 			{
 				float srfSpeed = (float)vessel.srfSpeed;
 				srfSpeed = Mathf.Min(srfSpeed, 550f);
@@ -125,6 +129,7 @@ namespace CameraTools
 				{
 					windAudioSource.Play();
 					// Debug.Log("[CameraTools]: vessel dynamic pressure: " + vessel.dynamicPressurekPa);
+					if (!windAudioSource.isPlaying) { SleepFor(1f); return; }
 				}
 				float pressureFactor = Mathf.Clamp01((float)vessel.dynamicPressurekPa / 50f);
 				float massFactor = Mathf.Clamp01(vessel.GetTotalMass() / 60f);
@@ -136,6 +141,7 @@ namespace CameraTools
 				if (!windHowlAudioSource.isPlaying)
 				{
 					windHowlAudioSource.Play();
+					if (!windHowlAudioSource.isPlaying) { SleepFor(1f); return; }
 				}
 				float pressureFactor2 = Mathf.Clamp01((float)vessel.dynamicPressurekPa / 20f);
 				float massFactor2 = Mathf.Clamp01(vessel.GetTotalMass() / 30f);
@@ -146,6 +152,7 @@ namespace CameraTools
 				if (!windTearAudioSource.isPlaying)
 				{
 					windTearAudioSource.Play();
+					if (!windTearAudioSource.isPlaying) { SleepFor(1f); return; }
 				}
 				float pressureFactor3 = Mathf.Clamp01((float)vessel.dynamicPressurekPa / 40f);
 				float massFactor3 = Mathf.Clamp01(vessel.GetTotalMass() / 10f);
@@ -187,6 +194,24 @@ namespace CameraTools
 		void OnResetCTools()
 		{
 			Destroy(this);
+		}
+
+		/// <summary>
+		/// Sleep for a bit to allow the SoundManager to recover from running out of channels.
+		/// </summary>
+		/// <param name="duration">The duration to sleep for.</param>
+		void SleepFor(float duration)
+		{
+			Debug.LogWarning($"[CameraTools]: Inhibiting wind audio for {duration}s due to technical difficulties.");
+			sleep = true;
+			startedSleepAt = Time.time;
+			sleepDuration = duration;
+			if (windAudioSource.isPlaying)
+				windAudioSource.Stop();
+			if (windHowlAudioSource.isPlaying)
+				windHowlAudioSource.Stop();
+			if (windTearAudioSource.isPlaying)
+				windTearAudioSource.Stop();
 		}
 	}
 }
