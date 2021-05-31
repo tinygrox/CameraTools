@@ -25,10 +25,11 @@ namespace CameraTools
 		[CTPersistantField] public ReferenceModes referenceMode = ReferenceModes.Surface;
 		Vector3 cameraUp = Vector3.up;
 		bool cameraToolActive = false;
-		private System.Random rng;
+		System.Random rng;
 		[CTPersistantField] public bool autoEnableForBDA = false;
-		private bool autoEnableOverriden = false;
-		private bool autoEnableOverrideWhileSpawning = false;
+		bool autoEnableOverriden = false;
+		bool autoEnableOverrideWhileSpawning = false;
+		bool cockpitView = false;
 		Type bdCompetitionType = null;
 		object bdCompetitionInstance = null;
 		FieldInfo bdCompetitionStartingField = null;
@@ -71,6 +72,10 @@ namespace CameraTools
 		float entryHeight = 20;
 		[CTPersistantField] public ToolModes toolMode = ToolModes.StationaryCamera;
 		[CTPersistantField] public bool randomMode = false;
+		[CTPersistantField] public float randomModeDogfightChance = 70f;
+		[CTPersistantField] public float randomModeStationaryChance = 20f;
+		[CTPersistantField] public float randomModePathingChance = 0f;
+		[CTPersistantField] public float randomModeIVAChance = 10f;
 		Rect windowRect = new Rect(0, 0, 0, 0);
 		bool gameUIToggle = true;
 		float incrButtonWidth = 26;
@@ -620,6 +625,15 @@ namespace CameraTools
 				if (DEBUG) { Debug.Log("[CameraTools]: Reverting during UpdateDogfightCamera"); }
 				RevertCamera();
 				return;
+			}
+
+			if (cockpitView)
+			{
+				if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA) // Already enabled, do nothing.
+				{ return; }
+				CameraManager.Instance.SetCameraIVA(); // Try to enable IVA camera.
+				if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA) // Success!
+				{ return; }
 			}
 
 			if (dogfightTarget)
@@ -1291,7 +1305,7 @@ namespace CameraTools
 			if (index < 0) return;
 			if (index >= availablePaths.Count) return;
 			availablePaths.RemoveAt(index);
-			selectedPathIndex = -1;
+			if (index <= selectedPathIndex) { --selectedPathIndex; }
 		}
 
 		void SelectPath(int index)
@@ -1603,6 +1617,7 @@ namespace CameraTools
 			{
 				CameraManager.Instance.SetCameraFlight();
 			}
+			cockpitView = false;
 
 			CheckForBDAI(v);
 			// reactivate camera if it was reverted
@@ -1631,20 +1646,29 @@ namespace CameraTools
 					else
 					{
 						var oldToolMode = toolMode;
-						var rand = rng.Next(5);
-						if (rand == 0)
+						var rand = rng.Next(100);
+						if (rand < randomModeDogfightChance)
+						{
+							toolMode = ToolModes.DogfightCamera;
+						}
+						else if (rand < randomModeDogfightChance + randomModeIVAChance)
+						{
+							toolMode = ToolModes.DogfightCamera;
+							var cockpits = vessel.FindPartModulesImplementing<ModuleCommand>();
+							if (cockpits.Any(c => c.part.protoModuleCrew.Count > 0))
+							{ cockpitView = true; }
+						}
+						else if (rand < randomModeDogfightChance + randomModeIVAChance + randomModeStationaryChance)
 						{
 							toolMode = ToolModes.StationaryCamera;
 							StartStationaryCamera();
 						}
-						else if (rand == 1)
-						{
-							RevertCamera(); // but temporaryRevert will remain true
-						}
 						else
 						{
-							toolMode = ToolModes.DogfightCamera;
+							toolMode = ToolModes.Pathing;
+							StartPathingCam(); // but temporaryRevert will remain true. FIXME figure out what temporaryRevert is meant for!
 						}
+
 						if (cameraToolActive && toolMode != oldToolMode)
 						{
 							// recover and change to new mode
@@ -2161,6 +2185,88 @@ namespace CameraTools
 
 			line += 1.25f;
 			randomMode = GUI.Toggle(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth, entryHeight), randomMode, "Random Mode");
+			if (randomMode)
+			{
+				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"Dogfight ({randomModeDogfightChance:F0}%)");
+				if (randomModeDogfightChance != (randomModeDogfightChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModeDogfightChance, 0f, 100f)))
+				{
+					var remainder = 100f - randomModeDogfightChance;
+					var total = randomModeIVAChance + randomModeStationaryChance + randomModePathingChance;
+					if (total > 0)
+					{
+						randomModeIVAChance = Mathf.Round(remainder * randomModeIVAChance / total);
+						randomModeStationaryChance = Mathf.Round(remainder * randomModeStationaryChance / total);
+						randomModePathingChance = Mathf.Round(remainder * randomModePathingChance / total);
+					}
+					else
+					{
+						randomModeIVAChance = Mathf.Round(remainder / 3f);
+						randomModeStationaryChance = Mathf.Round(remainder / 3f);
+						randomModePathingChance = Mathf.Round(remainder / 3f);
+					}
+					randomModeDogfightChance = 100f - randomModeIVAChance - randomModeStationaryChance - randomModePathingChance; // Any rounding errors go the to adjusted slider.
+				}
+
+				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"IVA ({randomModeIVAChance:F0}%)");
+				if (randomModeIVAChance != (randomModeIVAChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModeIVAChance, 0f, 100f)))
+				{
+					var remainder = 100f - randomModeIVAChance;
+					var total = randomModeDogfightChance + randomModeStationaryChance + randomModePathingChance;
+					if (total > 0)
+					{
+						randomModeDogfightChance = Mathf.Round(remainder * randomModeDogfightChance / total);
+						randomModeStationaryChance = Mathf.Round(remainder * randomModeStationaryChance / total);
+						randomModePathingChance = Mathf.Round(remainder * randomModePathingChance / total);
+					}
+					else
+					{
+						randomModeDogfightChance = Mathf.Round(remainder / 3f);
+						randomModeStationaryChance = Mathf.Round(remainder / 3f);
+						randomModePathingChance = Mathf.Round(remainder / 3f);
+					}
+					randomModeIVAChance = 100f - randomModeDogfightChance - randomModeStationaryChance - randomModePathingChance; // Any rounding errors go the to adjusted slider.
+				}
+
+				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"Stationary ({randomModeStationaryChance:F0}%)");
+				if (randomModeStationaryChance != (randomModeStationaryChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModeStationaryChance, 0f, 100f)))
+				{
+					var remainder = 100f - randomModeStationaryChance;
+					var total = randomModeDogfightChance + randomModeIVAChance + randomModePathingChance;
+					if (total > 0)
+					{
+						randomModeDogfightChance = Mathf.Round(remainder * randomModeDogfightChance / total);
+						randomModeIVAChance = Mathf.Round(remainder * randomModeIVAChance / total);
+						randomModePathingChance = Mathf.Round(remainder * randomModePathingChance / total);
+					}
+					else
+					{
+						randomModeDogfightChance = Mathf.Round(remainder / 3f);
+						randomModeIVAChance = Mathf.Round(remainder / 3f);
+						randomModePathingChance = Mathf.Round(remainder / 3f);
+					}
+					randomModeStationaryChance = 100f - randomModeDogfightChance - randomModeIVAChance - randomModePathingChance; // Any rounding errors go the to adjusted slider.
+				}
+
+				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"Pathing ({randomModePathingChance:F0}%)");
+				if (randomModePathingChance != (randomModePathingChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModePathingChance, 0f, 100f)))
+				{
+					var remainder = 100f - randomModePathingChance;
+					var total = randomModeDogfightChance + randomModeIVAChance + randomModeStationaryChance;
+					if (total > 0)
+					{
+						randomModeDogfightChance = Mathf.Round(remainder * randomModeDogfightChance / total);
+						randomModeIVAChance = Mathf.Round(remainder * randomModeIVAChance / total);
+						randomModeStationaryChance = Mathf.Round(remainder * randomModeStationaryChance / total);
+					}
+					else
+					{
+						randomModeDogfightChance = Mathf.Round(remainder / 3f);
+						randomModeIVAChance = Mathf.Round(remainder / 3f);
+						randomModeStationaryChance = Mathf.Round(remainder / 3f);
+					}
+					randomModePathingChance = 100f - randomModeDogfightChance - randomModeIVAChance - randomModeStationaryChance; // Any rounding errors go the to adjusted slider.
+				}
+			}
 
 			line += 1.25f;
 			enableKeypad = GUI.Toggle(new Rect(leftIndent, contentTop + (line * entryHeight), contentWidth, entryHeight), enableKeypad, "Keypad Control");
@@ -2922,6 +3028,7 @@ namespace CameraTools
 					}
 				);
 			}
+			if (availablePaths.Count > 0) { selectedPathIndex = 0; }
 			freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
 			zoomSpeedRaw = Mathf.Log10(keyZoomSpeed);
 			if (DEBUG) { Debug.Log("[CameraTools]: Verbose debugging enabled."); }
