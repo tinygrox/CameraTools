@@ -5,6 +5,7 @@ Bugfixes:
 Improvements:
  - Add sliders for configuring chances of 'random mode'.
  - Add IVA view to 'random mode'.
+ - Improve the positioning of the Stationary Camera when the target is close to the ground or about to crash.
 
 v1.15.4
 Bugfixes:

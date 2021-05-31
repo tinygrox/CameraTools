@@ -565,6 +565,7 @@ namespace CameraTools
 		#region Dogfight Camera
 		void StartDogfightCamera()
 		{
+			toolMode = ToolModes.DogfightCamera;
 			if (FlightGlobals.ActiveVessel == null)
 			{
 				Debug.Log("[CameraTools]: No active vessel.");
@@ -849,6 +850,7 @@ namespace CameraTools
 		#region Stationary Camera
 		void StartStationaryCamera()
 		{
+			toolMode = ToolModes.StationaryCamera;
 			if (FlightGlobals.ActiveVessel != null)
 			{
 				if (DEBUG)
@@ -864,6 +866,7 @@ namespace CameraTools
 				{
 					cameraUp = Vector3.up;
 				}
+				Vector3 rightAxis = -Vector3.Cross(vessel.srf_velocity, vessel.upAxis).normalized;
 
 				if (flightCamera.transform.parent != cameraParent.transform)
 				{
@@ -881,29 +884,17 @@ namespace CameraTools
 				if (randomMode)
 				{
 					camTarget = FlightGlobals.ActiveVessel.GetReferenceTransformPart();
-					hasTarget = true;
 				}
 				hasTarget = (camTarget != null) ? true : false;
 
-
-				Vector3 rightAxis = -Vector3.Cross(vessel.srf_velocity, vessel.upAxis).normalized;
-				//Vector3 upAxis = flightCamera.transform.up;
-
-
+				// Camera position.
 				if (autoFlybyPosition || randomMode)
 				{
 					setPresetOffset = false;
-					Vector3 velocity = vessel.srf_velocity;
-					if (referenceMode == ReferenceModes.Orbit) velocity = vessel.obt_velocity;
 
-					Vector3 clampedVelocity = Mathf.Clamp((float)vessel.srfSpeed, 0, maxRelV) * velocity.normalized;
-					float clampedSpeed = clampedVelocity.magnitude;
+					float clampedSpeed = Mathf.Clamp((float)vessel.srfSpeed, 0, maxRelV);
 					float sideDistance = Mathf.Clamp(20 + (clampedSpeed / 10), 20, 150);
 					float distanceAhead = Mathf.Clamp(4 * clampedSpeed, 30, 3500);
-
-					flightCamera.transform.rotation = Quaternion.LookRotation(vessel.transform.position - flightCamera.transform.position, cameraUp);
-
-
 
 					if (referenceMode == ReferenceModes.Surface && vessel.srfSpeed > 0)
 					{
@@ -918,7 +909,6 @@ namespace CameraTools
 						flightCamera.transform.position = vessel.transform.position + (distanceAhead * vessel.vesselTransform.up);
 					}
 
-
 					if (flightCamera.mode == FlightCamera.Modes.FREE || FlightCamera.GetAutoModeForVessel(vessel) == FlightCamera.Modes.FREE)
 					{
 						flightCamera.transform.position += (sideDistance * rightAxis) + (15 * cameraUp);
@@ -928,16 +918,42 @@ namespace CameraTools
 						flightCamera.transform.position += (sideDistance * FlightGlobals.getUpAxis()) + (15 * Vector3.up);
 					}
 
+					var cameraRadarAltitude = GetRadarAltitudeAtPos(flightCamera.transform.position);
+					if (vessel.radarAltitude > 0f && vessel.radarAltitude < -5d * vessel.verticalSpeed) // 5s to impact
+					{
+						flightCamera.transform.position += (35f - cameraRadarAltitude) * cameraUp;
+						cameraRadarAltitude = GetRadarAltitudeAtPos(flightCamera.transform.position);
+					}
 
+					// Correct for being below terrain/water (min of 30m AGL).
+					if (cameraRadarAltitude < 30f)
+					{
+						flightCamera.transform.position += (30f - cameraRadarAltitude) * cameraUp;
+					}
+					if (vessel.radarAltitude > 0f) // Make sure terrain isn't in the way (as long as the target is above ground).
+					{
+						int count = 0;
+						Ray ray;
+						RaycastHit hit;
+						do
+						{
+							ray = new Ray(flightCamera.transform.position, vessel.transform.position - flightCamera.transform.position);
+							if (Physics.Raycast(ray, out hit, (flightCamera.transform.position - vessel.transform.position).magnitude, 1 << 15)) // Just terrain.
+							{
+								flightCamera.transform.position += 50f * cameraUp; // Try 50m higher.
+							}
+							else
+							{
+								break;
+							} // We're clear.
+						} while (hit.collider != null && ++count < 20); // Max 1km higher.
+					}
 				}
 				else if (manualOffset)
 				{
 					setPresetOffset = false;
 					float sideDistance = manualOffsetRight;
 					float distanceAhead = manualOffsetForward;
-
-
-					flightCamera.transform.rotation = Quaternion.LookRotation(vessel.transform.position - flightCamera.transform.position, cameraUp);
 
 					if (referenceMode == ReferenceModes.Surface && vessel.srfSpeed > 4)
 					{
@@ -966,6 +982,9 @@ namespace CameraTools
 					flightCamera.transform.position = presetOffset;
 					//setPresetOffset = false;
 				}
+
+				// Camera rotation.
+				flightCamera.transform.rotation = Quaternion.LookRotation(vessel.transform.position - flightCamera.transform.position, cameraUp);
 
 				initialVelocity = vessel.srf_velocity;
 				initialOrbit = new Orbit();
@@ -1160,6 +1179,7 @@ namespace CameraTools
 		#region Pathing Camera
 		void StartPathingCam()
 		{
+			toolMode = ToolModes.Pathing;
 			if (selectedPathIndex < 0 || currentPath.keyframeCount <= 0)
 			{
 				if (DEBUG) Debug.Log("[CameraTools]: Unable to start pathing camera due to no valid paths.");
@@ -1634,14 +1654,11 @@ namespace CameraTools
 
 				if (randomMode)
 				{
-					var lowAlt = 50.0; // With the new terrain avoidance, being lower than 50m is better than 100m for being interesting.
-					if (vessel.verticalSpeed < -20)
-					{
-						lowAlt = vessel.verticalSpeed * -3; // 3s is plenty
-					}
+					var lowAlt = Math.Max(30d, -3d * vessel.verticalSpeed); // 30m or 3s to impact, whichever is higher.
 					if (vessel != null && vessel.radarAltitude < lowAlt)
 					{
-						RevertCamera();
+						StartStationaryCamera();
+						// RevertCamera();
 					}
 					else
 					{
@@ -1660,12 +1677,10 @@ namespace CameraTools
 						}
 						else if (rand < randomModeDogfightChance + randomModeIVAChance + randomModeStationaryChance)
 						{
-							toolMode = ToolModes.StationaryCamera;
 							StartStationaryCamera();
 						}
 						else
 						{
-							toolMode = ToolModes.Pathing;
 							StartPathingCam(); // but temporaryRevert will remain true. FIXME figure out what temporaryRevert is meant for!
 						}
 
@@ -2946,6 +2961,14 @@ namespace CameraTools
 			}
 
 			return null;
+		}
+
+		public static float GetRadarAltitudeAtPos(Vector3 position)
+		{
+			var geoCoords = FlightGlobals.currentMainBody.GetLatitudeAndLongitude(position);
+			var altitude = (float)FlightGlobals.currentMainBody.GetAltitude(position);
+			var terrainAltitude = (float)FlightGlobals.currentMainBody.TerrainAltitude(geoCoords.x, geoCoords.y);
+			return altitude - Mathf.Max(terrainAltitude, 0f);
 		}
 		#endregion
 
