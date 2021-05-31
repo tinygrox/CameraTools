@@ -2204,7 +2204,7 @@ namespace CameraTools
 						randomModeStationaryChance = Mathf.Round(remainder / 3f);
 						randomModePathingChance = Mathf.Round(remainder / 3f);
 					}
-					randomModeDogfightChance = 100f - randomModeIVAChance - randomModeStationaryChance - randomModePathingChance; // Any rounding errors go the to adjusted slider.
+					randomModeDogfightChance = 100f - randomModeIVAChance - randomModeStationaryChance - randomModePathingChance; // Any rounding errors go to the adjusted slider.
 				}
 
 				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"IVA ({randomModeIVAChance:F0}%)");
@@ -2224,7 +2224,7 @@ namespace CameraTools
 						randomModeStationaryChance = Mathf.Round(remainder / 3f);
 						randomModePathingChance = Mathf.Round(remainder / 3f);
 					}
-					randomModeIVAChance = 100f - randomModeDogfightChance - randomModeStationaryChance - randomModePathingChance; // Any rounding errors go the to adjusted slider.
+					randomModeIVAChance = 100f - randomModeDogfightChance - randomModeStationaryChance - randomModePathingChance; // Any rounding errors go to the adjusted slider.
 				}
 
 				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"Stationary ({randomModeStationaryChance:F0}%)");
@@ -2244,7 +2244,7 @@ namespace CameraTools
 						randomModeIVAChance = Mathf.Round(remainder / 3f);
 						randomModePathingChance = Mathf.Round(remainder / 3f);
 					}
-					randomModeStationaryChance = 100f - randomModeDogfightChance - randomModeIVAChance - randomModePathingChance; // Any rounding errors go the to adjusted slider.
+					randomModeStationaryChance = 100f - randomModeDogfightChance - randomModeIVAChance - randomModePathingChance; // Any rounding errors go to the adjusted slider.
 				}
 
 				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"Pathing ({randomModePathingChance:F0}%)");
@@ -2264,7 +2264,7 @@ namespace CameraTools
 						randomModeIVAChance = Mathf.Round(remainder / 3f);
 						randomModeStationaryChance = Mathf.Round(remainder / 3f);
 					}
-					randomModePathingChance = 100f - randomModeDogfightChance - randomModeIVAChance - randomModeStationaryChance; // Any rounding errors go the to adjusted slider.
+					randomModePathingChance = 100f - randomModeDogfightChance - randomModeIVAChance - randomModeStationaryChance; // Any rounding errors go to the adjusted slider.
 				}
 			}
 

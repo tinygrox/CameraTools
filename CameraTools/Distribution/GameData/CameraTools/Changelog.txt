@@ -1,7 +1,10 @@
 Bugfixes:
  - Try to reacquire a dogfight target if reverted due to a null dogfight target and Auto-Enable for BDArmory is enabled.
  - Limit the type of vessels atmospheric audio gets added to to avoid saturating KSP's SoundManager channels unnecessarily.
+ - Fix indexing bug in 'pathing mode' (note: the example path is still weird).
 Improvements:
+ - Add sliders for configuring chances of 'random mode'.
+ - Add IVA view to 'random mode'.
 
 v1.15.4
 Bugfixes:
