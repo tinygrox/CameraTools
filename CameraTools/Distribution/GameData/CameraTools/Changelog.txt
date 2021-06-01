@@ -4,8 +4,10 @@ Bugfixes:
  - Fix indexing bug in 'pathing mode' (note: the example path is still weird).
 Improvements:
  - Add sliders for configuring chances of 'random mode'.
- - Add IVA view to 'random mode'.
- - Improve the positioning of the Stationary Camera when the target is close to the ground or about to crash.
+ - Add IVA view to 'random mode' (if the vessel has a cockpit, otherwise it counts as dogfight mode).
+ - In 'random mode', use the stationary camera when switching to views of a target that is close to the ground or about to crash.
+ - Improve the positioning of the stationary camera when switching to views of a target that is close to the ground or about to crash.
+ - Recover better from something else stealing the camera parent.
 
 v1.15.4
 Bugfixes:

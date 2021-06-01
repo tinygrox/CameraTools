@@ -25,6 +25,7 @@ namespace CameraTools
 		[CTPersistantField] public ReferenceModes referenceMode = ReferenceModes.Surface;
 		Vector3 cameraUp = Vector3.up;
 		bool cameraToolActive = false;
+		bool cameraParentWasStolen = false;
 		System.Random rng;
 		[CTPersistantField] public bool autoEnableForBDA = false;
 		bool autoEnableOverriden = false;
@@ -322,7 +323,7 @@ namespace CameraTools
 			}
 			else if (mode == CameraManager.CameraMode.Flight)
 			{
-				if (wasActiveBeforeModeChange && !autoEnableOverriden)
+				if (wasActiveBeforeModeChange && !autoEnableOverriden && !autoEnableOverrideWhileSpawning)
 				{
 					Debug.Log("[CameraTools]: Camera mode changed to " + mode + ", reactivating " + toolMode + ".");
 					cameraToolActive = true;
@@ -437,6 +438,7 @@ namespace CameraTools
 					Debug.Log("[CameraTools]: " + message);
 					if (DEBUG) DebugLog(message);
 					cameraToolActive = false;
+					cameraParentWasStolen = true;
 					RevertCamera();
 				}
 			}
@@ -498,6 +500,7 @@ namespace CameraTools
 				{
 					flightCamera.SetTargetNone();
 					flightCamera.transform.parent = deathCam.transform;
+					cameraParentWasStolen = false;
 					flightCamera.DeactivateUpdate();
 					flightCamera.transform.localPosition = Vector3.zero;
 					flightCamera.transform.localRotation = Quaternion.identity;
@@ -541,7 +544,7 @@ namespace CameraTools
 		private void cameraActivate()
 		{
 			if (DEBUG) { Debug.Log("[CameraTools]: Activating camera."); DebugLog("Activating camera"); }
-			if (!cameraToolActive)
+			if (!cameraToolActive && !cameraParentWasStolen)
 			{
 				SaveOriginalCamera();
 			}
@@ -601,6 +604,7 @@ namespace CameraTools
 				cameraParent.transform.rotation = deathCam.transform.rotation;
 				flightCamera.SetTargetNone();
 				flightCamera.transform.parent = cameraParent.transform;
+				cameraParentWasStolen = false;
 				flightCamera.DeactivateUpdate();
 				cameraParent.transform.position = vessel.CoM; // Then adjust the flightCamera for the new parent.
 				flightCamera.transform.localPosition = cameraParent.transform.InverseTransformPoint(deathCam.transform.position);
@@ -874,6 +878,7 @@ namespace CameraTools
 					cameraParent.transform.rotation = deathCam.transform.rotation;
 					flightCamera.SetTargetNone();
 					flightCamera.transform.parent = cameraParent.transform;
+					cameraParentWasStolen = false;
 					flightCamera.DeactivateUpdate();
 					cameraParent.transform.position = vessel.CoM; // Then adjust the flightCamera for the new parent.
 					flightCamera.transform.localPosition = cameraParent.transform.InverseTransformPoint(deathCam.transform.position);
@@ -919,7 +924,7 @@ namespace CameraTools
 					}
 
 					var cameraRadarAltitude = GetRadarAltitudeAtPos(flightCamera.transform.position);
-					if (vessel.radarAltitude > 0f && vessel.radarAltitude < -5d * vessel.verticalSpeed) // 5s to impact
+					if (vessel.radarAltitude > 0f && vessel.radarAltitude < -3d * vessel.verticalSpeed) // 3s to impact
 					{
 						flightCamera.transform.position += (35f - cameraRadarAltitude) * cameraUp;
 						cameraRadarAltitude = GetRadarAltitudeAtPos(flightCamera.transform.position);
@@ -1204,6 +1209,7 @@ namespace CameraTools
 			cameraParent.transform.rotation = vessel.transform.rotation;
 			flightCamera.SetTargetNone();
 			flightCamera.transform.parent = cameraParent.transform;
+			cameraParentWasStolen = false;
 			flightCamera.DeactivateUpdate();
 
 			cameraToolActive = true;
@@ -1730,6 +1736,7 @@ namespace CameraTools
 				flightCamera.transform.parent = origParent;
 				flightCamera.transform.position = origPosition;
 				flightCamera.transform.rotation = origRotation;
+				cameraParentWasStolen = false;
 			}
 			if (HighLogic.LoadedSceneIsFlight)
 				flightCamera.mainCamera.nearClipPlane = origNearClip;
@@ -2586,6 +2593,7 @@ namespace CameraTools
 				deathCamVelocity = (vessel.radarAltitude > 10d ? vessel.srf_velocity : Vector3d.zero) / 2f; // Track the explosion a bit.
 				flightCamera.SetTargetNone();
 				flightCamera.transform.parent = deathCam.transform;
+				cameraParentWasStolen = false;
 				flightCamera.DeactivateUpdate();
 				flightCamera.transform.localPosition = Vector3.zero;
 				flightCamera.transform.localRotation = Quaternion.identity;
