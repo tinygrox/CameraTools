@@ -1,3 +1,4 @@
+v1.16.0
 Bugfixes:
  - Try to reacquire a dogfight target if reverted due to a null dogfight target and Auto-Enable for BDArmory is enabled.
  - Limit the type of vessels atmospheric audio gets added to to avoid saturating KSP's SoundManager channels unnecessarily.
