@@ -1,3 +1,8 @@
+v1.16.1
+Bugfixes:
+ - Fix NRE when vessel is destroyed before switching to IVA mode.
+ - Don't immediately re-enter IVA mode if manually switched out of it.
+
 v1.16.0
 Bugfixes:
  - Try to reacquire a dogfight target if reverted due to a null dogfight target and Auto-Enable for BDArmory is enabled.

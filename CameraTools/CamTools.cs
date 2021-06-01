@@ -326,6 +326,7 @@ namespace CameraTools
 				if (wasActiveBeforeModeChange && !autoEnableOverriden && !autoEnableOverrideWhileSpawning)
 				{
 					Debug.Log("[CameraTools]: Camera mode changed to " + mode + ", reactivating " + toolMode + ".");
+					cockpitView = false; // Don't go back into cockpit view in case it was triggered by the user.
 					cameraToolActive = true;
 					RevertCamera();
 					flightCamera.transform.position = deathCam.transform.position;
@@ -636,7 +637,11 @@ namespace CameraTools
 			{
 				if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA) // Already enabled, do nothing.
 				{ return; }
-				CameraManager.Instance.SetCameraIVA(); // Try to enable IVA camera.
+				// Check that there's still a kerbal to switch to.
+				if (vessel.FindPartModulesImplementing<ModuleCommand>().Any(cockpit => cockpit.part.protoModuleCrew.Count > 0))
+					CameraManager.Instance.SetCameraIVA(); // Try to enable IVA camera.
+				else
+					cockpitView = false;
 				if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA) // Success!
 				{ return; }
 			}
