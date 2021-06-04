@@ -16,6 +16,7 @@ namespace CameraTools
 
 		GameObject cameraParent;
 		Vessel vessel;
+		List<ModuleEngines> engines = new List<ModuleEngines>();
 		Vector3 origPosition;
 		Quaternion origRotation;
 		Transform origParent;
@@ -446,7 +447,7 @@ namespace CameraTools
 
 			if (hasDied && cameraToolActive) return; // Do nothing until we have an active vessel.
 
-			if (FlightGlobals.ActiveVessel != null && (vessel == null || vessel != FlightGlobals.ActiveVessel))
+			if (vessel == null || vessel != FlightGlobals.ActiveVessel)
 			{
 				vessel = FlightGlobals.ActiveVessel;
 			}
@@ -579,7 +580,7 @@ namespace CameraTools
 
 			if (!dogfightTarget)
 			{
-				if (randomMode && rng.Next(3) == 0)
+				if (false && randomMode && rng.Next(3) == 0)
 				{
 					dogfightVelocityChase = false; // sometimes throw in a non chase angle
 				}
@@ -820,8 +821,8 @@ namespace CameraTools
 			if (hasBDAI && useBDAutoTarget)
 			{
 				// Check for missile
-				if (Planetarium.GetUniversalTime() - targetUpdateTime > 0.1f)
-					bdWmMissileField = GetMissileField();
+				if (Planetarium.GetUniversalTime() - targetUpdateTime > 0.1f && BDAIFieldsNeedUpdating)
+				{ bdWmMissileField = GetMissileField(); }
 
 				// don't update targets too quickly, unless we're under attack by a missile
 				if ((bdWmMissileField != null) || (Planetarium.GetUniversalTime() - targetUpdateTime > 3))
@@ -836,11 +837,12 @@ namespace CameraTools
 			}
 		}
 
+		Vessel newAITarget = null;
 		void UpdateAIDogfightTarget()
 		{
 			if (hasBDAI && hasBDWM && useBDAutoTarget)
 			{
-				Vessel newAITarget = GetAITargetedVessel();
+				newAITarget = GetAITargetedVessel();
 				if (newAITarget)
 				{
 					if (DEBUG && dogfightTarget != newAITarget)
@@ -1535,10 +1537,12 @@ namespace CameraTools
 		float GetTotalThrust()
 		{
 			float total = 0;
-			foreach (var engine in vessel.FindPartModulesImplementing<ModuleEngines>())
-			{
-				total += engine.finalThrust;
-			}
+			using (var engine = engines.GetEnumerator())
+				while (engine.MoveNext())
+				{
+					if (engine.Current == null) continue;
+					total += engine.Current.finalThrust;
+				}
 			return total;
 		}
 		#endregion
@@ -1704,6 +1708,7 @@ namespace CameraTools
 					}
 				}
 
+				engines = vessel.FindPartModulesImplementing<ModuleEngines>();
 				vesselSwitched = true;
 			}
 		}
