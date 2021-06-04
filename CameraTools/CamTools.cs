@@ -17,6 +17,8 @@ namespace CameraTools
 		GameObject cameraParent;
 		Vessel vessel;
 		List<ModuleEngines> engines = new List<ModuleEngines>();
+		List<ModuleCommand> cockpits = new List<ModuleCommand>();
+		public static HashSet<VesselType> ignoreVesselTypesForAudio = new HashSet<VesselType> { VesselType.Debris, VesselType.SpaceObject, VesselType.Unknown, VesselType.Flag }; // Ignore some vessel types to avoid using up all the SoundManager's channels.
 		Vector3 origPosition;
 		Quaternion origRotation;
 		Transform origParent;
@@ -380,6 +382,10 @@ namespace CameraTools
 				{
 					autoEnableOverriden = false;
 					temporaryRevert = true;
+					if (!cameraToolActive && randomMode)
+					{
+						ChooseRandomMode();
+					}
 					cameraActivate();
 				}
 			}
@@ -639,7 +645,7 @@ namespace CameraTools
 				if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA) // Already enabled, do nothing.
 				{ return; }
 				// Check that there's still a kerbal to switch to.
-				if (vessel.FindPartModulesImplementing<ModuleCommand>().Any(cockpit => cockpit.part.protoModuleCrew.Count > 0))
+				if (cockpits.Any(cockpit => cockpit.part.protoModuleCrew.Count > 0))
 					CameraManager.Instance.SetCameraIVA(); // Try to enable IVA camera.
 				else
 					cockpitView = false;
@@ -1555,14 +1561,13 @@ namespace CameraTools
 				return;
 			}
 
-			var ignoreVesselTypes = new HashSet<VesselType> { VesselType.Debris, VesselType.SpaceObject, VesselType.Unknown, VesselType.Flag }; // Ignore some vessel types to avoid using up all the SoundManager's channels.
 			foreach (var vessel in FlightGlobals.Vessels)
 			{
 				if (!vessel || !vessel.loaded || vessel.packed || (!includeActiveVessel && vessel.isActiveVessel))
 				{
 					continue;
 				}
-				if (ignoreVesselTypes.Contains(vessel.vesselType)) continue;
+				if (ignoreVesselTypesForAudio.Contains(vessel.vesselType)) continue;
 
 				vessel.gameObject.AddComponent<CTAtmosphericAudioController>();
 			}
@@ -1600,7 +1605,8 @@ namespace CameraTools
 				audioSources[i].bypassEffects = false;
 				audioSources[i].spatialBlend = 1;
 
-				if (audioSources[i].gameObject.GetComponentInParent<Part>())
+				var part = audioSources[i].gameObject.GetComponentInParent<Part>();
+				if (part != null && part.vessel != null && !ignoreVesselTypesForAudio.Contains(part.vessel.vesselType))
 				{
 					//Debug.Log("[CameraTools]: Added CTPartAudioController to :" + audioSources[i].name);
 					CTPartAudioController pa = audioSources[i].gameObject.AddComponent<CTPartAudioController>();
@@ -1653,6 +1659,8 @@ namespace CameraTools
 				CameraManager.Instance.SetCameraFlight();
 			}
 			cockpitView = false;
+			cockpits.Clear();
+			engines.Clear();
 
 			CheckForBDAI(v);
 			// reactivate camera if it was reverted
@@ -1678,25 +1686,17 @@ namespace CameraTools
 					else
 					{
 						var oldToolMode = toolMode;
-						var rand = rng.Next(100);
-						if (rand < randomModeDogfightChance)
+						ChooseRandomMode();
+						switch (toolMode)
 						{
-							toolMode = ToolModes.DogfightCamera;
-						}
-						else if (rand < randomModeDogfightChance + randomModeIVAChance)
-						{
-							toolMode = ToolModes.DogfightCamera;
-							var cockpits = vessel.FindPartModulesImplementing<ModuleCommand>();
-							if (cockpits.Any(c => c.part.protoModuleCrew.Count > 0))
-							{ cockpitView = true; }
-						}
-						else if (rand < randomModeDogfightChance + randomModeIVAChance + randomModeStationaryChance)
-						{
-							StartStationaryCamera();
-						}
-						else
-						{
-							StartPathingCam(); // but temporaryRevert will remain true. FIXME figure out what temporaryRevert is meant for!
+							case ToolModes.DogfightCamera:
+								break;
+							case ToolModes.StationaryCamera:
+								StartStationaryCamera();
+								break;
+							case ToolModes.Pathing:
+								StartPathingCam(); // but temporaryRevert will remain true. FIXME figure out what temporaryRevert is meant for!
+								break;
 						}
 
 						if (cameraToolActive && toolMode != oldToolMode)
@@ -1713,6 +1713,31 @@ namespace CameraTools
 			}
 		}
 
+		void ChooseRandomMode()
+		{
+			cockpits.Clear();
+			var rand = rng.Next(100);
+			if (rand < randomModeDogfightChance)
+			{
+				toolMode = ToolModes.DogfightCamera;
+			}
+			else if (rand < randomModeDogfightChance + randomModeIVAChance)
+			{
+				toolMode = ToolModes.DogfightCamera;
+				cockpits = vessel.FindPartModulesImplementing<ModuleCommand>();
+				if (cockpits.Any(c => c.part.protoModuleCrew.Count > 0))
+				{ cockpitView = true; }
+			}
+			else if (rand < randomModeDogfightChance + randomModeIVAChance + randomModeStationaryChance)
+			{
+				toolMode = ToolModes.StationaryCamera;
+			}
+			else
+			{
+				toolMode = ToolModes.Pathing;
+			}
+		}
+
 		public void RevertCamera()
 		{
 			if (DEBUG)
@@ -1722,6 +1747,11 @@ namespace CameraTools
 				DebugLog(message);
 			}
 			posCounter = 0;
+			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight)
+			{
+				CameraManager.Instance.SetCameraFlight();
+				cameraToolActive = true;
+			}
 
 			if (cameraToolActive)
 			{
