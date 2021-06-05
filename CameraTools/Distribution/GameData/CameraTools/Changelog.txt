@@ -1,3 +1,9 @@
+v1.16.2
+Bugfixes:
+ - Respect random mode when manually activating the camera.
+ - Exit IVA mode more reliably to avoid broken flickering camera.
+ - Performance optimisations to avoid GC allocations.
+
 v1.16.1
 Bugfixes:
  - Fix NRE when vessel is destroyed before switching to IVA mode.
