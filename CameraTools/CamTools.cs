@@ -76,10 +76,10 @@ namespace CameraTools
 		float entryHeight = 20;
 		[CTPersistantField] public ToolModes toolMode = ToolModes.StationaryCamera;
 		[CTPersistantField] public bool randomMode = false;
-		[CTPersistantField] public float randomModeDogfightChance = 70f;
+		[CTPersistantField] public float randomModeDogfightChance = 75f;
+		[CTPersistantField] public float randomModeIVAChance = 5f;
 		[CTPersistantField] public float randomModeStationaryChance = 20f;
 		[CTPersistantField] public float randomModePathingChance = 0f;
-		[CTPersistantField] public float randomModeIVAChance = 10f;
 		Rect windowRect = new Rect(0, 0, 0, 0);
 		bool gameUIToggle = true;
 		float incrButtonWidth = 26;
