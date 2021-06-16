@@ -1,3 +1,7 @@
+Bugfixes:
+ - Fix potential NRE when enabling IVA mode.
+ - Don't add atmospheric controllers to objects that already have one.
+
 v1.16.2
 Bugfixes:
  - Respect random mode when manually activating the camera.
