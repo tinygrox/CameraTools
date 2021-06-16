@@ -645,7 +645,7 @@ namespace CameraTools
 				if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA) // Already enabled, do nothing.
 				{ return; }
 				// Check that there's still a kerbal to switch to.
-				if (cockpits.Any(cockpit => cockpit.part.protoModuleCrew.Count > 0))
+				if (cockpits.Any(cockpit => cockpit != null && cockpit.part != null && cockpit.part.protoModuleCrew.Count > 0))
 					CameraManager.Instance.SetCameraIVA(); // Try to enable IVA camera.
 				else
 					cockpitView = false;
@@ -1569,7 +1569,8 @@ namespace CameraTools
 				}
 				if (ignoreVesselTypesForAudio.Contains(vessel.vesselType)) continue;
 
-				vessel.gameObject.AddComponent<CTAtmosphericAudioController>();
+				if (vessel.gameObject.GetComponent<CTAtmosphericAudioController>() == null)
+				{ vessel.gameObject.AddComponent<CTAtmosphericAudioController>(); }
 			}
 		}
 
