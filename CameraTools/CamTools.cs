@@ -646,7 +646,17 @@ namespace CameraTools
 				{ return; }
 				// Check that there's still a kerbal to switch to.
 				if (cockpits.Any(cockpit => cockpit != null && cockpit.part != null && cockpit.part.protoModuleCrew.Count > 0))
-					CameraManager.Instance.SetCameraIVA(); // Try to enable IVA camera.
+				{
+					try
+					{
+						CameraManager.Instance.SetCameraIVA(); // Try to enable IVA camera.
+					}
+					catch (Exception e)
+					{
+						Debug.LogError($"[CameraTools.CamTools]: Exception thrown trying to set IVA camera mode, aborting. {e.Message}");
+						cockpitView = false;
+					}
+				}
 				else
 					cockpitView = false;
 				if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA) // Success!
