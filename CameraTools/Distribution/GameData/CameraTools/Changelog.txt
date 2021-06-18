@@ -1,5 +1,7 @@
+v1.16.3
 Bugfixes:
  - Fix potential NRE when enabling IVA mode.
+ - Abort trying to enter IVA mode if it throws an exception.
  - Don't add atmospheric controllers to objects that already have one.
 
 v1.16.2
