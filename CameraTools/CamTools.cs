@@ -2509,6 +2509,7 @@ namespace CameraTools
 				{
 					SelectPath(i);
 					selected = true;
+					if (cameraToolActive && currentPath.keyframeCount>0) PlayPathingCam();
 				}
 				if (GUI.Button(new Rect(scrollRectSize - 80, i * entryHeight, 60, entryHeight), "Delete"))
 				{
