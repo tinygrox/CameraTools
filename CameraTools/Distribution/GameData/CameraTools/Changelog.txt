@@ -1,3 +1,14 @@
+v1.16.5
+Bugfixes:
+ - Only activate the camera when changing modes if it was already active.
+ - Don't automatically start playing a path when adjusting it or creating a new one and stop it if keyframes or the path is deleted.
+ - Start playing a path when it's loaded if camera tools is active.
+ - Adjust ordering of stationary path updates to avoid jitter.
+Improvements:
+ - Automatically disable TimeControl's camera zoom fix as it breaks CameraTools when slow-mo is enabled (sorry @ntwest).
+ - Switch stationary and pathing cameras to run in Update instead of FixedUpdate as they aren't sensitive to physics updates.
+ - Switch pathing camera to use unscaled time so that it works while paused.
+
 v1.16.4
  - Recompiled with KSP 1.12 assemblies.
 
