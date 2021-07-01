@@ -272,6 +272,7 @@ namespace CameraTools
 			deathCam = new GameObject("DeathCam");
 
 			CheckForBDA();
+			DisableTimeControlsCameraZoomFix(); // Time Control's camera zoom fix breaks CameraTools.
 			if (FlightGlobals.ActiveVessel != null)
 			{
 				cameraParent.transform.position = FlightGlobals.ActiveVessel.transform.position;
@@ -2141,7 +2142,7 @@ namespace CameraTools
 				{ CreateNewPath(); }
 				if (GUI.Button(new Rect(leftIndent + (contentWidth / 2), contentTop + (line * entryHeight), contentWidth / 2, entryHeight), "Delete Path"))
 				{ DeletePath(selectedPathIndex); }
-				line+=0.25f;
+				line += 0.25f;
 
 				if (selectedPathIndex >= 0)
 				{
@@ -2341,7 +2342,7 @@ namespace CameraTools
 				}
 			}
 			line++;
-			
+
 			Rect saveRect = new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight);
 			if (GUI.Button(saveRect, "Save"))
 			{ DisableGui(); }
@@ -2778,6 +2779,38 @@ namespace CameraTools
 						}
 						if (foundCount == 3)
 							return;
+					}
+				}
+			}
+		}
+
+		private void DisableTimeControlsCameraZoomFix()
+		{
+			foreach (var assy in AssemblyLoader.loadedAssemblies)
+			{
+				if (assy.assembly.FullName.Contains("TimeControl"))
+				{
+					foreach (var type in assy.assembly.GetTypes())
+					{
+						if (type == null) continue;
+						if (type.Name == "GlobalSettings")
+						{
+							var globalSettingsInstance = FindObjectOfType(type);
+							if (globalSettingsInstance != null)
+							{
+								foreach (var propertyInfo in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+								{
+									if (propertyInfo != null && propertyInfo.Name == "CameraZoomFix")
+									{
+										if ((bool)propertyInfo.GetValue(globalSettingsInstance))
+										{
+											Debug.LogWarning("[CameraTools]: Setting CameraZoomFix variable in TimeControl.GlobalSettings to false as it breaks CameraTools when running in slow-mo.");
+											propertyInfo.SetValue(globalSettingsInstance, false);
+										}
+									}
+								}
+							}
+						}
 					}
 				}
 			}
