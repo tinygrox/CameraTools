@@ -227,7 +227,7 @@ namespace CameraTools
 		{
 			get
 			{
-				return Time.time - pathStartTime;
+				return Time.unscaledTime - pathStartTime;
 			}
 		}
 		Vector2 keysScrollPos;
@@ -352,7 +352,9 @@ namespace CameraTools
 					case ToolModes.DogfightCamera:
 						dogfightLastTargetPosition += floatingKrakenAdjustment;
 						break;
-						// FIXME Add in other tool mode corrections.
+					case ToolModes.StationaryCamera:
+						lastTargetPosition += floatingKrakenAdjustment;
+						break;
 				}
 				if (DEBUG && TimeWarp.WarpMode == TimeWarp.Modes.LOW && FloatingOrigin.Offset.sqrMagnitude > 10)
 				{
@@ -430,6 +432,21 @@ namespace CameraTools
 
 				waitingForPosition = false;
 			}
+
+			if (cameraToolActive)
+			{
+				switch (toolMode)
+				{
+					case ToolModes.StationaryCamera:
+						UpdateStationaryCamera();
+						break;
+					case ToolModes.Pathing:
+						UpdatePathingCam();
+						break;
+					default: // Other modes are handled in FixedUpdate due to relying on interpolation of positions updated in the physics update.
+						break;
+				}
+			}
 		}
 
 		void FixedUpdate()
@@ -466,9 +483,6 @@ namespace CameraTools
 			{
 				switch (toolMode)
 				{
-					case ToolModes.StationaryCamera:
-						UpdateStationaryCamera();
-						break;
 					case ToolModes.DogfightCamera:
 						UpdateDogfightCamera();
 						if (dogfightTarget && dogfightTarget.isActiveVessel)
@@ -481,10 +495,7 @@ namespace CameraTools
 							}
 						}
 						break;
-					case ToolModes.Pathing:
-						UpdatePathingCam();
-						break;
-					default:
+					default: // Other modes are handled in Update due to not relying on interpolation of positions updated in the physics update.
 						break;
 				}
 			}
@@ -529,7 +540,7 @@ namespace CameraTools
 						break;
 				}
 			}
-			if (cameraToolActive && vesselSwitched) // We perform this here instead of waiting for the next frame to avoid a flicker of the camera being switched.
+			if (cameraToolActive && vesselSwitched) // We perform this here instead of waiting for the next frame to avoid a flicker of the camera being switched during a FixedUpdate.
 			{
 				vesselSwitched = false;
 				switch (toolMode)
@@ -537,13 +548,6 @@ namespace CameraTools
 					case ToolModes.DogfightCamera:
 						UpdateAIDogfightTarget();
 						StartDogfightCamera();
-						break;
-					case ToolModes.StationaryCamera:
-						StartStationaryCamera();
-						break;
-					case ToolModes.Pathing:
-						StartPathingCam();
-						PlayPathingCam();
 						break;
 				}
 			}
@@ -1051,6 +1055,35 @@ namespace CameraTools
 			}
 			if (flightCamera.Target != null) flightCamera.SetTargetNone(); //dont go to next vessel if vessel is destroyed
 
+			// Set camera position before rotation to avoid jitter.
+			if (vessel != null)
+			{
+				cameraParent.transform.position = manualPosition + vessel.CoM;
+
+				if (referenceMode == ReferenceModes.Surface)
+				{
+					flightCamera.transform.position -= TimeWarp.deltaTime * Mathf.Clamp((float)vessel.srf_velocity.magnitude, 0, maxRelV) * vessel.srf_velocity.normalized;
+				}
+				else if (referenceMode == ReferenceModes.Orbit)
+				{
+					flightCamera.transform.position -= TimeWarp.deltaTime * Mathf.Clamp((float)vessel.obt_velocity.magnitude, 0, maxRelV) * vessel.obt_velocity.normalized;
+				}
+				else if (referenceMode == ReferenceModes.InitialVelocity)
+				{
+					Vector3 camVelocity = Vector3.zero;
+					if (useOrbital && initialOrbit != null)
+					{
+						camVelocity = (initialOrbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy - vessel.GetObtVelocity());
+					}
+					else
+					{
+						camVelocity = (initialVelocity - vessel.srf_velocity);
+					}
+					flightCamera.transform.position += camVelocity * TimeWarp.deltaTime;
+				}
+			}
+
+			// Set camera rotation.
 			if (camTarget != null)
 			{
 				Vector3 lookPosition = camTarget.transform.position;
@@ -1065,33 +1098,6 @@ namespace CameraTools
 			else if (hasTarget)
 			{
 				flightCamera.transform.rotation = Quaternion.LookRotation(lastTargetPosition - flightCamera.transform.position, cameraUp);
-			}
-
-			if (vessel != null)
-			{
-				cameraParent.transform.position = manualPosition + vessel.CoM;
-
-				if (referenceMode == ReferenceModes.Surface)
-				{
-					flightCamera.transform.position -= TimeWarp.fixedDeltaTime * Mathf.Clamp((float)vessel.srf_velocity.magnitude, 0, maxRelV) * vessel.srf_velocity.normalized;
-				}
-				else if (referenceMode == ReferenceModes.Orbit)
-				{
-					flightCamera.transform.position -= TimeWarp.fixedDeltaTime * Mathf.Clamp((float)vessel.obt_velocity.magnitude, 0, maxRelV) * vessel.obt_velocity.normalized;
-				}
-				else if (referenceMode == ReferenceModes.InitialVelocity)
-				{
-					Vector3 camVelocity = Vector3.zero;
-					if (useOrbital && initialOrbit != null)
-					{
-						camVelocity = (initialOrbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy - vessel.GetObtVelocity());
-					}
-					else
-					{
-						camVelocity = (initialVelocity - vessel.srf_velocity);
-					}
-					flightCamera.transform.position += camVelocity * TimeWarp.fixedDeltaTime;
-				}
 			}
 
 			//mouse panning, moving
@@ -1347,6 +1353,7 @@ namespace CameraTools
 			showKeyframeEditor = false;
 			availablePaths.Add(new CameraPath());
 			selectedPathIndex = availablePaths.Count - 1;
+			if (isPlayingPath) StopPlayingPath();
 		}
 
 		void DeletePath(int index)
@@ -1355,6 +1362,7 @@ namespace CameraTools
 			if (index >= availablePaths.Count) return;
 			availablePaths.RemoveAt(index);
 			if (index <= selectedPathIndex) { --selectedPathIndex; }
+			if (isPlayingPath) StopPlayingPath();
 		}
 
 		void SelectPath(int index)
@@ -1391,6 +1399,10 @@ namespace CameraTools
 			{
 				SelectKeyframe(Mathf.Clamp(currentKeyframeIndex, 0, currentPath.keyframeCount - 1));
 			}
+			else
+			{
+				if (isPlayingPath) StopPlayingPath();
+			}
 		}
 
 		void UpdateCurrentValues()
@@ -1408,11 +1420,6 @@ namespace CameraTools
 
 		void CreateNewKeyframe()
 		{
-			if (!cameraToolActive)
-			{
-				StartPathingCam();
-			}
-
 			showPathSelectorWindow = false;
 
 			float time = currentPath.keyframeCount > 0 ? currentPath.GetKeyframe(currentPath.keyframeCount - 1).time + 1 : 0;
@@ -1472,7 +1479,7 @@ namespace CameraTools
 			zoomExp = firstFrame.zoom;
 
 			isPlayingPath = true;
-			pathStartTime = Time.time;
+			pathStartTime = Time.unscaledTime;
 		}
 
 		void StopPlayingPath()
