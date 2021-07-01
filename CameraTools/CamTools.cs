@@ -1925,12 +1925,12 @@ namespace CameraTools
 			if (GUI.Button(new Rect(leftIndent, contentTop + (line * entryHeight), 25, entryHeight - 2), "<"))
 			{
 				CycleToolMode(false);
-				cameraActivate();
+				if (cameraToolActive) cameraActivate();
 			}
 			if (GUI.Button(new Rect(leftIndent + 25 + 4, contentTop + (line * entryHeight), 25, entryHeight - 2), ">"))
 			{
 				CycleToolMode(true);
-				cameraActivate();
+				if (cameraToolActive) cameraActivate();
 			}
 			line++;
 			line++;
