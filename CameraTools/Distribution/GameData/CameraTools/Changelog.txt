@@ -1,3 +1,11 @@
+v1.17.0
+Improvements:
+ - Add keybinding options for free move keys.
+ - Rework stationary camera to actually make the camera stationary when below maxRelV.
+ - Option to save the previously used rotation in stationary camera mode when no target is selected.
+ - Add option of cubic spline interpolation to pathing mode positions based on https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Interpolation_on_an_arbitrary_interval.
+ - Add option of Slerp and cubic spline interpolation to pathing mode rotations.
+
 v1.16.5
 Bugfixes:
  - Only activate the camera when changing modes if it was already active.

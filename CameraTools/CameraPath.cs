@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace CameraTools
@@ -20,11 +21,13 @@ namespace CameraTools
 			}
 		}
 		public List<Vector3> points;
+		public List<PositionInterpolationType> positionInterpolationTypes;
 		public List<Quaternion> rotations;
+		public List<RotationInterpolationType> rotationInterpolationTypes;
 		public List<float> times;
 		public List<float> zooms;
 
-		public float lerpRate = 0.3f;
+		// public float lerpRate = 0.3f;
 		public float timeScale = 1;
 
 		Vector3Animation pointCurve;
@@ -38,6 +41,8 @@ namespace CameraTools
 			rotations = new List<Quaternion>();
 			times = new List<float>();
 			zooms = new List<float>();
+			positionInterpolationTypes = new List<PositionInterpolationType>();
+			rotationInterpolationTypes = new List<RotationInterpolationType>();
 		}
 
 		public static CameraPath Load(ConfigNode node)
@@ -46,11 +51,15 @@ namespace CameraTools
 
 			newPath.pathName = node.GetValue("pathName");
 			newPath.points = ParseVectorList(node.GetValue("points"));
+			newPath.positionInterpolationTypes = ParseEnumTypeList<PositionInterpolationType>(node.GetValue("positionInterpolationTypes"));
 			newPath.rotations = ParseQuaternionList(node.GetValue("rotations"));
+			newPath.rotationInterpolationTypes = ParseEnumTypeList<RotationInterpolationType>(node.GetValue("rotationInterpolationTypes"));
 			newPath.times = ParseFloatList(node.GetValue("times"));
 			newPath.zooms = ParseFloatList(node.GetValue("zooms"));
-			newPath.lerpRate = float.Parse(node.GetValue("lerpRate"));
+			// newPath.lerpRate = float.Parse(node.GetValue("lerpRate"));
 			newPath.timeScale = float.Parse(node.GetValue("timeScale"));
+			while (newPath.positionInterpolationTypes.Count < newPath.points.Count) newPath.positionInterpolationTypes.Add(PositionInterpolationType.CubicSpline); // Fill the interpolation types with CubicSpline if it's lacking.
+			while (newPath.rotationInterpolationTypes.Count < newPath.points.Count) newPath.rotationInterpolationTypes.Add(RotationInterpolationType.Slerp); // Fill the interpolation types with Slerp if it's lacking.
 			newPath.Refresh();
 
 			return newPath;
@@ -62,41 +71,33 @@ namespace CameraTools
 			ConfigNode pathNode = node.AddNode("CAMERAPATH");
 			pathNode.AddValue("pathName", pathName);
 			pathNode.AddValue("points", WriteVectorList(points));
+			pathNode.AddValue("positionInterpolationTypes", WriteEnumTypeList(positionInterpolationTypes));
 			pathNode.AddValue("rotations", WriteQuaternionList(rotations));
+			pathNode.AddValue("rotationInterpolationTypes", WriteEnumTypeList(rotationInterpolationTypes));
 			pathNode.AddValue("times", WriteFloatList(times));
 			pathNode.AddValue("zooms", WriteFloatList(zooms));
-			pathNode.AddValue("lerpRate", lerpRate);
+			// pathNode.AddValue("lerpRate", lerpRate);
 			pathNode.AddValue("timeScale", timeScale);
 		}
 
 		public static string WriteVectorList(List<Vector3> list)
 		{
-			string output = string.Empty;
-			foreach (var val in list)
-			{
-				output += ConfigNode.WriteVector(val) + ";";
-			}
-			return output;
+			return string.Join(";", list.Select(val => ConfigNode.WriteVector(val)));
 		}
 
 		public static string WriteQuaternionList(List<Quaternion> list)
 		{
-			string output = string.Empty;
-			foreach (var val in list)
-			{
-				output += ConfigNode.WriteQuaternion(val) + ";";
-			}
-			return output;
+			return string.Join(";", list.Select(val => ConfigNode.WriteQuaternion(val)));
 		}
 
 		public static string WriteFloatList(List<float> list)
 		{
-			string output = string.Empty;
-			foreach (var val in list)
-			{
-				output += val.ToString() + ";";
-			}
-			return output;
+			return string.Join(";", list);
+		}
+
+		public static string WriteEnumTypeList<T>(List<T> list) where T : System.Enum
+		{
+			return string.Join(";", list);
 		}
 
 		public static List<Vector3> ParseVectorList(string arrayString)
@@ -142,23 +143,44 @@ namespace CameraTools
 			return fList;
 		}
 
-		public void AddTransform(Transform cameraTransform, float zoom, float time)
+		public static List<E> ParseEnumTypeList<E>(string arrayString) where E : struct, System.Enum
+		{
+			var iList = new List<E>();
+			if (string.IsNullOrEmpty(arrayString)) return iList;
+			string[] iStrings = arrayString.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+			for (int i = 0; i < iStrings.Length; i++)
+			{
+				E enumType;
+				if (Enum.TryParse<E>(iStrings[i], out enumType))
+				{ iList.Add(enumType); }
+				else
+				{ iList.Add(default(E)); }
+			}
+
+			return iList;
+		}
+
+		public void AddTransform(Transform cameraTransform, float zoom, float time, PositionInterpolationType positionInterpolationType, RotationInterpolationType rotationInterpolationType)
 		{
 			points.Add(cameraTransform.localPosition);
 			rotations.Add(cameraTransform.localRotation);
 			zooms.Add(zoom);
 			times.Add(time);
+			positionInterpolationTypes.Add(positionInterpolationType);
+			rotationInterpolationTypes.Add(rotationInterpolationType);
 			keyframeCount = times.Count;
 			Sort();
 			UpdateCurves();
 		}
 
-		public void SetTransform(int index, Transform cameraTransform, float zoom, float time)
+		public void SetTransform(int index, Transform cameraTransform, float zoom, float time, PositionInterpolationType positionInterpolationType, RotationInterpolationType rotationInterpolationType)
 		{
 			points[index] = cameraTransform.localPosition;
 			rotations[index] = cameraTransform.localRotation;
 			zooms[index] = zoom;
 			times[index] = time;
+			positionInterpolationTypes[index] = positionInterpolationType;
+			rotationInterpolationTypes[index] = rotationInterpolationType;
 			Sort();
 			UpdateCurves();
 		}
@@ -176,6 +198,8 @@ namespace CameraTools
 			rotations.RemoveAt(index);
 			zooms.RemoveAt(index);
 			times.RemoveAt(index);
+			positionInterpolationTypes.RemoveAt(index);
+			rotationInterpolationTypes.RemoveAt(index);
 			keyframeCount = times.Count;
 			UpdateCurves();
 		}
@@ -185,7 +209,7 @@ namespace CameraTools
 			List<CameraKeyframe> keyframes = new List<CameraKeyframe>();
 			for (int i = 0; i < points.Count; i++)
 			{
-				keyframes.Add(new CameraKeyframe(points[i], rotations[i], zooms[i], times[i]));
+				keyframes.Add(new CameraKeyframe(points[i], rotations[i], zooms[i], times[i], positionInterpolationTypes[i], rotationInterpolationTypes[i]));
 			}
 			keyframes.Sort(new CameraKeyframeComparer());
 
@@ -201,13 +225,13 @@ namespace CameraTools
 		public CameraKeyframe GetKeyframe(int index)
 		{
 			int i = index;
-			return new CameraKeyframe(points[i], rotations[i], zooms[i], times[i]);
+			return new CameraKeyframe(points[i], rotations[i], zooms[i], times[i], positionInterpolationTypes[i], rotationInterpolationTypes[i]);
 		}
 
 		public void UpdateCurves()
 		{
-			pointCurve = new Vector3Animation(points.ToArray(), times.ToArray());
-			rotationCurve = new RotationAnimation(rotations.ToArray(), times.ToArray());
+			pointCurve = new Vector3Animation(points.ToArray(), times.ToArray(), positionInterpolationTypes.ToArray());
+			rotationCurve = new RotationAnimation(rotations.ToArray(), times.ToArray(), rotationInterpolationTypes.ToArray());
 			zoomCurve = new AnimationCurve();
 			for (int i = 0; i < zooms.Count; i++)
 			{
@@ -224,11 +248,6 @@ namespace CameraTools
 
 			return tf;
 		}
-
-
-
-
-
 	}
 }
 
