@@ -2744,26 +2744,29 @@ namespace CameraTools
 
 		private void DisableTimeControlsCameraZoomFix()
 		{
-			foreach (var assy in AssemblyLoader.loadedAssemblies)
+			try
 			{
-				if (assy.assembly.FullName.Contains("TimeControl"))
+				foreach (var assy in AssemblyLoader.loadedAssemblies)
 				{
-					foreach (var type in assy.assembly.GetTypes())
+					if (assy.assembly.FullName.Contains("TimeControl"))
 					{
-						if (type == null) continue;
-						if (type.Name == "GlobalSettings")
+						foreach (var type in assy.assembly.GetTypes())
 						{
-							var globalSettingsInstance = FindObjectOfType(type);
-							if (globalSettingsInstance != null)
+							if (type == null) continue;
+							if (type.Name == "GlobalSettings")
 							{
-								foreach (var propertyInfo in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+								var globalSettingsInstance = FindObjectOfType(type);
+								if (globalSettingsInstance != null)
 								{
-									if (propertyInfo != null && propertyInfo.Name == "CameraZoomFix")
+									foreach (var propertyInfo in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
 									{
-										if ((bool)propertyInfo.GetValue(globalSettingsInstance))
+										if (propertyInfo != null && propertyInfo.Name == "CameraZoomFix")
 										{
-											Debug.LogWarning("[CameraTools]: Setting CameraZoomFix variable in TimeControl.GlobalSettings to false as it breaks CameraTools when running in slow-mo.");
-											propertyInfo.SetValue(globalSettingsInstance, false);
+											if ((bool)propertyInfo.GetValue(globalSettingsInstance))
+											{
+												Debug.LogWarning("[CameraTools]: Setting CameraZoomFix variable in TimeControl.GlobalSettings to false as it breaks CameraTools when running in slow-mo.");
+												propertyInfo.SetValue(globalSettingsInstance, false);
+											}
 										}
 									}
 								}
@@ -2771,6 +2774,10 @@ namespace CameraTools
 						}
 					}
 				}
+			}
+			catch (Exception e)
+			{
+				Debug.LogError($"[CameraTools.CamTools]: Failed to disable CameraZoomFix in TimeControl: {e.Message}");
 			}
 		}
 
