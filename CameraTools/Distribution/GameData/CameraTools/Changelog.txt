@@ -11,9 +11,9 @@ Improvements:
  - Add option of cubic spline interpolation to pathing mode positions based on https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Interpolation_on_an_arbitrary_interval.
  - Add option of Slerp and cubic spline interpolation to pathing mode rotations.
  	- Note: the interpolation method is used from the keypoint it's set in until the next one, so different parts of the path can use different interpolation methods.
- - Rework stationary camera to actually make the camera stationary when below maxRelV.
- - Option to not save the previously used rotation in stationary camera mode when no target is selected (prevents semi-random initial views).
- - Add keybinding options for free move keys.
+ - Rework stationary camera to actually make the camera stationary when below maxRelV. Jumps due to CoM changes (e.g., launch clamp detachment) should not affect the camera position unless maxRelV is extremely low (e.g., <1 in most cases).
+ - Option to save the previously used rotation in stationary camera mode when no target is selected (prevents semi-random initial views, default: disabled).
+ - Add keybinding options for free move keys (escape cancels keybinding).
 
 v1.16.4
  - Recompiled with KSP 1.12 assemblies.
