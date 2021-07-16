@@ -38,7 +38,6 @@ namespace CameraTools
 			origRolloffMode = audioSource.rolloffMode;
 			audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
 			audioSource.spatialBlend = 1;
-
 		}
 
 		void FixedUpdate()
@@ -65,6 +64,7 @@ namespace CameraTools
 			float lagAudioFactor = (75000 / (Vector3.Distance(vessel.transform.position, FlightCamera.fetch.mainCamera.transform.position) * srfSpeed * angleToCam / 90));
 			lagAudioFactor = Mathf.Clamp(lagAudioFactor * lagAudioFactor * lagAudioFactor, 0, 4);
 			lagAudioFactor += srfSpeed / 230;
+			// lagAudioFactor += srfSpeed / (float)CamTools.speedOfSound; FIXME test this and then add in manual doppler effects by adjusting the pitch of playing audio sources
 
 			float waveFrontFactor = ((3.67f * angleToCam) / srfSpeed);
 			waveFrontFactor = Mathf.Clamp(waveFrontFactor * waveFrontFactor * waveFrontFactor, 0, 2);
@@ -77,14 +77,11 @@ namespace CameraTools
 
 			audioSource.minDistance = Mathf.Lerp(origMinDist, modMinDist * lagAudioFactor, Mathf.Clamp01((float)vessel.srfSpeed / 30));
 			audioSource.maxDistance = Mathf.Lerp(origMaxDist, Mathf.Clamp(modMaxDist * lagAudioFactor, audioSource.minDistance, 16000), Mathf.Clamp01((float)vessel.srfSpeed / 30));
-
 		}
 
 		void OnDestroy()
 		{
 			CamTools.OnResetCTools -= OnResetCTools;
-
-
 		}
 
 		void OnResetCTools()
@@ -97,8 +94,6 @@ namespace CameraTools
 			}
 			Destroy(this);
 		}
-
-
 	}
 }
 

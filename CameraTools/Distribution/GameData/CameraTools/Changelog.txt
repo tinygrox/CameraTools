@@ -1,12 +1,4 @@
 v1.17.0
-Improvements:
- - Add keybinding options for free move keys.
- - Rework stationary camera to actually make the camera stationary when below maxRelV.
- - Option to save the previously used rotation in stationary camera mode when no target is selected.
- - Add option of cubic spline interpolation to pathing mode positions based on https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Interpolation_on_an_arbitrary_interval.
- - Add option of Slerp and cubic spline interpolation to pathing mode rotations.
-
-v1.16.5
 Bugfixes:
  - Only activate the camera when changing modes if it was already active.
  - Don't automatically start playing a path when adjusting it or creating a new one and stop it if keyframes or the path is deleted.
@@ -16,6 +8,11 @@ Improvements:
  - Automatically disable TimeControl's camera zoom fix as it breaks CameraTools when slow-mo is enabled (sorry @ntwest).
  - Switch stationary and pathing cameras to run in Update instead of FixedUpdate as they aren't sensitive to physics updates.
  - Switch pathing camera to use unscaled time so that it works while paused.
+ - Add option of cubic spline interpolation to pathing mode positions based on https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Interpolation_on_an_arbitrary_interval.
+ - Add option of Slerp and cubic spline interpolation to pathing mode rotations.
+ - Rework stationary camera to actually make the camera stationary when below maxRelV.
+ - Option to not save the previously used rotation in stationary camera mode when no target is selected (prevents semi-random initial views).
+ - Add keybinding options for free move keys.
 
 v1.16.4
  - Recompiled with KSP 1.12 assemblies.

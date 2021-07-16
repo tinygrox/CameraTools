@@ -21,7 +21,7 @@ namespace CameraTools
 		{
 			vessel = GetComponent<Vessel>();
 
-			windAudioSource = new GameObject().AddComponent<AudioSource>();
+			windAudioSource = new GameObject("windAS").AddComponent<AudioSource>();
 			windAudioSource.minDistance = 10;
 			windAudioSource.maxDistance = 10000;
 			windAudioSource.dopplerLevel = .35f;
@@ -35,7 +35,7 @@ namespace CameraTools
 			windAudioSource.clip = windclip;
 			windAudioSource.transform.parent = vessel.transform;
 
-			windHowlAudioSource = new GameObject().AddComponent<AudioSource>();
+			windHowlAudioSource = new GameObject("windHowlAS").AddComponent<AudioSource>();
 			windHowlAudioSource.minDistance = 10;
 			windHowlAudioSource.maxDistance = 7000;
 			windHowlAudioSource.dopplerLevel = .5f;
@@ -44,7 +44,7 @@ namespace CameraTools
 			windHowlAudioSource.spatialBlend = 1;
 			windHowlAudioSource.transform.parent = vessel.transform;
 
-			windTearAudioSource = new GameObject().AddComponent<AudioSource>();
+			windTearAudioSource = new GameObject("windTearAS").AddComponent<AudioSource>();
 			windTearAudioSource.minDistance = 10;
 			windTearAudioSource.maxDistance = 5000;
 			windTearAudioSource.dopplerLevel = 0.45f;
@@ -53,7 +53,7 @@ namespace CameraTools
 			windTearAudioSource.spatialBlend = 1;
 			windTearAudioSource.transform.parent = vessel.transform;
 
-			sonicBoomSource = new GameObject().AddComponent<AudioSource>();
+			sonicBoomSource = new GameObject("sonicBoomAS").AddComponent<AudioSource>();
 			sonicBoomSource.transform.localPosition = Vector3.zero;
 			sonicBoomSource.minDistance = 50;
 			sonicBoomSource.maxDistance = 20000;

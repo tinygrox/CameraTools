@@ -141,7 +141,7 @@ namespace CameraTools
 		#region Audio Fields
 		AudioSource[] audioSources;
 		float[] originalAudioSourceDoppler;
-		HashSet<string> excludeAudioSources = new HashSet<string> { "MusicLogic" };
+		HashSet<string> excludeAudioSources = new HashSet<string> { "MusicLogic", "windAS", "windHowlAS", "windTearAS", "sonicBoomAS" }; // Don't adjust music or atmospheric audio.
 		bool hasSetDoppler = false;
 		[CTPersistantField] public bool useAudioEffects = true;
 		public static double speedOfSound = 330;
@@ -191,6 +191,7 @@ namespace CameraTools
 		float manualFOV = 60;
 		float currentFOV = 60;
 		Vector3 manualPosition = Vector3.zero;
+		Vector3 lastVesselCoM = Vector3.zero;
 		[CTPersistantField] public float freeMoveSpeed = 10;
 		string guiFreeMoveSpeed = "10";
 		float freeMoveSpeedRaw;
@@ -521,9 +522,9 @@ namespace CameraTools
 						if (!FloatingOrigin.Offset.IsZero() || !Krakensbane.GetFrameVelocity().IsZero())
 						{
 							if (FloatingOrigin.OffsetNonKrakensbane.sqrMagnitude < maxRelVSqr * TimeWarp.fixedDeltaTime * TimeWarp.fixedDeltaTime) // Account for maxRelV.
-							{ flightCamera.transform.position -= FloatingOrigin.OffsetNonKrakensbane; }
-							else
-							{ flightCamera.transform.position -= maxRelV * TimeWarp.fixedDeltaTime * FloatingOrigin.OffsetNonKrakensbane.normalized; }
+							{ lastVesselCoM -= FloatingOrigin.OffsetNonKrakensbane; }
+							else // If the floating origin is not fixed, then it moves with the current vessel.
+							{ lastVesselCoM -= maxRelV * TimeWarp.fixedDeltaTime * FloatingOrigin.OffsetNonKrakensbane.normalized; }
 						}
 						break;
 					default: // Other modes are handled in Update due to not relying on interpolation of positions updated in the physics update.
@@ -658,10 +659,7 @@ namespace CameraTools
 
 			ResetDoppler();
 			if (OnResetCTools != null)
-			{
-				OnResetCTools();
-			}
-
+			{ OnResetCTools(); }
 			SetDoppler(false);
 			AddAtmoAudioControllers(false);
 		}
@@ -949,6 +947,10 @@ namespace CameraTools
 					camTarget = FlightGlobals.ActiveVessel.GetReferenceTransformPart();
 				}
 				hasTarget = (camTarget != null) ? true : false;
+				if (vessel != null)
+				{
+					lastVesselCoM = vessel.CoM;
+				}
 
 				// Camera position.
 				if (autoFlybyPosition || randomMode)
@@ -1036,6 +1038,9 @@ namespace CameraTools
 
 				cameraToolActive = true;
 
+				ResetDoppler();
+				if (OnResetCTools != null)
+				{ OnResetCTools(); }
 				SetDoppler(true);
 				AddAtmoAudioControllers(true);
 			}
@@ -1059,10 +1064,10 @@ namespace CameraTools
 			// Set camera position before rotation to avoid jitter.
 			if (vessel != null)
 			{
-				var offsetSinceLastFrame = -cameraParent.transform.position;
+				var offsetSinceLastFrame = vessel.CoM - lastVesselCoM;
+				lastVesselCoM = vessel.CoM;
 				cameraParent.transform.position = manualPosition + vessel.CoM;
-				offsetSinceLastFrame += cameraParent.transform.position;
-				if (vessel.srfSpeed > 1 && offsetSinceLastFrame.sqrMagnitude > maxRelVSqr * TimeWarp.fixedDeltaTime * TimeWarp.fixedDeltaTime) // Account for maxRelV. Note: we use fixedDeltaTime here as we're interested in how far it jumped on the physics update. Also check for srfSpeed to account for changes in CoM when on launchpad.
+				if (vessel.srfSpeed > maxRelV / 2 && offsetSinceLastFrame.sqrMagnitude > maxRelVSqr * TimeWarp.fixedDeltaTime * TimeWarp.fixedDeltaTime) // Account for maxRelV. Note: we use fixedDeltaTime here as we're interested in how far it jumped on the physics update. Also check for srfSpeed to account for changes in CoM when on launchpad (srfSpeed < maxRelV/2 should be good for maxRelV down to around 1 in most cases).
 				{
 					offsetSinceLastFrame = maxRelV * TimeWarp.fixedDeltaTime * offsetSinceLastFrame.normalized;
 				}
@@ -1600,6 +1605,8 @@ namespace CameraTools
 				return;
 			}
 
+			// Debug.Log($"DEBUG Setting doppler");
+			// Debug.Log($"DEBUG audio spatializer: {AudioSettings.GetSpatializerPluginName()}");
 			audioSources = FindObjectsOfType<AudioSource>();
 			originalAudioSourceDoppler = new float[audioSources.Length];
 
@@ -1619,13 +1626,15 @@ namespace CameraTools
 				audioSources[i].velocityUpdateMode = AudioVelocityUpdateMode.Fixed;
 				audioSources[i].bypassEffects = false;
 				audioSources[i].spatialBlend = 1;
+				audioSources[i].spatialize = true;
 
 				var part = audioSources[i].gameObject.GetComponentInParent<Part>();
 				if (part != null && part.vessel != null && !ignoreVesselTypesForAudio.Contains(part.vessel.vesselType))
 				{
-					//Debug.Log("[CameraTools]: Added CTPartAudioController to :" + audioSources[i].name);
-					CTPartAudioController pa = audioSources[i].gameObject.AddComponent<CTPartAudioController>();
+					CTPartAudioController pa = audioSources[i].gameObject.GetComponent<CTPartAudioController>();
+					if (pa == null) pa = audioSources[i].gameObject.AddComponent<CTPartAudioController>();
 					pa.audioSource = audioSources[i];
+					// if (audioSources[i].isPlaying) Debug.Log($"DEBUG adding part audio controller for {part} on {part.vessel.vesselName} for audiosource {i} ({audioSources[i].name}) with priority: {audioSources[i].priority}, doppler level {audioSources[i].dopplerLevel}, rollOff: {audioSources[i].rolloffMode}, spatialize: {audioSources[i].spatialize}, spatial blend: {audioSources[i].spatialBlend}, min/max dist:{audioSources[i].minDistance}/{audioSources[i].maxDistance}, clip: {audioSources[i].clip?.name}, output group: {audioSources[i].outputAudioMixerGroup}");
 				}
 			}
 
@@ -1645,8 +1654,6 @@ namespace CameraTools
 				audioSources[i].dopplerLevel = originalAudioSourceDoppler[i];
 				audioSources[i].velocityUpdateMode = AudioVelocityUpdateMode.Auto;
 			}
-
-
 
 			hasSetDoppler = false;
 		}
@@ -1811,14 +1818,10 @@ namespace CameraTools
 			try
 			{
 				if (OnResetCTools != null)
-				{
-					OnResetCTools();
-				}
+				{ OnResetCTools(); }
 			}
 			catch (Exception e)
-			{
-				Debug.Log("[CameraTools]: Caught exception resetting CTools " + e.ToString());
-			}
+			{ Debug.Log("[CameraTools]: Caught exception resetting CameraTools " + e.ToString()); }
 
 		}
 
