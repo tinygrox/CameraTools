@@ -2310,7 +2310,8 @@ namespace CameraTools
 					isRecordingInput = false;
 					boundThisFrame = true;
 					currentlyBinding = "";
-					return inputString;
+					if (inputString != "escape") // Allow escape key to cancel keybinding.
+					{ return inputString; }
 				}
 			}
 
