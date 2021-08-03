@@ -52,6 +52,7 @@ namespace CameraTools
 		#region Input
 		[CTPersistantField] public string cameraKey = "home";
 		[CTPersistantField] public string revertKey = "end";
+		[CTPersistantField] public string toggleMenu = "[/]";
 		[CTPersistantField] public bool enableKeypad = false;
 		[CTPersistantField] public string fmUpKey = "[7]";
 		[CTPersistantField] public string fmDownKey = "[1]";
@@ -391,7 +392,7 @@ namespace CameraTools
 		{
 			if (!isRecordingInput && !boundThisFrame)
 			{
-				if (Input.GetKeyDown(KeyCode.KeypadDivide))
+				if (Input.GetKeyDown(toggleMenu))
 				{
 					guiEnabled = !guiEnabled;
 				}
@@ -2266,6 +2267,7 @@ namespace CameraTools
 			{
 				cameraKey = KeyBinding(cameraKey, "Activate", ++line);
 				revertKey = KeyBinding(revertKey, "Revert", ++line);
+				toggleMenu = KeyBinding(toggleMenu, "Menu", ++line);
 				fmUpKey = KeyBinding(fmUpKey, "Up", ++line);
 				fmDownKey = KeyBinding(fmDownKey, "Down", ++line);
 				fmForwardKey = KeyBinding(fmForwardKey, "Forward", ++line);
