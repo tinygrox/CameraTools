@@ -71,6 +71,7 @@ namespace CameraTools
 		#region GUI
 		public static bool guiEnabled = false;
 		public static bool hasAddedButton = false;
+		[CTPersistantField] public static bool textInput = false;
 		bool updateFOV = false;
 		float windowWidth = 250;
 		float windowHeight = 400;
@@ -105,8 +106,11 @@ namespace CameraTools
 		GUIStyle cShadowStyle;
 		GUIStyle centerLabel;
 		GUIStyle leftLabel;
+		GUIStyle rightLabel;
 		GUIStyle leftLabelBold;
 		GUIStyle titleStyle;
+		GUIStyle inputFieldStyle;
+		Dictionary<string, FloatInputField> inputFields;
 		List<Tuple<double, string>> debug2Messages = new List<Tuple<double, string>>();
 		void Debug2Log(string m) => debug2Messages.Add(new Tuple<double, string>(Time.time, m));
 
@@ -199,7 +203,7 @@ namespace CameraTools
 		[CTPersistantField] public float keyZoomSpeed = 1;
 		string guiKeyZoomSpeed = "1";
 		float zoomSpeedRaw;
-		float zoomFactor = 1;
+		public float zoomFactor = 1;
 		[CTPersistantField] public float zoomExp = 1;
 		[CTPersistantField] public float maxRelV = 2500;
 		float maxRelVSqr;
@@ -229,6 +233,7 @@ namespace CameraTools
 		string currKeyTimeString;
 		bool showKeyframeEditor = false;
 		float pathStartTime;
+		public float pathingTimeScale = 1f;
 		bool isPlayingPath = false;
 		float pathTime
 		{
@@ -318,6 +323,8 @@ namespace CameraTools
 			leftLabel = new GUIStyle();
 			leftLabel.alignment = TextAnchor.UpperLeft;
 			leftLabel.normal.textColor = Color.white;
+			rightLabel = new GUIStyle(leftLabel);
+			rightLabel.alignment = TextAnchor.UpperRight;
 			leftLabelBold = new GUIStyle(leftLabel);
 			leftLabelBold.fontStyle = FontStyle.Bold;
 			titleStyle = new GUIStyle(centerLabel);
@@ -328,6 +335,25 @@ namespace CameraTools
 			freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
 			zoomSpeedRaw = Mathf.Log10(keyZoomSpeed);
 			maxRelVSqr = maxRelV * maxRelV;
+
+			inputFields = new Dictionary<string, FloatInputField> {
+				{"autoZoomMargin", gameObject.AddComponent<FloatInputField>().Initialise(0, autoZoomMargin, 0f, 50f)},
+				{"zoomFactor", gameObject.AddComponent<FloatInputField>().Initialise(0, zoomFactor, 1f, 1096.63f)},
+				{"shakeMultiplier", gameObject.AddComponent<FloatInputField>().Initialise(0, shakeMultiplier, 1f, 10f)},
+				{"dogfightDistance", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightDistance, 1f, 100f)},
+				{"dogfightOffsetX", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset)},
+				{"dogfightOffsetY", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset)},
+				{"dogfightLerp", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightLerp, 0.01f, 0.5f)},
+				{"dogfightRoll", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightRoll, 0f, 1f)},
+				{"pathingTimeScale", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingTimeScale, 0.05f, 4f)},
+				{"randomModeDogfightChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeDogfightChance, 0f, 100f)},
+				{"randomModeIVAChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeIVAChance, 0f, 100f)},
+				{"randomModeStationaryChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeStationaryChance, 0f, 100f)},
+				{"randomModePathingChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModePathingChance, 0f, 100f)},
+				{"freeMoveSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, freeMoveSpeed, 0.1f, 100f)},
+				{"keyZoomSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, keyZoomSpeed, 0.01f, 10f)},
+				{"maxRelV", gameObject.AddComponent<FloatInputField>().Initialise(0, maxRelV, 0f)},
+			};
 		}
 
 		void OnDestroy()
@@ -1865,6 +1891,7 @@ namespace CameraTools
 		{
 			if (guiEnabled && gameUIToggle)
 			{
+				if (inputFieldStyle == null) SetupInputFieldStyle();
 				windowRect = GUI.Window(320, windowRect, GuiWindow, "");
 
 				if (showKeyframeEditor)
@@ -1899,6 +1926,19 @@ namespace CameraTools
 			}
 		}
 
+		Rect LabelRect(float line)
+		{ return new Rect(leftIndent, contentTop + line * entryHeight, contentWidth, entryHeight); }
+		Rect LabelLeftRect(float line)
+		{ return new Rect(leftIndent, contentTop + line * entryHeight, contentWidth / 2, entryHeight); }
+		Rect InputFieldRect(float line)
+		{ return new Rect(windowWidth / 2 + leftIndent, contentTop + line * entryHeight, contentWidth / 2 - leftIndent, entryHeight); }
+		Rect QuarterRect(float line, int quarter)
+		{ return new Rect(leftIndent + quarter * contentWidth / 4, contentTop + line * entryHeight, contentWidth / 4, entryHeight); }
+		void SetupInputFieldStyle()
+		{
+			inputFieldStyle = new GUIStyle(GUI.skin.textField);
+			inputFieldStyle.alignment = TextAnchor.UpperRight;
+		}
 		void GuiWindow(int windowID)
 		{
 			GUI.DragWindow(new Rect(0, 0, windowWidth, draggableHeight));
@@ -1908,7 +1948,7 @@ namespace CameraTools
 			float parseResult;
 
 			//tool mode switcher
-			GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Tool: " + toolMode.ToString(), leftLabelBold);
+			GUI.Label(LabelRect(++line), "Tool: " + toolMode.ToString(), leftLabelBold);
 			if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), 25, entryHeight - 2), "<"))
 			{
 				CycleToolMode(false);
@@ -1919,21 +1959,58 @@ namespace CameraTools
 				CycleToolMode(true);
 				if (cameraToolActive) cameraActivate();
 			}
+			if (GUI.Button(new Rect(windowWidth - leftIndent - 25, contentTop + (line * entryHeight), 25, entryHeight - 2), "#", textInput ? GUI.skin.box : GUI.skin.button))
+			{
+				textInput = !textInput;
+				if (!textInput) // Set the fields to their currently showing values.
+				{
+					foreach (var field in inputFields.Keys)
+					{
+						inputFields[field].tryParseValueNow();
+						typeof(CamTools).GetField(field).SetValue(this, inputFields[field].currentValue);
+					}
+					if (currentPath != null) { currentPath.timeScale = pathingTimeScale; }
+					freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
+					zoomSpeedRaw = Mathf.Log10(keyZoomSpeed);
+				}
+				else // Set the input fields to their current values.
+				{
+					if (currentPath != null) { pathingTimeScale = currentPath.timeScale; }
+					foreach (var field in inputFields.Keys)
+					{ inputFields[field].currentValue = (float)typeof(CamTools).GetField(field).GetValue(this); }
+				}
+			}
 			line++;
 
 			autoEnableForBDA = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoEnableForBDA, "Auto-Enable for BDArmory");
 			if (autoFOV)
 			{
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), "Autozoom Margin: ");
-				autoZoomMargin = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((++line) * entryHeight), contentWidth - 45, entryHeight), autoZoomMargin, 0, 50);
-				if (!enableKeypad) autoZoomMargin = Mathf.RoundToInt(autoZoomMargin * 2f) / 2f;
-				GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.15f) * entryHeight), 40, entryHeight), autoZoomMargin.ToString("0.0"), leftLabel);
+				GUI.Label(LabelLeftRect(++line), "Autozoom Margin: ");
+				if (!textInput)
+				{
+					autoZoomMargin = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((++line) * entryHeight), contentWidth - 45, entryHeight), autoZoomMargin, 0, 50);
+					if (!enableKeypad) autoZoomMargin = Mathf.RoundToInt(autoZoomMargin * 2f) / 2f;
+					GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.15f) * entryHeight), 40, entryHeight), autoZoomMargin.ToString("0.0"), leftLabel);
+				}
+				else
+				{
+					inputFields["autoZoomMargin"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["autoZoomMargin"].possibleValue, 8, inputFieldStyle));
+					autoZoomMargin = inputFields["autoZoomMargin"].currentValue;
+				}
 			}
 			else
 			{
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Zoom:", leftLabel);
-				zoomExp = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((++line) * entryHeight), contentWidth - 45, entryHeight), zoomExp, 1, 8);
-				GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.15f) * entryHeight), 40, entryHeight), zoomFactor.ToString("0.0") + "x", leftLabel);
+				GUI.Label(LabelLeftRect(++line), "Zoom:", leftLabel);
+				if (!textInput)
+				{
+					zoomExp = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((++line) * entryHeight), contentWidth - 45, entryHeight), zoomExp, 1, 8);
+					GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.15f) * entryHeight), 40, entryHeight), zoomFactor.ToString("0.0") + "x", leftLabel);
+				}
+				else
+				{
+					inputFields["zoomFactor"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["zoomFactor"].possibleValue, 8, inputFieldStyle));
+					zoomExp = Mathf.Log(inputFields["zoomFactor"].currentValue) + 1f;
+				}
 			}
 			if (toolMode != ToolModes.Pathing)
 			{
@@ -1941,17 +2018,25 @@ namespace CameraTools
 			}
 			line++;
 
-			useAudioEffects = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), useAudioEffects, "Use Audio Effects");
-			GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Camera shake:");
-			shakeMultiplier = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth - 45, entryHeight), shakeMultiplier, 0f, 10f);
-			GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.25f) * entryHeight), 40, entryHeight), shakeMultiplier.ToString("0.00") + "x");
+			useAudioEffects = GUI.Toggle(LabelRect(++line), useAudioEffects, "Use Audio Effects");
+			GUI.Label(LabelLeftRect(++line), "Camera shake:");
+			if (!textInput)
+			{
+				shakeMultiplier = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth - 45, entryHeight), shakeMultiplier, 0f, 10f);
+				GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.25f) * entryHeight), 40, entryHeight), shakeMultiplier.ToString("0.00") + "x");
+			}
+			else
+			{
+				inputFields["shakeMultiplier"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["shakeMultiplier"].possibleValue, 8, inputFieldStyle));
+				shakeMultiplier = inputFields["shakeMultiplier"].currentValue;
+			}
 			line++;
 
 			//Stationary camera GUI
 			if (toolMode == ToolModes.StationaryCamera)
 			{
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), "Max Rel. V: ", leftLabel);
-				float.TryParse(GUI.TextField(new Rect(leftIndent + contentWidth / 2, contentTop + (line * entryHeight), contentWidth / 2, entryHeight), maxRelV.ToString()), out maxRelV);
+				GUI.Label(LabelLeftRect(++line), "Max Rel. V: ", leftLabel);
+				inputFields["maxRelV"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["maxRelV"].possibleValue, 12, inputFieldStyle));
 				maxRelVSqr = maxRelV * maxRelV;
 				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Camera Position:", leftLabel);
 				string posButtonText = "Set Position w/ Click";
@@ -2074,29 +2159,55 @@ namespace CameraTools
 				}
 				line++;
 
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), "Distance: " + dogfightDistance.ToString("0.0"));
-				line += 0.15f;
-				dogfightDistance = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), dogfightDistance, 1f, 100f);
-				if (!enableKeypad) dogfightDistance = Mathf.RoundToInt(dogfightDistance * 2f) / 2f;
+				GUI.Label(LabelLeftRect(++line), "Distance: " + dogfightDistance.ToString("0.0"));
+				if (!textInput)
+				{
+					line += 0.15f;
+					dogfightDistance = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), dogfightDistance, 1f, 100f);
+					if (!enableKeypad) dogfightDistance = Mathf.RoundToInt(dogfightDistance * 2f) / 2f;
+				}
+				else
+				{
+					inputFields["dogfightDistance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["dogfightDistance"].possibleValue, 8, inputFieldStyle));
+					dogfightDistance = inputFields["dogfightDistance"].currentValue;
+				}
 
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Offset:");
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 15f, entryHeight), "X: ");
-				dogfightOffsetX = GUI.HorizontalSlider(new Rect(leftIndent + 15f, contentTop + (line * entryHeight) + 6f, contentWidth - 45f, entryHeight), dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
-				if (!enableKeypad) dogfightOffsetX = Mathf.RoundToInt(dogfightOffsetX * 2f) / 2f;
-				GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightOffsetX.ToString("0.0"));
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 15, entryHeight), "Y: ");
-				dogfightOffsetY = GUI.HorizontalSlider(new Rect(leftIndent + 15f, contentTop + (line * entryHeight) + 6f, contentWidth - 45f, entryHeight), dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
-				if (!enableKeypad) dogfightOffsetY = Mathf.RoundToInt(dogfightOffsetY * 2f) / 2f;
-				GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25, entryHeight), dogfightOffsetY.ToString("0.0"));
-				line += 0.5f;
+				GUI.Label(LabelLeftRect(++line), "Offset:");
+				if (!textInput)
+				{
+					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 15f, entryHeight), "X: ");
+					dogfightOffsetX = GUI.HorizontalSlider(new Rect(leftIndent + 15f, contentTop + (line * entryHeight) + 6f, contentWidth - 45f, entryHeight), dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
+					if (!enableKeypad) dogfightOffsetX = Mathf.RoundToInt(dogfightOffsetX * 2f) / 2f;
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightOffsetX.ToString("0.0"));
+					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 15, entryHeight), "Y: ");
+					dogfightOffsetY = GUI.HorizontalSlider(new Rect(leftIndent + 15f, contentTop + (line * entryHeight) + 6f, contentWidth - 45f, entryHeight), dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
+					if (!enableKeypad) dogfightOffsetY = Mathf.RoundToInt(dogfightOffsetY * 2f) / 2f;
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25, entryHeight), dogfightOffsetY.ToString("0.0"));
+					line += 0.5f;
 
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 30f, entryHeight), "Lerp: ");
-				dogfightLerp = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + 30f, contentTop + (line * entryHeight) + 6f, contentWidth - 60f, entryHeight), dogfightLerp * 100f, 1f, 50f)) / 100f;
-				GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightLerp.ToString("0.00"));
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 30f, entryHeight), "Roll: ");
-				dogfightRoll = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + 30f, contentTop + (line * entryHeight) + 6f, contentWidth - 60f, entryHeight), dogfightRoll * 20f, 0f, 20f)) / 20f;
-				GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightRoll.ToString("0.00"));
-				line += 0.15f;
+					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 30f, entryHeight), "Lerp: ");
+					dogfightLerp = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + 30f, contentTop + (line * entryHeight) + 6f, contentWidth - 60f, entryHeight), dogfightLerp * 100f, 1f, 50f)) / 100f;
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightLerp.ToString("0.00"));
+					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 30f, entryHeight), "Roll: ");
+					dogfightRoll = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + 30f, contentTop + (line * entryHeight) + 6f, contentWidth - 60f, entryHeight), dogfightRoll * 20f, 0f, 20f)) / 20f;
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightRoll.ToString("0.00"));
+					line += 0.15f;
+				}
+				else
+				{
+					GUI.Label(QuarterRect(++line, 0), "X: ", rightLabel);
+					inputFields["dogfightOffsetX"].tryParseValue(GUI.TextField(QuarterRect(line, 1), inputFields["dogfightOffsetX"].possibleValue, 8, inputFieldStyle));
+					dogfightOffsetX = inputFields["dogfightOffsetX"].currentValue;
+					GUI.Label(QuarterRect(line, 2), "Y: ", rightLabel);
+					inputFields["dogfightOffsetY"].tryParseValue(GUI.TextField(QuarterRect(line, 3), inputFields["dogfightOffsetY"].possibleValue, 8, inputFieldStyle));
+					dogfightOffsetY = inputFields["dogfightOffsetY"].currentValue;
+					GUI.Label(QuarterRect(++line, 0), "Lerp: ", rightLabel);
+					inputFields["dogfightLerp"].tryParseValue(GUI.TextField(QuarterRect(line, 1), inputFields["dogfightLerp"].possibleValue, 8, inputFieldStyle));
+					dogfightLerp = inputFields["dogfightLerp"].currentValue;
+					GUI.Label(QuarterRect(line, 2), "Roll: ", rightLabel);
+					inputFields["dogfightRoll"].tryParseValue(GUI.TextField(QuarterRect(line, 3), inputFields["dogfightRoll"].possibleValue, 8, inputFieldStyle));
+					dogfightRoll = inputFields["dogfightRoll"].currentValue;
+				}
 			}
 			else if (toolMode == ToolModes.Pathing)
 			{
@@ -2118,9 +2229,18 @@ namespace CameraTools
 
 				if (selectedPathIndex >= 0)
 				{
-					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Path timescale " + currentPath.timeScale.ToString("0.00"));
-					currentPath.timeScale = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth - 50f, entryHeight), currentPath.timeScale, 0.05f, 4f);
-					currentPath.timeScale = Mathf.Round(currentPath.timeScale * 20f) / 20f;
+					if (!textInput)
+					{
+						GUI.Label(LabelRect(++line), "Path timescale " + currentPath.timeScale.ToString("0.00"));
+						currentPath.timeScale = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth - 50f, entryHeight), currentPath.timeScale, 0.05f, 4f);
+						currentPath.timeScale = Mathf.Round(currentPath.timeScale * 20f) / 20f;
+					}
+					else
+					{
+						GUI.Label(LabelLeftRect(++line), "Path timescale:");
+						inputFields["pathingTimeScale"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["pathingTimeScale"].possibleValue, 8, inputFieldStyle));
+						currentPath.timeScale = inputFields["pathingTimeScale"].currentValue;
+					}
 					float viewHeight = Mathf.Max(6f * entryHeight, currentPath.keyframeCount * entryHeight);
 					Rect scrollRect = new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, 6 * entryHeight);
 					GUI.Box(scrollRect, string.Empty);
@@ -2160,11 +2280,22 @@ namespace CameraTools
 			}
 			line += 0.25f;
 
-			randomMode = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), randomMode, "Random Mode");
+			randomMode = GUI.Toggle(LabelRect(++line), randomMode, "Random Mode");
 			if (randomMode)
 			{
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"Dogfight ({randomModeDogfightChance:F0}%)");
-				if (randomModeDogfightChance != (randomModeDogfightChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModeDogfightChance, 0f, 100f)))
+				float oldValue = randomModeDogfightChance;
+				if (!textInput)
+				{
+					GUI.Label(LabelLeftRect(++line), $"Dogfight ({randomModeDogfightChance:F0}%)");
+					randomModeDogfightChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModeDogfightChance, 0f, 100f);
+				}
+				else
+				{
+					GUI.Label(LabelLeftRect(++line), "Dogfight %: ");
+					inputFields["randomModeDogfightChance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["randomModeDogfightChance"].possibleValue, 8, inputFieldStyle));
+					randomModeDogfightChance = inputFields["randomModeDogfightChance"].currentValue;
+				}
+				if (oldValue != randomModeDogfightChance)
 				{
 					var remainder = 100f - randomModeDogfightChance;
 					var total = randomModeIVAChance + randomModeStationaryChance + randomModePathingChance;
@@ -2181,10 +2312,25 @@ namespace CameraTools
 						randomModePathingChance = Mathf.Round(remainder / 3f);
 					}
 					randomModeDogfightChance = 100f - randomModeIVAChance - randomModeStationaryChance - randomModePathingChance; // Any rounding errors go to the adjusted slider.
+					inputFields["randomModeDogfightChance"].currentValue = randomModeDogfightChance;
+					inputFields["randomModeIVAChance"].currentValue = randomModeIVAChance;
+					inputFields["randomModeStationaryChance"].currentValue = randomModeStationaryChance;
+					inputFields["randomModePathingChance"].currentValue = randomModePathingChance;
 				}
 
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"IVA ({randomModeIVAChance:F0}%)");
-				if (randomModeIVAChance != (randomModeIVAChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), randomModeIVAChance, 0f, 100f)))
+				oldValue = randomModeIVAChance;
+				if (!textInput)
+				{
+					GUI.Label(LabelLeftRect(++line), $"IVA ({randomModeIVAChance:F0}%)");
+					randomModeIVAChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), randomModeIVAChance, 0f, 100f);
+				}
+				else
+				{
+					GUI.Label(LabelLeftRect(++line), "IVA %: ");
+					inputFields["randomModeIVAChance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["randomModeIVAChance"].possibleValue, 8, inputFieldStyle));
+					randomModeIVAChance = inputFields["randomModeIVAChance"].currentValue;
+				}
+				if (oldValue != randomModeIVAChance)
 				{
 					var remainder = 100f - randomModeIVAChance;
 					var total = randomModeDogfightChance + randomModeStationaryChance + randomModePathingChance;
@@ -2201,10 +2347,25 @@ namespace CameraTools
 						randomModePathingChance = Mathf.Round(remainder / 3f);
 					}
 					randomModeIVAChance = 100f - randomModeDogfightChance - randomModeStationaryChance - randomModePathingChance; // Any rounding errors go to the adjusted slider.
+					inputFields["randomModeDogfightChance"].currentValue = randomModeDogfightChance;
+					inputFields["randomModeIVAChance"].currentValue = randomModeIVAChance;
+					inputFields["randomModeStationaryChance"].currentValue = randomModeStationaryChance;
+					inputFields["randomModePathingChance"].currentValue = randomModePathingChance;
 				}
 
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight), $"Stationary ({randomModeStationaryChance:F0}%)");
-				if (randomModeStationaryChance != (randomModeStationaryChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModeStationaryChance, 0f, 100f)))
+				oldValue = randomModeStationaryChance;
+				if (!textInput)
+				{
+					GUI.Label(LabelLeftRect(++line), $"Stationary ({randomModeStationaryChance:F0}%)");
+					randomModeStationaryChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModeStationaryChance, 0f, 100f);
+				}
+				else
+				{
+					GUI.Label(LabelLeftRect(++line), "Stationary %: ");
+					inputFields["randomModeStationaryChance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["randomModeStationaryChance"].possibleValue, 8, inputFieldStyle));
+					randomModeStationaryChance = inputFields["randomModeStationaryChance"].currentValue;
+				}
+				if (oldValue != randomModeStationaryChance)
 				{
 					var remainder = 100f - randomModeStationaryChance;
 					var total = randomModeDogfightChance + randomModeIVAChance + randomModePathingChance;
@@ -2221,10 +2382,25 @@ namespace CameraTools
 						randomModePathingChance = Mathf.Round(remainder / 3f);
 					}
 					randomModeStationaryChance = 100f - randomModeDogfightChance - randomModeIVAChance - randomModePathingChance; // Any rounding errors go to the adjusted slider.
+					inputFields["randomModeDogfightChance"].currentValue = randomModeDogfightChance;
+					inputFields["randomModeIVAChance"].currentValue = randomModeIVAChance;
+					inputFields["randomModeStationaryChance"].currentValue = randomModeStationaryChance;
+					inputFields["randomModePathingChance"].currentValue = randomModePathingChance;
 				}
 
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2f, entryHeight), $"Pathing ({randomModePathingChance:F0}%)");
-				if (randomModePathingChance != (randomModePathingChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), randomModePathingChance, 0f, 100f)))
+				oldValue = randomModePathingChance;
+				if (!textInput)
+				{
+					GUI.Label(LabelLeftRect(++line), $"Pathing ({randomModePathingChance:F0}%)");
+					randomModePathingChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), randomModePathingChance, 0f, 100f);
+				}
+				else
+				{
+					GUI.Label(LabelLeftRect(++line), "Pathing %: ");
+					inputFields["randomModePathingChance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["randomModePathingChance"].possibleValue, 8, inputFieldStyle));
+					randomModePathingChance = inputFields["randomModePathingChance"].currentValue;
+				}
+				if (oldValue != randomModePathingChance)
 				{
 					var remainder = 100f - randomModePathingChance;
 					var total = randomModeDogfightChance + randomModeIVAChance + randomModeStationaryChance;
@@ -2241,6 +2417,10 @@ namespace CameraTools
 						randomModeStationaryChance = Mathf.Round(remainder / 3f);
 					}
 					randomModePathingChance = 100f - randomModeDogfightChance - randomModeIVAChance - randomModeStationaryChance; // Any rounding errors go to the adjusted slider.
+					inputFields["randomModeDogfightChance"].currentValue = randomModeDogfightChance;
+					inputFields["randomModeIVAChance"].currentValue = randomModeIVAChance;
+					inputFields["randomModeStationaryChance"].currentValue = randomModeStationaryChance;
+					inputFields["randomModePathingChance"].currentValue = randomModePathingChance;
 				}
 			}
 
@@ -2248,15 +2428,31 @@ namespace CameraTools
 			enableKeypad = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), enableKeypad, "Keypad Control");
 			if (enableKeypad)
 			{
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2f, entryHeight), "Move Speed:");
-				freeMoveSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), freeMoveSpeedRaw, -1f, 2f) * 20f) / 20f;
-				freeMoveSpeed = Mathf.Pow(10f, freeMoveSpeedRaw);
-				GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), freeMoveSpeed.ToString("F"));
+				GUI.Label(LabelLeftRect(++line), "Move Speed:");
+				if (!textInput)
+				{
+					freeMoveSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), freeMoveSpeedRaw, -1f, 2f) * 20f) / 20f;
+					freeMoveSpeed = Mathf.Pow(10f, freeMoveSpeedRaw);
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), freeMoveSpeed.ToString("F"));
+				}
+				else
+				{
+					inputFields["freeMoveSpeed"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["freeMoveSpeed"].possibleValue, 8, inputFieldStyle));
+					freeMoveSpeed = inputFields["freeMoveSpeed"].currentValue;
+				}
 
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2f, entryHeight), "Zoom Speed:");
-				zoomSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), zoomSpeedRaw, -2f, 1f) * 20f) / 20f;
-				keyZoomSpeed = Mathf.Pow(10f, zoomSpeedRaw);
-				GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), keyZoomSpeed.ToString("F"));
+				GUI.Label(LabelLeftRect(++line), "Zoom Speed:");
+				if (!textInput)
+				{
+					zoomSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), zoomSpeedRaw, -2f, 1f) * 20f) / 20f;
+					keyZoomSpeed = Mathf.Pow(10f, zoomSpeedRaw);
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), keyZoomSpeed.ToString("F"));
+				}
+				else
+				{
+					inputFields["keyZoomSpeed"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["keyZoomSpeed"].possibleValue, 8, inputFieldStyle));
+					keyZoomSpeed = inputFields["keyZoomSpeed"].currentValue;
+				}
 			}
 			line++;
 
