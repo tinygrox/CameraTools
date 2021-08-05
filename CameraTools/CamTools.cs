@@ -206,6 +206,10 @@ namespace CameraTools
 		public float zoomFactor = 1;
 		[CTPersistantField] public float zoomExp = 1;
 		[CTPersistantField] public float maxRelV = 2500;
+		[CTPersistantField] public bool maintainInitialVelocity = false;
+		Vector3d initialVelocity = Vector3d.zero;
+		Orbit initialOrbit;
+		[CTPersistantField] public bool useOrbital = false;
 		float maxRelVSqr;
 		#endregion
 
@@ -305,7 +309,7 @@ namespace CameraTools
 			GameEvents.onVesselWillDestroy.Add(CurrentVesselWillDestroy);
 			GameEvents.onVesselPartCountChanged.Add(VesselPartCountChanged);
 			GameEvents.OnCameraChange.Add(CameraModeChange);
-			TimingManager.FixedUpdateAdd(TimingManager.TimingStage.BetterLateThanNever, KrakensbaneCorrection); // Perform our Krakensbane corrections after KSP's floating origin/Krakensbane corrections have run.
+			TimingManager.FixedUpdateAdd(TimingManager.TimingStage.BetterLateThanNever, KrakensbaneWarpCorrection); // Perform our Krakensbane corrections after KSP's floating origin/Krakensbane corrections have run.
 
 			// Styles and rects.
 			cStyle = new GUIStyle(HighLogic.Skin.label);
@@ -362,7 +366,7 @@ namespace CameraTools
 			GameEvents.onVesselWillDestroy.Remove(CurrentVesselWillDestroy);
 			GameEvents.onVesselPartCountChanged.Remove(VesselPartCountChanged);
 			GameEvents.OnCameraChange.Remove(CameraModeChange);
-			TimingManager.FixedUpdateRemove(TimingManager.TimingStage.BetterLateThanNever, KrakensbaneCorrection);
+			TimingManager.FixedUpdateRemove(TimingManager.TimingStage.BetterLateThanNever, KrakensbaneWarpCorrection);
 			Save();
 		}
 
@@ -388,7 +392,7 @@ namespace CameraTools
 			}
 		}
 
-		void KrakensbaneCorrection()
+		void KrakensbaneWarpCorrection()
 		{
 			if (cameraToolActive)
 			{
@@ -552,6 +556,13 @@ namespace CameraTools
 							{ lastVesselCoM -= FloatingOrigin.OffsetNonKrakensbane; }
 							else // If the floating origin is not fixed, then it moves with the current vessel.
 							{ lastVesselCoM -= maxRelV * TimeWarp.fixedDeltaTime * FloatingOrigin.OffsetNonKrakensbane.normalized; }
+						}
+						if (maintainInitialVelocity && !randomMode) // Don't maintain velocity when using random mode.
+						{
+							if (useOrbital && initialOrbit != null)
+							{ lastVesselCoM += initialOrbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy * TimeWarp.fixedDeltaTime; }
+							else
+							{ lastVesselCoM += initialVelocity * TimeWarp.fixedDeltaTime; }
 						}
 						break;
 					default: // Other modes are handled in Update due to not relying on interpolation of positions updated in the physics update.
@@ -1062,6 +1073,10 @@ namespace CameraTools
 				// Camera rotation.
 				if (hasTarget)
 				{ flightCamera.transform.rotation = Quaternion.LookRotation(vessel.transform.position - flightCamera.transform.position, cameraUp); }
+
+				// Initial velocity
+				initialVelocity = vessel.Velocity();
+				initialOrbit = new Orbit(vessel.orbit);
 
 				cameraToolActive = true;
 
@@ -1928,9 +1943,9 @@ namespace CameraTools
 
 		Rect LabelRect(float line)
 		{ return new Rect(leftIndent, contentTop + line * entryHeight, contentWidth, entryHeight); }
-		Rect LabelLeftRect(float line)
+		Rect LeftRect(float line)
 		{ return new Rect(leftIndent, contentTop + line * entryHeight, contentWidth / 2, entryHeight); }
-		Rect InputFieldRect(float line)
+		Rect RightRect(float line)
 		{ return new Rect(windowWidth / 2 + leftIndent, contentTop + line * entryHeight, contentWidth / 2 - leftIndent, entryHeight); }
 		Rect QuarterRect(float line, int quarter)
 		{ return new Rect(leftIndent + quarter * contentWidth / 4, contentTop + line * entryHeight, contentWidth / 4, entryHeight); }
@@ -1985,7 +2000,7 @@ namespace CameraTools
 			autoEnableForBDA = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoEnableForBDA, "Auto-Enable for BDArmory");
 			if (autoFOV)
 			{
-				GUI.Label(LabelLeftRect(++line), "Autozoom Margin: ");
+				GUI.Label(LeftRect(++line), "Autozoom Margin: ");
 				if (!textInput)
 				{
 					autoZoomMargin = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((++line) * entryHeight), contentWidth - 45, entryHeight), autoZoomMargin, 0, 50);
@@ -1994,13 +2009,13 @@ namespace CameraTools
 				}
 				else
 				{
-					inputFields["autoZoomMargin"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["autoZoomMargin"].possibleValue, 8, inputFieldStyle));
+					inputFields["autoZoomMargin"].tryParseValue(GUI.TextField(RightRect(line), inputFields["autoZoomMargin"].possibleValue, 8, inputFieldStyle));
 					autoZoomMargin = inputFields["autoZoomMargin"].currentValue;
 				}
 			}
 			else
 			{
-				GUI.Label(LabelLeftRect(++line), "Zoom:", leftLabel);
+				GUI.Label(LeftRect(++line), "Zoom:", leftLabel);
 				if (!textInput)
 				{
 					zoomExp = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((++line) * entryHeight), contentWidth - 45, entryHeight), zoomExp, 1, 8);
@@ -2008,7 +2023,7 @@ namespace CameraTools
 				}
 				else
 				{
-					inputFields["zoomFactor"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["zoomFactor"].possibleValue, 8, inputFieldStyle));
+					inputFields["zoomFactor"].tryParseValue(GUI.TextField(RightRect(line), inputFields["zoomFactor"].possibleValue, 8, inputFieldStyle));
 					zoomExp = Mathf.Log(inputFields["zoomFactor"].currentValue) + 1f;
 				}
 			}
@@ -2019,7 +2034,7 @@ namespace CameraTools
 			line++;
 
 			useAudioEffects = GUI.Toggle(LabelRect(++line), useAudioEffects, "Use Audio Effects");
-			GUI.Label(LabelLeftRect(++line), "Camera shake:");
+			GUI.Label(LeftRect(++line), "Camera shake:");
 			if (!textInput)
 			{
 				shakeMultiplier = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth - 45, entryHeight), shakeMultiplier, 0f, 10f);
@@ -2027,7 +2042,7 @@ namespace CameraTools
 			}
 			else
 			{
-				inputFields["shakeMultiplier"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["shakeMultiplier"].possibleValue, 8, inputFieldStyle));
+				inputFields["shakeMultiplier"].tryParseValue(GUI.TextField(RightRect(line), inputFields["shakeMultiplier"].possibleValue, 8, inputFieldStyle));
 				shakeMultiplier = inputFields["shakeMultiplier"].currentValue;
 			}
 			line++;
@@ -2035,9 +2050,13 @@ namespace CameraTools
 			//Stationary camera GUI
 			if (toolMode == ToolModes.StationaryCamera)
 			{
-				GUI.Label(LabelLeftRect(++line), "Max Rel. V: ", leftLabel);
-				inputFields["maxRelV"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["maxRelV"].possibleValue, 12, inputFieldStyle));
+				GUI.Label(LeftRect(++line), "Max Relative Vel.: ", leftLabel);
+				inputFields["maxRelV"].tryParseValue(GUI.TextField(RightRect(line), inputFields["maxRelV"].possibleValue, 12, inputFieldStyle));
 				maxRelVSqr = maxRelV * maxRelV;
+
+				maintainInitialVelocity = GUI.Toggle(LeftRect(++line), maintainInitialVelocity, "Maintain Vel.");
+				if (maintainInitialVelocity) useOrbital = GUI.Toggle(RightRect(line), useOrbital, "Use Orbital");
+
 				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Camera Position:", leftLabel);
 				string posButtonText = "Set Position w/ Click";
 				if (setPresetOffset) posButtonText = "Clear Position";
@@ -2159,7 +2178,7 @@ namespace CameraTools
 				}
 				line++;
 
-				GUI.Label(LabelLeftRect(++line), "Distance: " + dogfightDistance.ToString("0.0"));
+				GUI.Label(LeftRect(++line), "Distance: " + dogfightDistance.ToString("0.0"));
 				if (!textInput)
 				{
 					line += 0.15f;
@@ -2168,11 +2187,11 @@ namespace CameraTools
 				}
 				else
 				{
-					inputFields["dogfightDistance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["dogfightDistance"].possibleValue, 8, inputFieldStyle));
+					inputFields["dogfightDistance"].tryParseValue(GUI.TextField(RightRect(line), inputFields["dogfightDistance"].possibleValue, 8, inputFieldStyle));
 					dogfightDistance = inputFields["dogfightDistance"].currentValue;
 				}
 
-				GUI.Label(LabelLeftRect(++line), "Offset:");
+				GUI.Label(LeftRect(++line), "Offset:");
 				if (!textInput)
 				{
 					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 15f, entryHeight), "X: ");
@@ -2237,8 +2256,8 @@ namespace CameraTools
 					}
 					else
 					{
-						GUI.Label(LabelLeftRect(++line), "Path timescale:");
-						inputFields["pathingTimeScale"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["pathingTimeScale"].possibleValue, 8, inputFieldStyle));
+						GUI.Label(LeftRect(++line), "Path timescale:");
+						inputFields["pathingTimeScale"].tryParseValue(GUI.TextField(RightRect(line), inputFields["pathingTimeScale"].possibleValue, 8, inputFieldStyle));
 						currentPath.timeScale = inputFields["pathingTimeScale"].currentValue;
 					}
 					float viewHeight = Mathf.Max(6f * entryHeight, currentPath.keyframeCount * entryHeight);
@@ -2286,13 +2305,13 @@ namespace CameraTools
 				float oldValue = randomModeDogfightChance;
 				if (!textInput)
 				{
-					GUI.Label(LabelLeftRect(++line), $"Dogfight ({randomModeDogfightChance:F0}%)");
+					GUI.Label(LeftRect(++line), $"Dogfight ({randomModeDogfightChance:F0}%)");
 					randomModeDogfightChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModeDogfightChance, 0f, 100f);
 				}
 				else
 				{
-					GUI.Label(LabelLeftRect(++line), "Dogfight %: ");
-					inputFields["randomModeDogfightChance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["randomModeDogfightChance"].possibleValue, 8, inputFieldStyle));
+					GUI.Label(LeftRect(++line), "Dogfight %: ");
+					inputFields["randomModeDogfightChance"].tryParseValue(GUI.TextField(RightRect(line), inputFields["randomModeDogfightChance"].possibleValue, 8, inputFieldStyle));
 					randomModeDogfightChance = inputFields["randomModeDogfightChance"].currentValue;
 				}
 				if (oldValue != randomModeDogfightChance)
@@ -2321,13 +2340,13 @@ namespace CameraTools
 				oldValue = randomModeIVAChance;
 				if (!textInput)
 				{
-					GUI.Label(LabelLeftRect(++line), $"IVA ({randomModeIVAChance:F0}%)");
+					GUI.Label(LeftRect(++line), $"IVA ({randomModeIVAChance:F0}%)");
 					randomModeIVAChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), randomModeIVAChance, 0f, 100f);
 				}
 				else
 				{
-					GUI.Label(LabelLeftRect(++line), "IVA %: ");
-					inputFields["randomModeIVAChance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["randomModeIVAChance"].possibleValue, 8, inputFieldStyle));
+					GUI.Label(LeftRect(++line), "IVA %: ");
+					inputFields["randomModeIVAChance"].tryParseValue(GUI.TextField(RightRect(line), inputFields["randomModeIVAChance"].possibleValue, 8, inputFieldStyle));
 					randomModeIVAChance = inputFields["randomModeIVAChance"].currentValue;
 				}
 				if (oldValue != randomModeIVAChance)
@@ -2356,13 +2375,13 @@ namespace CameraTools
 				oldValue = randomModeStationaryChance;
 				if (!textInput)
 				{
-					GUI.Label(LabelLeftRect(++line), $"Stationary ({randomModeStationaryChance:F0}%)");
+					GUI.Label(LeftRect(++line), $"Stationary ({randomModeStationaryChance:F0}%)");
 					randomModeStationaryChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6, contentWidth / 2f, entryHeight), randomModeStationaryChance, 0f, 100f);
 				}
 				else
 				{
-					GUI.Label(LabelLeftRect(++line), "Stationary %: ");
-					inputFields["randomModeStationaryChance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["randomModeStationaryChance"].possibleValue, 8, inputFieldStyle));
+					GUI.Label(LeftRect(++line), "Stationary %: ");
+					inputFields["randomModeStationaryChance"].tryParseValue(GUI.TextField(RightRect(line), inputFields["randomModeStationaryChance"].possibleValue, 8, inputFieldStyle));
 					randomModeStationaryChance = inputFields["randomModeStationaryChance"].currentValue;
 				}
 				if (oldValue != randomModeStationaryChance)
@@ -2391,13 +2410,13 @@ namespace CameraTools
 				oldValue = randomModePathingChance;
 				if (!textInput)
 				{
-					GUI.Label(LabelLeftRect(++line), $"Pathing ({randomModePathingChance:F0}%)");
+					GUI.Label(LeftRect(++line), $"Pathing ({randomModePathingChance:F0}%)");
 					randomModePathingChance = GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), randomModePathingChance, 0f, 100f);
 				}
 				else
 				{
-					GUI.Label(LabelLeftRect(++line), "Pathing %: ");
-					inputFields["randomModePathingChance"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["randomModePathingChance"].possibleValue, 8, inputFieldStyle));
+					GUI.Label(LeftRect(++line), "Pathing %: ");
+					inputFields["randomModePathingChance"].tryParseValue(GUI.TextField(RightRect(line), inputFields["randomModePathingChance"].possibleValue, 8, inputFieldStyle));
 					randomModePathingChance = inputFields["randomModePathingChance"].currentValue;
 				}
 				if (oldValue != randomModePathingChance)
@@ -2428,7 +2447,7 @@ namespace CameraTools
 			enableKeypad = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), enableKeypad, "Keypad Control");
 			if (enableKeypad)
 			{
-				GUI.Label(LabelLeftRect(++line), "Move Speed:");
+				GUI.Label(LeftRect(++line), "Move Speed:");
 				if (!textInput)
 				{
 					freeMoveSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), freeMoveSpeedRaw, -1f, 2f) * 20f) / 20f;
@@ -2437,11 +2456,11 @@ namespace CameraTools
 				}
 				else
 				{
-					inputFields["freeMoveSpeed"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["freeMoveSpeed"].possibleValue, 8, inputFieldStyle));
+					inputFields["freeMoveSpeed"].tryParseValue(GUI.TextField(RightRect(line), inputFields["freeMoveSpeed"].possibleValue, 8, inputFieldStyle));
 					freeMoveSpeed = inputFields["freeMoveSpeed"].currentValue;
 				}
 
-				GUI.Label(LabelLeftRect(++line), "Zoom Speed:");
+				GUI.Label(LeftRect(++line), "Zoom Speed:");
 				if (!textInput)
 				{
 					zoomSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), zoomSpeedRaw, -2f, 1f) * 20f) / 20f;
@@ -2450,7 +2469,7 @@ namespace CameraTools
 				}
 				else
 				{
-					inputFields["keyZoomSpeed"].tryParseValue(GUI.TextField(InputFieldRect(line), inputFields["keyZoomSpeed"].possibleValue, 8, inputFieldStyle));
+					inputFields["keyZoomSpeed"].tryParseValue(GUI.TextField(RightRect(line), inputFields["keyZoomSpeed"].possibleValue, 8, inputFieldStyle));
 					keyZoomSpeed = inputFields["keyZoomSpeed"].currentValue;
 				}
 			}
