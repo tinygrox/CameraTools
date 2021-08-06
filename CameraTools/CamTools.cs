@@ -2500,7 +2500,10 @@ namespace CameraTools
 			Rect loadRect = new Rect(saveRect);
 			loadRect.x += contentWidth / 2;
 			if (GUI.Button(loadRect, "Reload"))
-			{ Load(); }
+			{
+				if (isPlayingPath) StopPlayingPath();
+				Load();
+			}
 
 			//fix length
 			windowHeight = contentTop + (line * entryHeight) + entryHeight + entryHeight;
@@ -3228,15 +3231,26 @@ namespace CameraTools
 							new Vector3(14.48839f, -13.88819f, -4.267331f),
 							new Vector3(15.52922f, -14.25925f, -4.280066f)
 						},
+						positionInterpolationTypes = new List<PositionInterpolationType>{
+							PositionInterpolationType.CubicSpline,
+							PositionInterpolationType.CubicSpline,
+							PositionInterpolationType.CubicSpline,
+							PositionInterpolationType.CubicSpline
+						},
 						rotations = new List<Quaternion>{
 							new Quaternion( 0.5759971f, 0.2491289f,  -0.2965982f, -0.7198553f),
 							new Quaternion(-0.6991884f, 0.09197949f, -0.08556388f, 0.7038141f),
 							new Quaternion(-0.6991884f, 0.09197949f, -0.08556388f, 0.7038141f),
 							new Quaternion(-0.6506922f, 0.2786613f,  -0.271617f,   0.6520521f)
 						},
+						rotationInterpolationTypes = new List<RotationInterpolationType>{
+							RotationInterpolationType.Slerp,
+							RotationInterpolationType.Slerp,
+							RotationInterpolationType.Slerp,
+							RotationInterpolationType.Slerp
+						},
 						times = new List<float> { 0f, 1f, 2f, 6f },
 						zooms = new List<float> { 1f, 2.035503f, 3.402367f, 3.402367f },
-						// lerpRate = 3.1f,
 						timeScale = 0.29f
 					}
 				);

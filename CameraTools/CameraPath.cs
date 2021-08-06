@@ -8,18 +8,7 @@ namespace CameraTools
 	public class CameraPath
 	{
 		public string pathName;
-		int keyCount = 0;
-		public int keyframeCount
-		{
-			get
-			{
-				return keyCount;
-			}
-			private set
-			{
-				keyCount = value;
-			}
-		}
+		public int keyframeCount { get { return points.Count; } }
 		public List<Vector3> points;
 		public List<PositionInterpolationType> positionInterpolationTypes;
 		public List<Quaternion> rotations;
@@ -27,7 +16,6 @@ namespace CameraTools
 		public List<float> times;
 		public List<float> zooms;
 
-		// public float lerpRate = 0.3f;
 		public float timeScale = 1;
 
 		Vector3Animation pointCurve;
@@ -49,17 +37,21 @@ namespace CameraTools
 		{
 			CameraPath newPath = new CameraPath();
 
-			newPath.pathName = node.GetValue("pathName");
-			newPath.points = ParseVectorList(node.GetValue("points"));
-			newPath.positionInterpolationTypes = ParseEnumTypeList<PositionInterpolationType>(node.GetValue("positionInterpolationTypes"));
-			newPath.rotations = ParseQuaternionList(node.GetValue("rotations"));
-			newPath.rotationInterpolationTypes = ParseEnumTypeList<RotationInterpolationType>(node.GetValue("rotationInterpolationTypes"));
-			newPath.times = ParseFloatList(node.GetValue("times"));
-			newPath.zooms = ParseFloatList(node.GetValue("zooms"));
-			// newPath.lerpRate = float.Parse(node.GetValue("lerpRate"));
-			newPath.timeScale = float.Parse(node.GetValue("timeScale"));
-			while (newPath.positionInterpolationTypes.Count < newPath.points.Count) newPath.positionInterpolationTypes.Add(PositionInterpolationType.CubicSpline); // Fill the interpolation types with CubicSpline if it's lacking.
-			while (newPath.rotationInterpolationTypes.Count < newPath.points.Count) newPath.rotationInterpolationTypes.Add(RotationInterpolationType.Slerp); // Fill the interpolation types with Slerp if it's lacking.
+			if (node.HasValue("pathName")) { newPath.pathName = node.GetValue("pathName"); }
+			if (node.HasValue("points")) { newPath.points = ParseVectorList(node.GetValue("points")); }
+			if (node.HasValue("positionInterpolationTypes")) { newPath.positionInterpolationTypes = ParseEnumTypeList<PositionInterpolationType>(node.GetValue("positionInterpolationTypes")); }
+			if (node.HasValue("rotations")) { newPath.rotations = ParseQuaternionList(node.GetValue("rotations")); }
+			if (node.HasValue("rotationInterpolationTypes")) { newPath.rotationInterpolationTypes = ParseEnumTypeList<RotationInterpolationType>(node.GetValue("rotationInterpolationTypes")); }
+			if (node.HasValue("times")) { newPath.times = ParseFloatList(node.GetValue("times")); }
+			if (node.HasValue("zooms")) { newPath.zooms = ParseFloatList(node.GetValue("zooms")); }
+			if (node.HasValue("timeScale")) { newPath.timeScale = float.Parse(node.GetValue("timeScale")); } else { newPath.timeScale = 1; }
+
+			// Ensure there's a consistent number of entries in the path.
+			while (newPath.positionInterpolationTypes.Count < newPath.points.Count) { newPath.positionInterpolationTypes.Add(PositionInterpolationType.CubicSpline); }
+			while (newPath.rotations.Count < newPath.points.Count) { newPath.rotations.Add(Quaternion.identity); }
+			while (newPath.rotationInterpolationTypes.Count < newPath.points.Count) { newPath.rotationInterpolationTypes.Add(RotationInterpolationType.Slerp); }
+			while (newPath.times.Count < newPath.points.Count) { newPath.times.Add(newPath.times.Count); }
+			while (newPath.zooms.Count < newPath.points.Count) { newPath.zooms.Add(1); }
 			newPath.Refresh();
 
 			return newPath;
@@ -76,7 +68,6 @@ namespace CameraTools
 			pathNode.AddValue("rotationInterpolationTypes", WriteEnumTypeList(rotationInterpolationTypes));
 			pathNode.AddValue("times", WriteFloatList(times));
 			pathNode.AddValue("zooms", WriteFloatList(zooms));
-			// pathNode.AddValue("lerpRate", lerpRate);
 			pathNode.AddValue("timeScale", timeScale);
 		}
 
@@ -168,7 +159,6 @@ namespace CameraTools
 			times.Add(time);
 			positionInterpolationTypes.Add(positionInterpolationType);
 			rotationInterpolationTypes.Add(rotationInterpolationType);
-			keyframeCount = times.Count;
 			Sort();
 			UpdateCurves();
 		}
@@ -187,7 +177,6 @@ namespace CameraTools
 
 		public void Refresh()
 		{
-			keyframeCount = times.Count;
 			Sort();
 			UpdateCurves();
 		}
@@ -200,7 +189,6 @@ namespace CameraTools
 			times.RemoveAt(index);
 			positionInterpolationTypes.RemoveAt(index);
 			rotationInterpolationTypes.RemoveAt(index);
-			keyframeCount = times.Count;
 			UpdateCurves();
 		}
 
