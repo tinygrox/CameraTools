@@ -1,3 +1,10 @@
+v1.18.0:
+Improvements:
+ - Add option for text input fields instead of sliders.
+ - Add 'Maintain Vel.' option, which is the equivalent of the old 'Initial Velocity' reference mode.
+ - Make the menu toggle hotkey configurable too.
+ - Make loading of paths a bit more fault tolerant.
+
 v1.17.0
 Bugfixes:
  - Only activate the camera when changing modes if it was already active.
