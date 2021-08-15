@@ -1,3 +1,7 @@
+v1.18.1:
+Improvements:
+ - Add customisable min/max values to the keypad move and zoom speeds (editable in the settings.cfg).
+
 v1.18.0:
 Improvements:
  - Add option for text input fields instead of sliders.
