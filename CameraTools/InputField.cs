@@ -61,5 +61,12 @@ namespace CameraTools
 				coroutineRunning = false;
 			}
 		}
+
+		// Update the min aand max values. Note: if min > max, then the max value will always be set.
+		public void UpdateLimits(float minValue, float maxValue)
+		{
+			this.minValue = minValue;
+			this.maxValue = maxValue;
+		}
 	}
 }

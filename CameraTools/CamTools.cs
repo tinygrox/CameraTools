@@ -200,10 +200,18 @@ namespace CameraTools
 		[CTPersistantField] public float freeMoveSpeed = 10;
 		string guiFreeMoveSpeed = "10";
 		float freeMoveSpeedRaw;
+		float freeMoveSpeedMinRaw;
+		float freeMoveSpeedMaxRaw;
+		[CTPersistantField] public float freeMoveSpeedMin = 0.1f;
+		[CTPersistantField] public float freeMoveSpeedMax = 100f;
 		[CTPersistantField] public float keyZoomSpeed = 1;
 		string guiKeyZoomSpeed = "1";
 		float zoomSpeedRaw;
+		float zoomSpeedMinRaw;
+		float zoomSpeedMaxRaw;
 		public float zoomFactor = 1;
+		[CTPersistantField] public float keyZoomSpeedMin = 0.01f;
+		[CTPersistantField] public float keyZoomSpeedMax = 10f;
 		[CTPersistantField] public float zoomExp = 1;
 		[CTPersistantField] public float maxRelV = 2500;
 		[CTPersistantField] public bool maintainInitialVelocity = false;
@@ -262,11 +270,6 @@ namespace CameraTools
 
 			Load();
 
-			guiOffsetForward = manualOffsetForward.ToString();
-			guiOffsetRight = manualOffsetRight.ToString();
-			guiOffsetUp = manualOffsetUp.ToString();
-			guiKeyZoomSpeed = keyZoomSpeed.ToString();
-			guiFreeMoveSpeed = freeMoveSpeed.ToString();
 			rng = new System.Random();
 		}
 
@@ -336,10 +339,6 @@ namespace CameraTools
 			titleStyle.alignment = TextAnchor.MiddleCenter;
 			contentWidth = (windowWidth) - (2 * leftIndent);
 
-			freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
-			zoomSpeedRaw = Mathf.Log10(keyZoomSpeed);
-			maxRelVSqr = maxRelV * maxRelV;
-
 			inputFields = new Dictionary<string, FloatInputField> {
 				{"autoZoomMargin", gameObject.AddComponent<FloatInputField>().Initialise(0, autoZoomMargin, 0f, 50f)},
 				{"zoomFactor", gameObject.AddComponent<FloatInputField>().Initialise(0, zoomFactor, 1f, 1096.63f)},
@@ -354,8 +353,8 @@ namespace CameraTools
 				{"randomModeIVAChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeIVAChance, 0f, 100f)},
 				{"randomModeStationaryChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeStationaryChance, 0f, 100f)},
 				{"randomModePathingChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModePathingChance, 0f, 100f)},
-				{"freeMoveSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, freeMoveSpeed, 0.1f, 100f)},
-				{"keyZoomSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, keyZoomSpeed, 0.01f, 10f)},
+				{"freeMoveSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, freeMoveSpeed, freeMoveSpeedMin, freeMoveSpeedMax)},
+				{"keyZoomSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, keyZoomSpeed, keyZoomSpeedMin, keyZoomSpeedMax)},
 				{"maxRelV", gameObject.AddComponent<FloatInputField>().Initialise(0, maxRelV, 0f)},
 			};
 		}
@@ -2450,7 +2449,7 @@ namespace CameraTools
 				GUI.Label(LeftRect(++line), "Move Speed:");
 				if (!textInput)
 				{
-					freeMoveSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), freeMoveSpeedRaw, -1f, 2f) * 20f) / 20f;
+					freeMoveSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), freeMoveSpeedRaw, freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw) * 100f) / 100f;
 					freeMoveSpeed = Mathf.Pow(10f, freeMoveSpeedRaw);
 					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), freeMoveSpeed.ToString("F"));
 				}
@@ -2463,7 +2462,7 @@ namespace CameraTools
 				GUI.Label(LeftRect(++line), "Zoom Speed:");
 				if (!textInput)
 				{
-					zoomSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), zoomSpeedRaw, -2f, 1f) * 20f) / 20f;
+					zoomSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), zoomSpeedRaw, zoomSpeedMinRaw, zoomSpeedMaxRaw) * 100f) / 100f;
 					keyZoomSpeed = Mathf.Pow(10f, zoomSpeedRaw);
 					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), keyZoomSpeed.ToString("F"));
 				}
@@ -3256,8 +3255,26 @@ namespace CameraTools
 				);
 			}
 			if (availablePaths.Count > 0) { selectedPathIndex = 0; }
+			// Set some internal and GUI variables.
 			freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
+			freeMoveSpeedMinRaw = Mathf.Log10(freeMoveSpeedMin);
+			freeMoveSpeedMaxRaw = Mathf.Log10(freeMoveSpeedMax);
 			zoomSpeedRaw = Mathf.Log10(keyZoomSpeed);
+			zoomSpeedMinRaw = Mathf.Log10(keyZoomSpeedMin);
+			zoomSpeedMaxRaw = Mathf.Log10(keyZoomSpeedMax);
+			maxRelVSqr = maxRelV * maxRelV;
+			guiOffsetForward = manualOffsetForward.ToString();
+			guiOffsetRight = manualOffsetRight.ToString();
+			guiOffsetUp = manualOffsetUp.ToString();
+			guiKeyZoomSpeed = keyZoomSpeed.ToString();
+			guiFreeMoveSpeed = freeMoveSpeed.ToString();
+			if (inputFields != null)
+			{
+				if (inputFields.ContainsKey("freeMoveSpeed"))
+				{ inputFields["freeMoveSpeed"].UpdateLimits(freeMoveSpeedMin, freeMoveSpeedMax); }
+				if (inputFields.ContainsKey("keyZoomSpeed"))
+				{ inputFields["keyZoomSpeed"].UpdateLimits(keyZoomSpeedMin, keyZoomSpeedMax); }
+			}
 			if (DEBUG) { Debug.Log("[CameraTools]: Verbose debugging enabled."); }
 		}
 		#endregion
