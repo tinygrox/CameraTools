@@ -245,6 +245,7 @@ namespace CameraTools
 		string currKeyTimeString;
 		bool showKeyframeEditor = false;
 		float pathStartTime;
+		public float pathingLerpRate = 1f;
 		public float pathingTimeScale = 1f;
 		bool isPlayingPath = false;
 		float pathTime
@@ -348,6 +349,7 @@ namespace CameraTools
 				{"dogfightOffsetY", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset)},
 				{"dogfightLerp", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightLerp, 0.01f, 0.5f)},
 				{"dogfightRoll", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightRoll, 0f, 1f)},
+				{"pathingLerpRate", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingLerpRate, 0.01f, 1f)},
 				{"pathingTimeScale", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingTimeScale, 0.05f, 4f)},
 				{"randomModeDogfightChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeDogfightChance, 0f, 100f)},
 				{"randomModeIVAChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeIVAChance, 0f, 100f)},
@@ -1284,9 +1286,10 @@ namespace CameraTools
 			if (isPlayingPath)
 			{
 				CameraTransformation tf = currentPath.Evaulate(pathTime * currentPath.timeScale);
-				flightCamera.transform.localPosition = tf.position;
-				flightCamera.transform.localRotation = tf.rotation;
-				zoomExp = tf.zoom;
+				flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, tf.position, currentPath.lerpRate);
+				flightCamera.transform.localRotation = Quaternion.Slerp(flightCamera.transform.localRotation, tf.rotation, currentPath.lerpRate);
+				zoomExp = Mathf.Lerp(zoomExp, tf.zoom, currentPath.lerpRate);
+
 			}
 			else
 			{
@@ -1903,7 +1906,7 @@ namespace CameraTools
 		//GUI
 		void OnGUI()
 		{
-			if (guiEnabled && gameUIToggle)
+			if (guiEnabled && gameUIToggle && HighLogic.LoadedSceneIsFlight)
 			{
 				if (inputFieldStyle == null) SetupInputFieldStyle();
 				windowRect = GUI.Window(320, windowRect, GuiWindow, "");
@@ -1983,13 +1986,21 @@ namespace CameraTools
 						inputFields[field].tryParseValueNow();
 						typeof(CamTools).GetField(field).SetValue(this, inputFields[field].currentValue);
 					}
-					if (currentPath != null) { currentPath.timeScale = pathingTimeScale; }
+					if (currentPath != null)
+					{
+						currentPath.lerpRate = pathingLerpRate;
+						currentPath.timeScale = pathingTimeScale;
+					}
 					freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
 					zoomSpeedRaw = Mathf.Log10(keyZoomSpeed);
 				}
 				else // Set the input fields to their current values.
 				{
-					if (currentPath != null) { pathingTimeScale = currentPath.timeScale; }
+					if (currentPath != null)
+					{
+						pathingLerpRate = currentPath.lerpRate;
+						pathingTimeScale = currentPath.timeScale;
+					}
 					foreach (var field in inputFields.Keys)
 					{ inputFields[field].currentValue = (float)typeof(CamTools).GetField(field).GetValue(this); }
 				}
@@ -2004,7 +2015,7 @@ namespace CameraTools
 				{
 					autoZoomMargin = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((++line) * entryHeight), contentWidth - 45, entryHeight), autoZoomMargin, 0, 50);
 					if (!enableKeypad) autoZoomMargin = Mathf.RoundToInt(autoZoomMargin * 2f) / 2f;
-					GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.15f) * entryHeight), 40, entryHeight), autoZoomMargin.ToString("0.0"), leftLabel);
+					GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.15f) * entryHeight), 40, entryHeight), autoZoomMargin.ToString("G3"), leftLabel);
 				}
 				else
 				{
@@ -2018,7 +2029,7 @@ namespace CameraTools
 				if (!textInput)
 				{
 					zoomExp = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + ((++line) * entryHeight), contentWidth - 45, entryHeight), zoomExp, 1, 8);
-					GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.15f) * entryHeight), 40, entryHeight), zoomFactor.ToString("0.0") + "x", leftLabel);
+					GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.15f) * entryHeight), 40, entryHeight), zoomFactor.ToString("G3") + "x", leftLabel);
 				}
 				else
 				{
@@ -2037,7 +2048,7 @@ namespace CameraTools
 			if (!textInput)
 			{
 				shakeMultiplier = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth - 45, entryHeight), shakeMultiplier, 0f, 10f);
-				GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.25f) * entryHeight), 40, entryHeight), shakeMultiplier.ToString("0.00") + "x");
+				GUI.Label(new Rect(leftIndent + contentWidth - 40, contentTop + ((line - 0.25f) * entryHeight), 40, entryHeight), shakeMultiplier.ToString("G3") + "x");
 			}
 			else
 			{
@@ -2177,7 +2188,7 @@ namespace CameraTools
 				}
 				line++;
 
-				GUI.Label(LeftRect(++line), "Distance: " + dogfightDistance.ToString("0.0"));
+				GUI.Label(LeftRect(++line), "Distance: " + dogfightDistance.ToString("G3"));
 				if (!textInput)
 				{
 					line += 0.15f;
@@ -2196,19 +2207,19 @@ namespace CameraTools
 					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 15f, entryHeight), "X: ");
 					dogfightOffsetX = GUI.HorizontalSlider(new Rect(leftIndent + 15f, contentTop + (line * entryHeight) + 6f, contentWidth - 45f, entryHeight), dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
 					if (!enableKeypad) dogfightOffsetX = Mathf.RoundToInt(dogfightOffsetX * 2f) / 2f;
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightOffsetX.ToString("0.0"));
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightOffsetX.ToString("G3"));
 					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 15, entryHeight), "Y: ");
 					dogfightOffsetY = GUI.HorizontalSlider(new Rect(leftIndent + 15f, contentTop + (line * entryHeight) + 6f, contentWidth - 45f, entryHeight), dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
 					if (!enableKeypad) dogfightOffsetY = Mathf.RoundToInt(dogfightOffsetY * 2f) / 2f;
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25, entryHeight), dogfightOffsetY.ToString("0.0"));
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25, entryHeight), dogfightOffsetY.ToString("G3"));
 					line += 0.5f;
 
 					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 30f, entryHeight), "Lerp: ");
 					dogfightLerp = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + 30f, contentTop + (line * entryHeight) + 6f, contentWidth - 60f, entryHeight), dogfightLerp * 100f, 1f, 50f)) / 100f;
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightLerp.ToString("0.00"));
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightLerp.ToString("G3"));
 					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 30f, entryHeight), "Roll: ");
 					dogfightRoll = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + 30f, contentTop + (line * entryHeight) + 6f, contentWidth - 60f, entryHeight), dogfightRoll * 20f, 0f, 20f)) / 20f;
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightRoll.ToString("0.00"));
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightRoll.ToString("G3"));
 					line += 0.15f;
 				}
 				else
@@ -2249,8 +2260,21 @@ namespace CameraTools
 				{
 					if (!textInput)
 					{
-						GUI.Label(LabelRect(++line), "Path timescale " + currentPath.timeScale.ToString("0.00"));
-						currentPath.timeScale = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth - 50f, entryHeight), currentPath.timeScale, 0.05f, 4f);
+						GUI.Label(LabelRect(++line), "Interpolation rate: " + currentPath.lerpRate.ToString("G2"));
+						var logLerp = Mathf.Round(20f * (1f + Mathf.Log10(currentPath.lerpRate)));
+						logLerp = Mathf.Round(GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth, entryHeight), logLerp, -20f, 20f));
+						currentPath.lerpRate = Mathf.Pow(10f, logLerp / 20f - 1f);
+					}
+					else
+					{
+						GUI.Label(LeftRect(++line), "Interpolation rate:");
+						inputFields["pathingLerpRate"].tryParseValue(GUI.TextField(RightRect(line), inputFields["pathingLerpRate"].possibleValue, 8, inputFieldStyle));
+						currentPath.lerpRate = inputFields["pathingLerpRate"].currentValue;
+					}
+					if (!textInput)
+					{
+						GUI.Label(LabelRect(++line), "Path timescale " + currentPath.timeScale.ToString("G3"));
+						currentPath.timeScale = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth, entryHeight), currentPath.timeScale, 0.05f, 4f);
 						currentPath.timeScale = Mathf.Round(currentPath.timeScale * 20f) / 20f;
 					}
 					else
@@ -2277,7 +2301,7 @@ namespace CameraTools
 							{
 								GUI.color = origGuiColor;
 							}
-							string kLabel = "#" + i.ToString() + ": " + currentPath.GetKeyframe(i).time.ToString("0.00") + "s";
+							string kLabel = "#" + i.ToString() + ": " + currentPath.GetKeyframe(i).time.ToString("G3") + "s";
 							if (GUI.Button(new Rect(0f, (i * entryHeight), 3f * viewContentWidth / 4f, entryHeight), kLabel))
 							{
 								SelectKeyframe(i);
@@ -2451,7 +2475,7 @@ namespace CameraTools
 				{
 					freeMoveSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), freeMoveSpeedRaw, freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw) * 100f) / 100f;
 					freeMoveSpeed = Mathf.Pow(10f, freeMoveSpeedRaw);
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), freeMoveSpeed.ToString("F"));
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), freeMoveSpeed.ToString("G3"));
 				}
 				else
 				{
@@ -2464,7 +2488,7 @@ namespace CameraTools
 				{
 					zoomSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), zoomSpeedRaw, zoomSpeedMinRaw, zoomSpeedMaxRaw) * 100f) / 100f;
 					keyZoomSpeed = Mathf.Pow(10f, zoomSpeedRaw);
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), keyZoomSpeed.ToString("F"));
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), keyZoomSpeed.ToString("G3"));
 				}
 				else
 				{

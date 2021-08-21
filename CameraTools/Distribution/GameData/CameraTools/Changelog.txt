@@ -1,3 +1,7 @@
+v1.18.2:
+Improvements:
+ - Re-add the "interpolation rate" parameter in pathing. (A value of 1 means that the camera follows the defined path precisely. A value less than 1 means that the camera chases the point on the path.)
+
 v1.18.1:
 Improvements:
  - Add customisable min/max values to the keypad move and zoom speeds (editable in the settings.cfg).
