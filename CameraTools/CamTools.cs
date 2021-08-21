@@ -2062,6 +2062,7 @@ namespace CameraTools
 			{
 				GUI.Label(LeftRect(++line), "Max Relative Vel.: ", leftLabel);
 				inputFields["maxRelV"].tryParseValue(GUI.TextField(RightRect(line), inputFields["maxRelV"].possibleValue, 12, inputFieldStyle));
+				maxRelV = inputFields["maxRelV"].currentValue;
 				maxRelVSqr = maxRelV * maxRelV;
 
 				maintainInitialVelocity = GUI.Toggle(LeftRect(++line), maintainInitialVelocity, "Maintain Vel.");
