@@ -222,7 +222,7 @@ namespace CameraTools
 		#endregion
 
 		#region Pathing Camera Fields
-		int selectedPathIndex = -1;
+		[CTPersistantField] public float selectedPathIndex = -1;
 		List<CameraPath> availablePaths;
 		CameraPath currentPath
 		{
@@ -230,7 +230,7 @@ namespace CameraTools
 			{
 				if (selectedPathIndex >= 0 && selectedPathIndex < availablePaths.Count)
 				{
-					return availablePaths[selectedPathIndex];
+					return availablePaths[(int)selectedPathIndex];
 				}
 				else
 				{
@@ -1299,13 +1299,18 @@ namespace CameraTools
 				Vector3 rightAxis = flightCamera.transform.right;//(Quaternion.AngleAxis(90, forwardLevelAxis) * cameraUp).normalized;
 				if (enableKeypad && !boundThisFrame)
 				{
+					Vector3 up = flightCamera.transform.up;
+					if (GameSettings.MODIFIER_KEY.GetKey()) {
+						up = cameraUp;
+                    }
+
 					if (Input.GetKey(fmUpKey))
 					{
-						flightCamera.transform.position += cameraUp * freeMoveSpeed * Time.fixedDeltaTime;
+						flightCamera.transform.position += up * freeMoveSpeed * Time.fixedDeltaTime;
 					}
 					else if (Input.GetKey(fmDownKey))
 					{
-						flightCamera.transform.position -= cameraUp * freeMoveSpeed * Time.fixedDeltaTime;
+						flightCamera.transform.position -= up * freeMoveSpeed * Time.fixedDeltaTime;
 					}
 					if (Input.GetKey(fmForwardKey))
 					{
@@ -1367,8 +1372,7 @@ namespace CameraTools
 						flightCamera.transform.position += forwardLevelAxis * Input.GetAxis("Mouse Y") * 2;
 					}
 				}
-				flightCamera.transform.position += flightCamera.transform.up * 10 * Input.GetAxis("Mouse ScrollWheel");
-
+				freeMoveSpeedRaw = Mathf.Clamp(freeMoveSpeedRaw + 0.5f * Input.GetAxis("Mouse ScrollWheel"), freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw);
 			}
 
 			//zoom
@@ -1465,12 +1469,19 @@ namespace CameraTools
 			if (currentPath.keyframeCount > 0)
 			{
 				CameraKeyframe previousKeyframe = currentPath.GetKeyframe(currentPath.keyframeCount - 1);
-				time = previousKeyframe.time + 1;
 				positionInterpolationType = previousKeyframe.positionInterpolationType;
 				rotationInterpolationType = previousKeyframe.rotationInterpolationType;
+
+				if (isPlayingPath) {
+					time = pathTime;
+				}
+				else {
+					time = previousKeyframe.time + 1;
+				}
 			}
+			
 			currentPath.AddTransform(flightCamera.transform, zoomExp, time, positionInterpolationType, rotationInterpolationType);
-			SelectKeyframe(currentPath.keyframeCount - 1);
+			SelectKeyframe(currentPath.times.IndexOf(time));
 
 			if (currentPath.keyframeCount > 6)
 			{
@@ -2254,7 +2265,7 @@ namespace CameraTools
 				if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2f, entryHeight), "New Path"))
 				{ CreateNewPath(); }
 				if (GUI.Button(new Rect(leftIndent + (contentWidth / 2f), contentTop + (line * entryHeight), contentWidth / 2f, entryHeight), "Delete Path"))
-				{ DeletePath(selectedPathIndex); }
+				{ DeletePath((int)selectedPathIndex); }
 				line += 0.25f;
 
 				if (selectedPathIndex >= 0)
@@ -2519,7 +2530,7 @@ namespace CameraTools
 
 			Rect saveRect = new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight);
 			if (GUI.Button(saveRect, "Save"))
-			{ DisableGui(); }
+			{ Save(); }
 
 			Rect loadRect = new Rect(saveRect);
 			loadRect.x += contentWidth / 2;
@@ -3229,7 +3240,6 @@ namespace CameraTools
 			guiFreeMoveSpeed = freeMoveSpeed.ToString();
 
 			DeselectKeyframe();
-			selectedPathIndex = -1;
 			availablePaths = new List<CameraPath>();
 			ConfigNode pathFileNode = ConfigNode.Load(pathSaveURL);
 			if (pathFileNode == null)
@@ -3279,7 +3289,8 @@ namespace CameraTools
 					}
 				);
 			}
-			if (availablePaths.Count > 0) { selectedPathIndex = 0; }
+			selectedPathIndex = Math.Min(selectedPathIndex, (availablePaths.Count - 1));
+			if (availablePaths.Count > 0 && selectedPathIndex < 0) { selectedPathIndex = 0; }
 			// Set some internal and GUI variables.
 			freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
 			freeMoveSpeedMinRaw = Mathf.Log10(freeMoveSpeedMin);
