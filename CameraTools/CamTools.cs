@@ -255,11 +255,12 @@ namespace CameraTools
 		{
 			get
 			{
-				return Time.unscaledTime - pathStartTime;
+				return GetTime() - pathStartTime;
 			}
 		}
 		Vector2 keysScrollPos;
 		public bool interpolationType = false;
+		[CTPersistantField] public bool useRealTime = true;
 		#endregion
 		#endregion
 
@@ -490,7 +491,7 @@ namespace CameraTools
 				waitingForPosition = false;
 			}
 
-			if (cameraToolActive)
+			if (cameraToolActive && useRealTime)
 			{
 				switch (toolMode)
 				{
@@ -500,7 +501,7 @@ namespace CameraTools
 					case ToolModes.Pathing:
 						UpdatePathingCam();
 						break;
-					default: // Other modes are handled in FixedUpdate due to relying on interpolation of positions updated in the physics update.
+					default:
 						break;
 				}
 			}
@@ -568,8 +569,12 @@ namespace CameraTools
 							else
 							{ lastVesselCoM += initialVelocity * TimeWarp.fixedDeltaTime; }
 						}
+						if (!useRealTime) UpdateStationaryCamera();
 						break;
-					default: // Other modes are handled in Update due to not relying on interpolation of positions updated in the physics update.
+					case ToolModes.Pathing:
+						if (!useRealTime) UpdatePathingCam();
+						break;
+					default:
 						break;
 				}
 			}
@@ -1518,7 +1523,7 @@ namespace CameraTools
 			CameraKeyframe currentKey = currentPath.GetKeyframe(index);
 			flightCamera.transform.localPosition = currentKey.position;
 			flightCamera.transform.localRotation = currentKey.rotation;
-			zoomExp = currentKey.zoom;
+			SetZoomImmediate(currentKey.zoom);
 		}
 
 		void PlayPathingCam()
@@ -1559,13 +1564,13 @@ namespace CameraTools
 			CameraTransformation firstFrame = currentPath.Evaulate(startTime);
 			flightCamera.transform.localPosition = firstFrame.position;
 			flightCamera.transform.localRotation = firstFrame.rotation;
-			zoomExp = firstFrame.zoom;
+			SetZoomImmediate(firstFrame.zoom);
 
 			isPlayingPath = true;
-			pathStartTime = Time.unscaledTime - (startTime / currentPath.timeScale);
+			pathStartTime = GetTime() - (startTime / currentPath.timeScale);
 		}
 
-		void StopPlayingPath()
+        void StopPlayingPath()
 		{
 			isPlayingPath = false;
 		}
@@ -2046,7 +2051,10 @@ namespace CameraTools
 			}
 			line++;
 
+			useAudioEffects = GUI.Toggle(LabelRect(++line), useAudioEffects, "Use Audio Effects");
 			autoEnableForBDA = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoEnableForBDA, "Auto-Enable for BDArmory");
+
+			line++;
 			if (autoFOV)
 			{
 				GUI.Label(LeftRect(++line), "Autozoom Margin: ");
@@ -2080,10 +2088,8 @@ namespace CameraTools
 			{
 				autoFOV = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoFOV, "Auto Zoom");//, leftLabel);
 			}
-			line++;
 
-			useAudioEffects = GUI.Toggle(LabelRect(++line), useAudioEffects, "Use Audio Effects");
-			GUI.Label(LeftRect(++line), "Camera shake:");
+			GUI.Label(LeftRect(++line), "Camera Shake:");
 			if (!textInput)
 			{
 				shakeMultiplier = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth - 45, entryHeight), shakeMultiplier, 0f, 10f);
@@ -2189,7 +2195,7 @@ namespace CameraTools
 			}
 			else if (toolMode == ToolModes.DogfightCamera)
 			{
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Secondary target:");
+				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Secondary Target:");
 				string tVesselLabel;
 				if (showingVesselList)
 				{ tVesselLabel = "Clear"; }
@@ -2313,16 +2319,21 @@ namespace CameraTools
 					}
 					if (!textInput)
 					{
-						GUI.Label(LabelRect(++line), "Path timescale " + currentPath.timeScale.ToString("G3"));
+						GUI.Label(LabelRect(++line), "Path Timescale: " + currentPath.timeScale.ToString("G3"));
 						currentPath.timeScale = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth, entryHeight), currentPath.timeScale, 0.05f, 4f);
 						currentPath.timeScale = Mathf.Round(currentPath.timeScale * 20f) / 20f;
 					}
 					else
 					{
-						GUI.Label(LeftRect(++line), "Path timescale:");
+						GUI.Label(LeftRect(++line), "Path Timescale:");
 						inputFields["pathingTimeScale"].tryParseValue(GUI.TextField(RightRect(line), inputFields["pathingTimeScale"].possibleValue, 8, inputFieldStyle));
 						currentPath.timeScale = inputFields["pathingTimeScale"].currentValue;
 					}
+					if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), useRealTime ? "Real-time" : "In-Game time"))
+					{
+						useRealTime = !useRealTime;
+					}
+					++line;
 					float viewHeight = Mathf.Max(6f * entryHeight, currentPath.keyframeCount * entryHeight);
 					Rect scrollRect = new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, 6 * entryHeight);
 					GUI.Box(scrollRect, string.Empty);
@@ -3250,6 +3261,20 @@ namespace CameraTools
 			var terrainAltitude = (float)FlightGlobals.currentMainBody.TerrainAltitude(geoCoords.x, geoCoords.y);
 			return altitude - Mathf.Max(terrainAltitude, 0f);
 		}
+
+		public float GetTime()
+        {
+			return useRealTime ? Time.unscaledTime : Time.time;
+		}
+
+		public void SetZoomImmediate(float zoom)
+        {
+			zoomExp = zoom;
+            zoomFactor = Mathf.Exp(zoomExp) / Mathf.Exp(1);
+			manualFOV = 60 / zoomFactor;
+			currentFOV = manualFOV;
+			flightCamera.SetFoV(currentFOV);
+        }
 		#endregion
 
 		#region Load/Save
