@@ -24,7 +24,7 @@ namespace CameraTools
 		Transform origParent;
 		float origNearClip;
 		float origDistance;
-        FlightCamera flightCamera;
+		FlightCamera flightCamera;
 		Part camTarget = null;
 		Vector3 cameraUp = Vector3.up;
 		bool cameraToolActive = false;
