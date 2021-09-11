@@ -1869,7 +1869,8 @@ namespace CameraTools
 				}
 			}
 			hasDied = false;
-			if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT && flightCamera.vesselTarget.id != FlightGlobals.ActiveVessel.id)
+			if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT
+				&& flightCamera.vesselTarget != FlightGlobals.ActiveVessel)
 			{
 				flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Vessel);
 			}
