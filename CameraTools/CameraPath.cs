@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -51,7 +51,7 @@ namespace CameraTools
 			// Ensure there's a consistent number of entries in the path.
 			while (newPath.positionInterpolationTypes.Count < newPath.points.Count) { newPath.positionInterpolationTypes.Add(PositionInterpolationType.CubicSpline); }
 			while (newPath.rotations.Count < newPath.points.Count) { newPath.rotations.Add(Quaternion.identity); }
-			while (newPath.rotationInterpolationTypes.Count < newPath.points.Count) { newPath.rotationInterpolationTypes.Add(RotationInterpolationType.Slerp); }
+			while (newPath.rotationInterpolationTypes.Count < newPath.points.Count) { newPath.rotationInterpolationTypes.Add(RotationInterpolationType.CubicSpline); }
 			while (newPath.times.Count < newPath.points.Count) { newPath.times.Add(newPath.times.Count); }
 			while (newPath.zooms.Count < newPath.points.Count) { newPath.zooms.Add(1); }
 			newPath.Refresh();

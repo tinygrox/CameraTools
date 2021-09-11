@@ -23,7 +23,8 @@ namespace CameraTools
 		Quaternion origRotation;
 		Transform origParent;
 		float origNearClip;
-		FlightCamera flightCamera;
+		float origDistance;
+        FlightCamera flightCamera;
 		Part camTarget = null;
 		Vector3 cameraUp = Vector3.up;
 		bool cameraToolActive = false;
@@ -62,6 +63,7 @@ namespace CameraTools
 		[CTPersistantField] public string fmRightKey = "[6]";
 		[CTPersistantField] public string fmZoomInKey = "[9]";
 		[CTPersistantField] public string fmZoomOutKey = "[3]";
+		[CTPersistantField] public string fmMovementModifier = "[0]";
 		bool waitingForTarget = false;
 		bool waitingForPosition = false;
 		bool mouseUp = false;
@@ -113,6 +115,7 @@ namespace CameraTools
 		Dictionary<string, FloatInputField> inputFields;
 		List<Tuple<double, string>> debug2Messages = new List<Tuple<double, string>>();
 		void Debug2Log(string m) => debug2Messages.Add(new Tuple<double, string>(Time.time, m));
+		float lastSavedTime = 0;
 
 		#endregion
 
@@ -241,11 +244,11 @@ namespace CameraTools
 		int currentKeyframeIndex = -1;
 		float currentKeyframeTime;
 		PositionInterpolationType currentKeyframePositionInterpolationType = PositionInterpolationType.CubicSpline; // Default to CubicSpline
-		RotationInterpolationType currentKeyframeRotationInterpolationType = RotationInterpolationType.Slerp; // Default to Slerp
+		RotationInterpolationType currentKeyframeRotationInterpolationType = RotationInterpolationType.CubicSpline; // Default to CubicSpline
 		string currKeyTimeString;
 		bool showKeyframeEditor = false;
 		float pathStartTime;
-		public float pathingLerpRate = 1f;
+		public float pathingLerpRate = 0f;
 		public float pathingTimeScale = 1f;
 		bool isPlayingPath = false;
 		float pathTime
@@ -1270,7 +1273,6 @@ namespace CameraTools
 
 			cameraParent.transform.position = vessel.transform.position;
 			cameraParent.transform.rotation = vessel.transform.rotation;
-			flightCamera.SetTargetNone();
 			flightCamera.transform.parent = cameraParent.transform;
 			cameraParentWasStolen = false;
 			flightCamera.DeactivateUpdate();
@@ -1300,8 +1302,9 @@ namespace CameraTools
 				if (enableKeypad && !boundThisFrame)
 				{
 					Vector3 up = flightCamera.transform.up;
-					if (GameSettings.MODIFIER_KEY.GetKey()) {
+					if (Input.GetKey(fmMovementModifier)) {
 						up = cameraUp;
+						forwardLevelAxis = (Quaternion.AngleAxis(-90, cameraUp) * flightCamera.transform.right).normalized;
                     }
 
 					if (Input.GetKey(fmUpKey))
@@ -1415,6 +1418,10 @@ namespace CameraTools
 			{
 				StopPlayingPath();
 			}
+			if (!cameraToolActive && (flightCamera.transform.parent != cameraParent.transform))
+            {
+				SaveOriginalCamera();
+			}
 			currentKeyframeIndex = index;
 			UpdateCurrentValues();
 			showKeyframeEditor = true;
@@ -1465,7 +1472,7 @@ namespace CameraTools
 
 			float time = 0;
 			PositionInterpolationType positionInterpolationType = PositionInterpolationType.CubicSpline;
-			RotationInterpolationType rotationInterpolationType = RotationInterpolationType.Slerp;
+			RotationInterpolationType rotationInterpolationType = RotationInterpolationType.CubicSpline;
 			if (currentPath.keyframeCount > 0)
 			{
 				CameraKeyframe previousKeyframe = currentPath.GetKeyframe(currentPath.keyframeCount - 1);
@@ -1473,14 +1480,27 @@ namespace CameraTools
 				rotationInterpolationType = previousKeyframe.rotationInterpolationType;
 
 				if (isPlayingPath) {
-					time = pathTime;
+				    time = pathTime * currentPath.timeScale;
 				}
 				else {
-					time = previousKeyframe.time + 1;
+					time = previousKeyframe.time + 10;
 				}
 			}
 			
-			currentPath.AddTransform(flightCamera.transform, zoomExp, time, positionInterpolationType, rotationInterpolationType);
+			Transform flightCameraTransform = flightCamera.transform;
+
+			if (!cameraToolActive)
+            {
+				SaveOriginalCamera();
+				// I'm not sure how much of this is redundant but it works now and I'm scared to touch it again.
+				cameraParent.transform.position = FlightGlobals.ActiveVessel.transform.position;
+				cameraParent.transform.rotation = FlightGlobals.ActiveVessel.transform.rotation;
+				flightCameraTransform.localPosition = cameraParent.transform.InverseTransformPoint(flightCameraTransform.position);
+				flightCameraTransform.localRotation = flightCameraTransform.parent.localRotation * flightCameraTransform.localRotation;
+			}
+
+			currentPath.AddTransform(flightCameraTransform, zoomExp, time, positionInterpolationType, rotationInterpolationType);
+
 			SelectKeyframe(currentPath.times.IndexOf(time));
 
 			if (currentPath.keyframeCount > 6)
@@ -1523,6 +1543,12 @@ namespace CameraTools
 				return;
 			}
 
+			float startTime = 0;
+			if (currentKeyframeIndex > -1)
+            {
+				startTime = currentPath.GetKeyframe(currentKeyframeIndex).time;
+			}
+
 			DeselectKeyframe();
 
 			if (!cameraToolActive)
@@ -1530,13 +1556,13 @@ namespace CameraTools
 				StartPathingCam();
 			}
 
-			CameraTransformation firstFrame = currentPath.Evaulate(0);
+			CameraTransformation firstFrame = currentPath.Evaulate(startTime);
 			flightCamera.transform.localPosition = firstFrame.position;
 			flightCamera.transform.localRotation = firstFrame.rotation;
 			zoomExp = firstFrame.zoom;
 
 			isPlayingPath = true;
-			pathStartTime = Time.unscaledTime;
+			pathStartTime = Time.unscaledTime - (startTime / currentPath.timeScale);
 		}
 
 		void StopPlayingPath()
@@ -1843,15 +1869,16 @@ namespace CameraTools
 				}
 			}
 			hasDied = false;
-			if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT)
+			if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT && flightCamera.vesselTarget.id != FlightGlobals.ActiveVessel.id)
 			{
 				flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Vessel);
 			}
 			if (cameraToolActive)
 			{
 				flightCamera.transform.parent = origParent;
-				flightCamera.transform.position = origPosition;
-				flightCamera.transform.rotation = origRotation;
+				flightCamera.transform.localPosition = origPosition;
+				flightCamera.transform.localRotation = origRotation;
+				flightCamera.SetDistanceImmediate(origDistance);
 				cameraParentWasStolen = false;
 			}
 			if (HighLogic.LoadedSceneIsFlight)
@@ -1877,15 +1904,15 @@ namespace CameraTools
 			}
 			catch (Exception e)
 			{ Debug.Log("[CameraTools]: Caught exception resetting CameraTools " + e.ToString()); }
-
 		}
 
 		void SaveOriginalCamera()
 		{
-			origPosition = flightCamera.transform.position;
+			origPosition = flightCamera.transform.localPosition;
 			origRotation = flightCamera.transform.localRotation;
 			origParent = flightCamera.transform.parent;
 			origNearClip = HighLogic.LoadedSceneIsFlight ? flightCamera.mainCamera.nearClipPlane : Camera.main.nearClipPlane;
+			origDistance = flightCamera.Distance;
 		}
 
 		void PostDeathRevert()
@@ -1999,7 +2026,7 @@ namespace CameraTools
 					}
 					if (currentPath != null)
 					{
-						currentPath.lerpRate = pathingLerpRate;
+						currentPath.lerpRate = 1 - pathingLerpRate;
 						currentPath.timeScale = pathingTimeScale;
 					}
 					freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
@@ -2009,7 +2036,7 @@ namespace CameraTools
 				{
 					if (currentPath != null)
 					{
-						pathingLerpRate = currentPath.lerpRate;
+						pathingLerpRate = 1 - currentPath.lerpRate;
 						pathingTimeScale = currentPath.timeScale;
 					}
 					foreach (var field in inputFields.Keys)
@@ -2272,16 +2299,16 @@ namespace CameraTools
 				{
 					if (!textInput)
 					{
-						GUI.Label(LabelRect(++line), "Interpolation rate: " + currentPath.lerpRate.ToString("G2"));
+						GUI.Label(LabelRect(++line), "Camera Inertia: " + (1 - currentPath.lerpRate).ToString("G2"));
 						var logLerp = Mathf.Round(20f * (1f + Mathf.Log10(currentPath.lerpRate)));
-						logLerp = Mathf.Round(GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth, entryHeight), logLerp, -20f, 20f));
+						logLerp = Mathf.Round(GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth, entryHeight), logLerp, 20f, -20f));
 						currentPath.lerpRate = Mathf.Pow(10f, logLerp / 20f - 1f);
 					}
 					else
 					{
-						GUI.Label(LeftRect(++line), "Interpolation rate:");
+						GUI.Label(LeftRect(++line), "Camera Intertia:");
 						inputFields["pathingLerpRate"].tryParseValue(GUI.TextField(RightRect(line), inputFields["pathingLerpRate"].possibleValue, 8, inputFieldStyle));
-						currentPath.lerpRate = inputFields["pathingLerpRate"].currentValue;
+						currentPath.lerpRate = 1 - inputFields["pathingLerpRate"].currentValue;
 					}
 					if (!textInput)
 					{
@@ -2526,6 +2553,7 @@ namespace CameraTools
 				fmRightKey = KeyBinding(fmRightKey, "Right", ++line);
 				fmZoomInKey = KeyBinding(fmZoomInKey, "Zoom In", ++line);
 				fmZoomOutKey = KeyBinding(fmZoomOutKey, "Zoom Out", ++line);
+				fmMovementModifier = KeyBinding(fmMovementModifier, "Modifier", ++line);
 			}
 
 			Rect saveRect = new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight);
@@ -2538,6 +2566,13 @@ namespace CameraTools
 			{
 				if (isPlayingPath) StopPlayingPath();
 				Load();
+			}
+
+			float timeSinceLastSaved = Time.unscaledTime - lastSavedTime;
+			if (timeSinceLastSaved < 1)
+            {
+				++line;
+				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), timeSinceLastSaved < 0.5 ? "Saving..." : "Saved.", centerLabel);
 			}
 
 			//fix length
@@ -2596,6 +2631,22 @@ namespace CameraTools
 			if (float.TryParse(currKeyTimeString, out parsed))
 			{
 				currentKeyframeTime = parsed;
+			}
+			if (currentKeyframeIndex > 1)
+            {
+				if (GUI.Button(new Rect(100 + gap, gap + (++line * lineHeight), 200 - 2 * gap, lineHeight - gap), "Maintain Speed"))
+				{
+					CameraKeyframe previousKeyframe = currentPath.GetKeyframe(currentKeyframeIndex - 1);
+					CameraKeyframe previousPreviousKeyframe = currentPath.GetKeyframe(currentKeyframeIndex - 2);
+					float previousKeyframeDistance = Vector3.Distance(previousKeyframe.position, previousPreviousKeyframe.position);
+					float previousKeyframeDuration = previousKeyframe.time - previousPreviousKeyframe.time;
+					float previousKeyframeSpeed = previousKeyframeDistance / previousKeyframeDuration;
+					float currentKeyFrameDistance = Vector3.Distance(flightCamera.transform.localPosition, previousKeyframe.position);
+					float adjustedDuration = currentKeyFrameDistance / previousKeyframeSpeed;
+					float currentKeyframeDuration = currentKeyframeTime - previousKeyframe.time;
+					currentKeyframeTime += adjustedDuration - currentKeyframeDuration;
+					currKeyTimeString = currentKeyframeTime.ToString();
+				}
 			}
 			GUI.Label(new Rect(gap, gap + (++line * lineHeight), 100, lineHeight - gap), $"Pos: {currentKeyframePositionInterpolationType}");
 			currentKeyframePositionInterpolationType = (PositionInterpolationType)Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(100 + 2 * gap, gap + line * lineHeight, 200 - 3 * gap, lineHeight - gap), (float)currentKeyframePositionInterpolationType, 0, PositionInterpolationTypeMax));
@@ -3225,9 +3276,13 @@ namespace CameraTools
 			if (!Directory.GetParent(pathSaveURL).Exists)
 			{ Directory.GetParent(pathSaveURL).Create(); }
 			var success = pathFileNode.Save(pathSaveURL);
-			if (success && File.Exists(oldPathSaveURL)) // Remove the old settings if it exists and the new settings were saved.
-			{ File.Delete(oldPathSaveURL); }
+			if (success)
+            {
+				lastSavedTime = Time.unscaledTime;
 
+				if (File.Exists(oldPathSaveURL))
+                { File.Delete(oldPathSaveURL); } // Remove the old settings if it exists and the new settings were saved.
+			}
 		}
 
 		void Load()
