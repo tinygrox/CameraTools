@@ -1,3 +1,7 @@
+Improvements:
+ - Use a more stable direction for dogfight mode when the vessel is bobbing around on the ocean.
+ - Auto-Enable for BDArmory when using surface AIs too.
+
 v1.18.2:
 Improvements:
  - Re-add the "interpolation rate" parameter in pathing. (A value of 1 means that the camera follows the defined path precisely. A value less than 1 means that the camera chases the point on the path.)
