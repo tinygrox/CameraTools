@@ -178,6 +178,7 @@ namespace CameraTools
 		bool dogfightVelocityChase = false;
 		//bdarmory
 		bool hasBDAI = false;
+		bool hasPilotAI = false;
 		bool hasBDWM = false;
 		[CTPersistantField] public bool useBDAutoTarget = false;
 		object aiComponent = null;
@@ -750,6 +751,7 @@ namespace CameraTools
 
 			if (dogfightVelocityChase)
 			{
+				var lastDogfightLastTargetPosition = dogfightLastTargetPosition;
 				if (vessel.Speed() > 1)
 				{
 					dogfightLastTargetPosition = vessel.CoM + vessel.Velocity().normalized * 5000;
@@ -757,6 +759,10 @@ namespace CameraTools
 				else
 				{
 					dogfightLastTargetPosition = vessel.CoM + vessel.ReferenceTransform.up * 5000;
+				}
+				if (vessel.Splashed && vessel.Speed() < 10) // Don't bob around lots if the vessel is in water.
+				{
+					dogfightLastTargetPosition = Vector3.Lerp(lastDogfightLastTargetPosition, Vector3.ProjectOnPlane(dogfightLastTargetPosition, cameraUp), (float)vessel.Speed() * 0.01f); // Slow lerp to a horizontal position.
 				}
 			}
 
@@ -2827,11 +2833,19 @@ namespace CameraTools
 			if (v)
 			{
 				foreach (Part p in v.parts)
-				{
+				{ // We actually want BDGenericAIBase, but we can't use GetComponent(string) to find it, so we look for its subclasses.
 					if (p.GetComponent("BDModulePilotAI"))
 					{
 						hasBDAI = true;
+						hasPilotAI = true;
 						aiComponent = (object)p.GetComponent("BDModulePilotAI");
+						return;
+					}
+					if (p.GetComponent("BDModuleSurfaceAI"))
+					{
+						hasBDAI = true;
+						hasPilotAI = false;
+						aiComponent = (object)p.GetComponent("BDModuleSurfaceAI");
 						return;
 					}
 				}
@@ -2900,7 +2914,7 @@ namespace CameraTools
 				{
 					foreach (var t in assy.assembly.GetTypes())
 					{
-						if (t.Name == "BDModulePilotAI")
+						if (t.Name == "BDGenericAIBase")
 						{
 							return t;
 						}
@@ -3049,7 +3063,7 @@ namespace CameraTools
 
 					if (cameraToolActive) return; // It's already active.
 
-					if (vessel == null || vessel.LandedOrSplashed) return; // Don't activate for landed/splashed vessels.
+					if (vessel == null || (hasPilotAI && vessel.LandedOrSplashed)) return; // Don't activate for landed/splashed planes.
 					if ((bool)bdCompetitionStartingField.GetValue(bdCompetitionInstance))
 					{
 						Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is starting.");
