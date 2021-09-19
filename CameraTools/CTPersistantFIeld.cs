@@ -85,6 +85,10 @@ namespace CameraTools
 			{
 				return Enum.Parse(type, value);
 			}
+			else if (type == typeof(int))
+			{
+				return int.Parse(value);
+			}
 			else if (type == typeof(float))
 			{
 				return float.Parse(value);

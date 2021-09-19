@@ -53,7 +53,7 @@ namespace CameraTools
 		#region Input
 		[CTPersistantField] public string cameraKey = "home";
 		[CTPersistantField] public string revertKey = "end";
-		[CTPersistantField] public string toggleMenu = "[/]";
+		[CTPersistantField] public string toggleMenu = "[0]";
 		[CTPersistantField] public bool enableKeypad = false;
 		[CTPersistantField] public string fmUpKey = "[7]";
 		[CTPersistantField] public string fmDownKey = "[1]";
@@ -63,7 +63,7 @@ namespace CameraTools
 		[CTPersistantField] public string fmRightKey = "[6]";
 		[CTPersistantField] public string fmZoomInKey = "[9]";
 		[CTPersistantField] public string fmZoomOutKey = "[3]";
-		[CTPersistantField] public string fmMovementModifier = "[0]";
+		[CTPersistantField] public string fmMovementModifier = "right shift";
 		bool waitingForTarget = false;
 		bool waitingForPosition = false;
 		bool mouseUp = false;
@@ -226,7 +226,7 @@ namespace CameraTools
 		#endregion
 
 		#region Pathing Camera Fields
-		[CTPersistantField] public float selectedPathIndex = -1;
+		[CTPersistantField] public int selectedPathIndex = -1;
 		List<CameraPath> availablePaths;
 		CameraPath currentPath
 		{
@@ -234,7 +234,7 @@ namespace CameraTools
 			{
 				if (selectedPathIndex >= 0 && selectedPathIndex < availablePaths.Count)
 				{
-					return availablePaths[(int)selectedPathIndex];
+					return availablePaths[selectedPathIndex];
 				}
 				else
 				{
@@ -249,7 +249,7 @@ namespace CameraTools
 		string currKeyTimeString;
 		bool showKeyframeEditor = false;
 		float pathStartTime;
-		public float pathingLerpRate = 0f;
+		public float pathingLerpRate = 1f;
 		public float pathingTimeScale = 1f;
 		bool isPlayingPath = false;
 		float pathTime
@@ -430,7 +430,7 @@ namespace CameraTools
 			{
 				if (Input.GetKeyDown(toggleMenu))
 				{
-					guiEnabled = !guiEnabled;
+					ToggleGui();
 				}
 
 				if (Input.GetKeyDown(revertKey))
@@ -492,7 +492,7 @@ namespace CameraTools
 				waitingForPosition = false;
 			}
 
-			if (cameraToolActive && useRealTime)
+			if (cameraToolActive)
 			{
 				switch (toolMode)
 				{
@@ -500,9 +500,10 @@ namespace CameraTools
 						UpdateStationaryCamera();
 						break;
 					case ToolModes.Pathing:
-						UpdatePathingCam();
+						if (useRealTime)
+							UpdatePathingCam();
 						break;
-					default:
+					default: // Other modes are handled in FixedUpdate due to relying on interpolation of positions updated in the physics update.
 						break;
 				}
 			}
@@ -511,7 +512,7 @@ namespace CameraTools
 
 		void FixedUpdate()
 		{
-			// Note: we have to perform the camera adjustments during FixedUpdate to avoid jitter in the Lerps in the camera position and rotation due to inconsistent numbers of physics updates per frame.
+			// Note: we have to perform several of the camera adjustments during FixedUpdate to avoid jitter in the Lerps in the camera position and rotation due to inconsistent numbers of physics updates per frame.
 			if (!FlightGlobals.ready) return;
 			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight) return;
 
@@ -570,7 +571,7 @@ namespace CameraTools
 							else
 							{ lastVesselCoM += initialVelocity * TimeWarp.fixedDeltaTime; }
 						}
-						if (!useRealTime) UpdateStationaryCamera();
+						// Updating the stationary camera is handled in Update.
 						break;
 					case ToolModes.Pathing:
 						if (!useRealTime) UpdatePathingCam();
@@ -1284,6 +1285,7 @@ namespace CameraTools
 
 			cameraParent.transform.position = vessel.transform.position;
 			cameraParent.transform.rotation = vessel.transform.rotation;
+			flightCamera.SetTargetNone();
 			flightCamera.transform.parent = cameraParent.transform;
 			cameraParentWasStolen = false;
 			flightCamera.DeactivateUpdate();
@@ -1313,10 +1315,11 @@ namespace CameraTools
 				if (enableKeypad && !boundThisFrame)
 				{
 					Vector3 up = flightCamera.transform.up;
-					if (Input.GetKey(fmMovementModifier)) {
+					if (Input.GetKey(fmMovementModifier))
+					{
 						up = cameraUp;
 						forwardLevelAxis = (Quaternion.AngleAxis(-90, cameraUp) * flightCamera.transform.right).normalized;
-                    }
+					}
 
 					if (Input.GetKey(fmUpKey))
 					{
@@ -1386,7 +1389,10 @@ namespace CameraTools
 						flightCamera.transform.position += forwardLevelAxis * Input.GetAxis("Mouse Y") * 2;
 					}
 				}
-				freeMoveSpeedRaw = Mathf.Clamp(freeMoveSpeedRaw + 0.5f * Input.GetAxis("Mouse ScrollWheel"), freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw);
+				if (freeMoveSpeedRaw != (freeMoveSpeedRaw = Mathf.Clamp(freeMoveSpeedRaw + 0.5f * Input.GetAxis("Mouse ScrollWheel"), freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw)))
+				{
+					freeMoveSpeed = Mathf.Pow(10f, freeMoveSpeedRaw);
+				}
 			}
 
 			//zoom
@@ -1429,8 +1435,8 @@ namespace CameraTools
 			{
 				StopPlayingPath();
 			}
-			if (!cameraToolActive && (flightCamera.transform.parent != cameraParent.transform))
-            {
+			if (!cameraToolActive && !cameraParentWasStolen)
+			{
 				SaveOriginalCamera();
 			}
 			currentKeyframeIndex = index;
@@ -1490,27 +1496,24 @@ namespace CameraTools
 				positionInterpolationType = previousKeyframe.positionInterpolationType;
 				rotationInterpolationType = previousKeyframe.rotationInterpolationType;
 
-				if (isPlayingPath) {
-				    time = pathTime * currentPath.timeScale;
+				if (isPlayingPath)
+				{
+					time = pathTime * currentPath.timeScale;
 				}
-				else {
+				else
+				{
 					time = previousKeyframe.time + 10;
 				}
 			}
-			
-			Transform flightCameraTransform = flightCamera.transform;
 
 			if (!cameraToolActive)
-            {
-				SaveOriginalCamera();
-				// I'm not sure how much of this is redundant but it works now and I'm scared to touch it again.
-				cameraParent.transform.position = FlightGlobals.ActiveVessel.transform.position;
-				cameraParent.transform.rotation = FlightGlobals.ActiveVessel.transform.rotation;
-				flightCameraTransform.localPosition = cameraParent.transform.InverseTransformPoint(flightCameraTransform.position);
-				flightCameraTransform.localRotation = flightCameraTransform.parent.localRotation * flightCameraTransform.localRotation;
+			{
+				if (!cameraParentWasStolen)
+					SaveOriginalCamera();
+				StartPathingCam(); // But don't play. This handles the change of the camera parent and the local position and rotation of the flight camera are handled automatically.
 			}
 
-			currentPath.AddTransform(flightCameraTransform, zoomExp, time, positionInterpolationType, rotationInterpolationType);
+			currentPath.AddTransform(flightCamera.transform, zoomExp, time, positionInterpolationType, rotationInterpolationType);
 
 			SelectKeyframe(currentPath.times.IndexOf(time));
 
@@ -1556,7 +1559,7 @@ namespace CameraTools
 
 			float startTime = 0;
 			if (currentKeyframeIndex > -1)
-            {
+			{
 				startTime = currentPath.GetKeyframe(currentKeyframeIndex).time;
 			}
 
@@ -1576,7 +1579,7 @@ namespace CameraTools
 			pathStartTime = GetTime() - (startTime / currentPath.timeScale);
 		}
 
-        void StopPlayingPath()
+		void StopPlayingPath()
 		{
 			isPlayingPath = false;
 		}
@@ -1792,7 +1795,8 @@ namespace CameraTools
 				if (randomMode)
 				{
 					var lowAlt = Math.Max(30d, -3d * vessel.verticalSpeed); // 30m or 3s to impact, whichever is higher.
-					if (vessel != null && vessel.radarAltitude < lowAlt)
+					var stationarySurfaceVessel = (vessel.Landed && vessel.Speed() < 1) || (vessel.Splashed && vessel.Speed() < 5); // Land or water vessel that isn't moving much.
+					if (stationarySurfaceVessel || (!vessel.LandedOrSplashed && vessel.radarAltitude < lowAlt))
 					{
 						StartStationaryCamera();
 						// RevertCamera();
@@ -1880,16 +1884,15 @@ namespace CameraTools
 				}
 			}
 			hasDied = false;
-			if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT
-				&& flightCamera.vesselTarget != FlightGlobals.ActiveVessel)
+			if (FlightGlobals.ActiveVessel != null && HighLogic.LoadedScene == GameScenes.FLIGHT && flightCamera.vesselTarget != FlightGlobals.ActiveVessel)
 			{
 				flightCamera.SetTarget(FlightGlobals.ActiveVessel.transform, FlightCamera.TargetMode.Vessel);
 			}
 			if (cameraToolActive)
 			{
 				flightCamera.transform.parent = origParent;
-				flightCamera.transform.localPosition = origPosition;
-				flightCamera.transform.localRotation = origRotation;
+				flightCamera.transform.position = origPosition;
+				flightCamera.transform.rotation = origRotation;
 				flightCamera.SetDistanceImmediate(origDistance);
 				cameraParentWasStolen = false;
 			}
@@ -1920,8 +1923,8 @@ namespace CameraTools
 
 		void SaveOriginalCamera()
 		{
-			origPosition = flightCamera.transform.localPosition;
-			origRotation = flightCamera.transform.localRotation;
+			origPosition = flightCamera.transform.position;
+			origRotation = flightCamera.transform.rotation;
 			origParent = flightCamera.transform.parent;
 			origNearClip = HighLogic.LoadedSceneIsFlight ? flightCamera.mainCamera.nearClipPlane : Camera.main.nearClipPlane;
 			origDistance = flightCamera.Distance;
@@ -2038,7 +2041,7 @@ namespace CameraTools
 					}
 					if (currentPath != null)
 					{
-						currentPath.lerpRate = 1 - pathingLerpRate;
+						currentPath.lerpRate = pathingLerpRate;
 						currentPath.timeScale = pathingTimeScale;
 					}
 					freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
@@ -2048,7 +2051,7 @@ namespace CameraTools
 				{
 					if (currentPath != null)
 					{
-						pathingLerpRate = 1 - currentPath.lerpRate;
+						pathingLerpRate = currentPath.lerpRate;
 						pathingTimeScale = currentPath.timeScale;
 					}
 					foreach (var field in inputFields.Keys)
@@ -2305,23 +2308,23 @@ namespace CameraTools
 				if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2f, entryHeight), "New Path"))
 				{ CreateNewPath(); }
 				if (GUI.Button(new Rect(leftIndent + (contentWidth / 2f), contentTop + (line * entryHeight), contentWidth / 2f, entryHeight), "Delete Path"))
-				{ DeletePath((int)selectedPathIndex); }
+				{ DeletePath(selectedPathIndex); }
 				line += 0.25f;
 
 				if (selectedPathIndex >= 0)
 				{
 					if (!textInput)
 					{
-						GUI.Label(LabelRect(++line), "Camera Inertia: " + (1 - currentPath.lerpRate).ToString("G2"));
+						GUI.Label(LabelRect(++line), "Camera Lerp Rate: " + currentPath.lerpRate.ToString("G2"));
 						var logLerp = Mathf.Round(20f * (1f + Mathf.Log10(currentPath.lerpRate)));
-						logLerp = Mathf.Round(GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth, entryHeight), logLerp, 20f, -20f));
+						logLerp = Mathf.Round(GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth, entryHeight), logLerp, -20f, 20f));
 						currentPath.lerpRate = Mathf.Pow(10f, logLerp / 20f - 1f);
 					}
 					else
 					{
-						GUI.Label(LeftRect(++line), "Camera Intertia:");
+						GUI.Label(LeftRect(++line), "Camera Lerp Rate:");
 						inputFields["pathingLerpRate"].tryParseValue(GUI.TextField(RightRect(line), inputFields["pathingLerpRate"].possibleValue, 8, inputFieldStyle));
-						currentPath.lerpRate = 1 - inputFields["pathingLerpRate"].currentValue;
+						currentPath.lerpRate = inputFields["pathingLerpRate"].currentValue;
 					}
 					if (!textInput)
 					{
@@ -2588,7 +2591,7 @@ namespace CameraTools
 
 			float timeSinceLastSaved = Time.unscaledTime - lastSavedTime;
 			if (timeSinceLastSaved < 1)
-            {
+			{
 				++line;
 				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), timeSinceLastSaved < 0.5 ? "Saving..." : "Saved.", centerLabel);
 			}
@@ -2604,7 +2607,7 @@ namespace CameraTools
 			GUI.Label(new Rect(leftIndent + 70, contentTop + (line * entryHeight), 50, entryHeight), current, leftLabel);
 			if (!isRecordingInput || label != currentlyBinding)
 			{
-				if (GUI.Button(new Rect(leftIndent + 125, contentTop + (line * entryHeight), 100, entryHeight), "Bind Key"))
+				if (GUI.Button(new Rect(leftIndent + 130, contentTop + (line * entryHeight), 95, entryHeight), "Bind Key"))
 				{
 					mouseUp = false;
 					isRecordingInput = true;
@@ -2613,7 +2616,7 @@ namespace CameraTools
 			}
 			else if (mouseUp)
 			{
-				GUI.Label(new Rect(leftIndent + 125, contentTop + (line * entryHeight), 100, entryHeight), "Press a Key", leftLabel);
+				GUI.Label(new Rect(leftIndent + 140, contentTop + (line * entryHeight), 85, entryHeight), "Press a Key", leftLabel);
 
 				string inputString = CCInputUtils.GetInputString();
 				if (inputString.Length > 0)
@@ -2651,7 +2654,7 @@ namespace CameraTools
 				currentKeyframeTime = parsed;
 			}
 			if (currentKeyframeIndex > 1)
-            {
+			{
 				if (GUI.Button(new Rect(100 + gap, gap + (++line * lineHeight), 200 - 2 * gap, lineHeight - gap), "Maintain Speed"))
 				{
 					CameraKeyframe previousKeyframe = currentPath.GetKeyframe(currentKeyframeIndex - 1);
@@ -3277,18 +3280,18 @@ namespace CameraTools
 		}
 
 		public float GetTime()
-        {
+		{
 			return useRealTime ? Time.unscaledTime : Time.time;
 		}
 
 		public void SetZoomImmediate(float zoom)
-        {
+		{
 			zoomExp = zoom;
-            zoomFactor = Mathf.Exp(zoomExp) / Mathf.Exp(1);
+			zoomFactor = Mathf.Exp(zoomExp) / Mathf.Exp(1);
 			manualFOV = 60 / zoomFactor;
 			currentFOV = manualFOV;
 			flightCamera.SetFoV(currentFOV);
-        }
+		}
 		#endregion
 
 		#region Load/Save
@@ -3317,11 +3320,11 @@ namespace CameraTools
 			{ Directory.GetParent(pathSaveURL).Create(); }
 			var success = pathFileNode.Save(pathSaveURL);
 			if (success)
-            {
+			{
 				lastSavedTime = Time.unscaledTime;
 
 				if (File.Exists(oldPathSaveURL))
-                { File.Delete(oldPathSaveURL); } // Remove the old settings if it exists and the new settings were saved.
+				{ File.Delete(oldPathSaveURL); } // Remove the old settings if it exists and the new settings were saved.
 			}
 		}
 
@@ -3384,7 +3387,7 @@ namespace CameraTools
 					}
 				);
 			}
-			selectedPathIndex = Math.Min(selectedPathIndex, (availablePaths.Count - 1));
+			selectedPathIndex = Math.Min(selectedPathIndex, availablePaths.Count - 1);
 			if (availablePaths.Count > 0 && selectedPathIndex < 0) { selectedPathIndex = 0; }
 			// Set some internal and GUI variables.
 			freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
