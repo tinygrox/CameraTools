@@ -24,6 +24,7 @@ namespace CameraTools
 		Transform origParent;
 		float origNearClip;
 		float origDistance;
+		FlightCamera.Modes origMode;
 		FlightCamera flightCamera;
 		Part camTarget = null;
 		Vector3 cameraUp = Vector3.up;
@@ -1894,6 +1895,7 @@ namespace CameraTools
 				flightCamera.transform.position = origPosition;
 				flightCamera.transform.rotation = origRotation;
 				flightCamera.SetDistanceImmediate(origDistance);
+				flightCamera.setModeImmediate(origMode);
 				cameraParentWasStolen = false;
 			}
 			if (HighLogic.LoadedSceneIsFlight)
@@ -1928,6 +1930,7 @@ namespace CameraTools
 			origParent = flightCamera.transform.parent;
 			origNearClip = HighLogic.LoadedSceneIsFlight ? flightCamera.mainCamera.nearClipPlane : Camera.main.nearClipPlane;
 			origDistance = flightCamera.Distance;
+			origMode = flightCamera.mode;
 		}
 
 		void PostDeathRevert()
