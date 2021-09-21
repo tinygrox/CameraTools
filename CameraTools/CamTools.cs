@@ -21,6 +21,8 @@ namespace CameraTools
 		public static HashSet<VesselType> ignoreVesselTypesForAudio = new HashSet<VesselType> { VesselType.Debris, VesselType.SpaceObject, VesselType.Unknown, VesselType.Flag }; // Ignore some vessel types to avoid using up all the SoundManager's channels.
 		Vector3 origPosition;
 		Quaternion origRotation;
+		Vector3 origLocalPosition;
+		Quaternion origLocalRotation;
 		Transform origParent;
 		float origNearClip;
 		float origDistance;
@@ -600,12 +602,7 @@ namespace CameraTools
 				deathCamVelocity *= 0.95f;
 				if (flightCamera.transform.parent != deathCam.transform) // Something else keeps trying to steal the camera after the vessel has died, so we need to keep overriding it.
 				{
-					flightCamera.SetTargetNone();
-					flightCamera.transform.parent = deathCam.transform;
-					cameraParentWasStolen = false;
-					flightCamera.DeactivateUpdate();
-					flightCamera.transform.localPosition = Vector3.zero;
-					flightCamera.transform.localRotation = Quaternion.identity;
+					SetDeathCam();
 				}
 			}
 			else if (!vesselSwitched)
@@ -695,15 +692,7 @@ namespace CameraTools
 
 			if (flightCamera.transform.parent != cameraParent.transform)
 			{
-				cameraParent.transform.position = deathCam.transform.position; // First update the cameraParent to the last deathCam configuration
-				cameraParent.transform.rotation = deathCam.transform.rotation;
-				flightCamera.SetTargetNone();
-				flightCamera.transform.parent = cameraParent.transform;
-				cameraParentWasStolen = false;
-				flightCamera.DeactivateUpdate();
-				cameraParent.transform.position = vessel.CoM; // Then adjust the flightCamera for the new parent.
-				flightCamera.transform.localPosition = cameraParent.transform.InverseTransformPoint(deathCam.transform.position);
-				flightCamera.transform.localRotation = Quaternion.identity;
+				SetCameraParent(deathCam.transform, true); // First update the cameraParent to the last deathCam configuration
 			}
 
 			cameraToolActive = true;
@@ -986,15 +975,7 @@ namespace CameraTools
 
 				if (flightCamera.transform.parent != cameraParent.transform)
 				{
-					cameraParent.transform.position = deathCam.transform.position; // First update the cameraParent to the last deathCam configuration
-					cameraParent.transform.rotation = deathCam.transform.rotation;
-					flightCamera.SetTargetNone();
-					flightCamera.transform.parent = cameraParent.transform;
-					cameraParentWasStolen = false;
-					flightCamera.DeactivateUpdate();
-					cameraParent.transform.position = vessel.CoM; // Then adjust the flightCamera for the new parent.
-					flightCamera.transform.localPosition = cameraParent.transform.InverseTransformPoint(deathCam.transform.position);
-					flightCamera.transform.localRotation = Quaternion.identity;
+					SetCameraParent(deathCam.transform, true); // First update the cameraParent to the last deathCam configuration
 				}
 
 				manualPosition = Vector3.zero;
@@ -1271,6 +1252,12 @@ namespace CameraTools
 				RevertCamera();
 				return;
 			}
+			if (FlightGlobals.ActiveVessel == null)
+			{
+				Debug.LogWarning("[CameraTools]: Unable to start pathing camera due to no active vessel.");
+				RevertCamera();
+				return;
+			}
 			if (DEBUG)
 			{
 				message = "Starting pathing camera.";
@@ -1286,13 +1273,7 @@ namespace CameraTools
 			}
 			pathingLerpRate = Mathf.Pow(10, -2f * currentPath.secondarySmoothing);
 
-			cameraParent.transform.position = vessel.transform.position;
-			cameraParent.transform.rotation = vessel.transform.rotation;
-			flightCamera.SetTargetNone();
-			flightCamera.transform.parent = cameraParent.transform;
-			cameraParentWasStolen = false;
-			flightCamera.DeactivateUpdate();
-
+			SetCameraParent(vessel.transform);
 			cameraToolActive = true;
 		}
 
@@ -1438,10 +1419,6 @@ namespace CameraTools
 			{
 				StopPlayingPath();
 			}
-			if (!cameraToolActive && !cameraParentWasStolen)
-			{
-				SaveOriginalCamera();
-			}
 			currentKeyframeIndex = index;
 			UpdateCurrentValues();
 			showKeyframeEditor = true;
@@ -1488,6 +1465,10 @@ namespace CameraTools
 
 		void CreateNewKeyframe()
 		{
+			if (FlightGlobals.ActiveVessel == null)
+			{
+				Debug.LogWarning("[CameraTools]: Unable to create new pathing keyframe without an active vessel.");
+			}
 			showPathSelectorWindow = false;
 
 			float time = 0;
@@ -1513,7 +1494,8 @@ namespace CameraTools
 			{
 				if (!cameraParentWasStolen)
 					SaveOriginalCamera();
-				StartPathingCam(); // But don't play. This handles the change of the camera parent and the local position and rotation of the flight camera are handled automatically.
+				SetCameraParent(FlightGlobals.ActiveVessel.transform);
+				cameraToolActive = true;
 			}
 
 			currentPath.AddTransform(flightCamera.transform, zoomExp, time, positionInterpolationType, rotationInterpolationType);
@@ -1894,10 +1876,18 @@ namespace CameraTools
 			if (cameraToolActive)
 			{
 				flightCamera.transform.parent = origParent;
-				flightCamera.transform.position = origPosition;
-				flightCamera.transform.rotation = origRotation;
-				flightCamera.SetDistanceImmediate(origDistance);
-				flightCamera.mode = origMode; // Note: using flightCamera.setModeImmediate(origMode); causes the annoying camera mode change messages to appear, simply setting the value doesn't do this and seems to work fine.
+				if (origParent != null) // Restore the camera to the original local offsets from the original gameObject.
+				{
+					flightCamera.transform.localPosition = origLocalPosition;
+					flightCamera.transform.localRotation = origLocalRotation;
+					flightCamera.SetDistanceImmediate(origDistance);
+				}
+				else // Otherwise, restore the camera to the original absolute position and rotation as the original gameObject no longer exists (if it even existed to begin with).
+				{
+					flightCamera.transform.position = origPosition;
+					flightCamera.transform.rotation = origRotation;
+				}
+				flightCamera.mode = origMode; // Restore the camera mode. Note: using flightCamera.setModeImmediate(origMode); causes the annoying camera mode change messages to appear, simply setting the value doesn't do this and seems to work fine.
 				cameraParentWasStolen = false;
 			}
 			if (HighLogic.LoadedSceneIsFlight)
@@ -1929,6 +1919,8 @@ namespace CameraTools
 		{
 			origPosition = flightCamera.transform.position;
 			origRotation = flightCamera.transform.rotation;
+			origLocalPosition = flightCamera.transform.localPosition;
+			origLocalRotation = flightCamera.transform.localRotation;
 			origParent = flightCamera.transform.parent;
 			origNearClip = HighLogic.LoadedSceneIsFlight ? flightCamera.mainCamera.nearClipPlane : Camera.main.nearClipPlane;
 			origDistance = flightCamera.Distance;
@@ -2004,7 +1996,7 @@ namespace CameraTools
 		Rect LabelRect(float line)
 		{ return new Rect(leftIndent, contentTop + line * entryHeight, contentWidth, entryHeight); }
 		Rect LeftRect(float line)
-		{ return new Rect(leftIndent, contentTop + line * entryHeight, windowWidth / 2f + leftIndent*2f, entryHeight); }
+		{ return new Rect(leftIndent, contentTop + line * entryHeight, windowWidth / 2f + leftIndent * 2f, entryHeight); }
 		Rect RightRect(float line)
 		{ return new Rect(windowWidth / 2f + 3f * leftIndent, contentTop + line * entryHeight, contentWidth / 2f - 3f * leftIndent, entryHeight); }
 		Rect QuarterRect(float line, int quarter)
@@ -2849,12 +2841,7 @@ namespace CameraTools
 				}
 				// Something borks the camera position/rotation when the target/parent is set to none/null. This fixes that.
 				deathCamVelocity = (vessel.radarAltitude > 10d ? vessel.srf_velocity : Vector3d.zero) / 2f; // Track the explosion a bit.
-				flightCamera.SetTargetNone();
-				flightCamera.transform.parent = deathCam.transform;
-				cameraParentWasStolen = false;
-				flightCamera.DeactivateUpdate();
-				flightCamera.transform.localPosition = Vector3.zero;
-				flightCamera.transform.localRotation = Quaternion.identity;
+				SetDeathCam();
 			}
 		}
 
@@ -3296,6 +3283,32 @@ namespace CameraTools
 			manualFOV = 60 / zoomFactor;
 			currentFOV = manualFOV;
 			flightCamera.SetFoV(currentFOV);
+		}
+
+		void SetCameraParent(Transform referenceTransform, bool resetToCoM = false)
+		{
+			cameraParent.transform.position = referenceTransform.position;
+			cameraParent.transform.rotation = referenceTransform.rotation;
+			flightCamera.SetTargetNone();
+			flightCamera.transform.parent = cameraParent.transform;
+			cameraParentWasStolen = false;
+			flightCamera.DeactivateUpdate();
+			if (resetToCoM)
+			{
+				cameraParent.transform.position = vessel.CoM; // Then adjust the flightCamera for the new parent.
+				flightCamera.transform.localPosition = cameraParent.transform.InverseTransformPoint(referenceTransform.position);
+				flightCamera.transform.localRotation = Quaternion.identity;
+			}
+		}
+
+		void SetDeathCam()
+		{
+			flightCamera.SetTargetNone();
+			flightCamera.transform.parent = deathCam.transform;
+			cameraParentWasStolen = false;
+			flightCamera.DeactivateUpdate();
+			flightCamera.transform.localPosition = Vector3.zero;
+			flightCamera.transform.localRotation = Quaternion.identity;
 		}
 		#endregion
 
