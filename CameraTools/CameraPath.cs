@@ -16,7 +16,7 @@ namespace CameraTools
 		public List<float> times;
 		public List<float> zooms;
 
-		public float lerpRate = 1;
+		public float secondarySmoothing = 0;
 		public float timeScale = 1;
 
 		Vector3Animation pointCurve;
@@ -45,8 +45,10 @@ namespace CameraTools
 			if (node.HasValue("rotationInterpolationTypes")) { newPath.rotationInterpolationTypes = ParseEnumTypeList<RotationInterpolationType>(node.GetValue("rotationInterpolationTypes")); }
 			if (node.HasValue("times")) { newPath.times = ParseFloatList(node.GetValue("times")); }
 			if (node.HasValue("zooms")) { newPath.zooms = ParseFloatList(node.GetValue("zooms")); }
-			if (node.HasValue("lerpRate")) { newPath.lerpRate = float.Parse(node.GetValue("lerpRate")); } else { newPath.lerpRate = 1; }
+			if (node.HasValue("secondarySmoothing")) { newPath.secondarySmoothing = float.Parse(node.GetValue("secondarySmoothing")); } else { newPath.secondarySmoothing = 0; }
 			if (node.HasValue("timeScale")) { newPath.timeScale = float.Parse(node.GetValue("timeScale")); } else { newPath.timeScale = 1; }
+
+			if (node.HasValue("lerpRate") && !node.HasValue("secondarySmoothing")) { var lerpRate = float.Parse(node.GetValue("lerpRate")); newPath.secondarySmoothing = Mathf.Round(-50f * Mathf.Log10(lerpRate)) / 100f; } // Deprecated in favour of secondarySmoothing.
 
 			// Ensure there's a consistent number of entries in the path.
 			while (newPath.positionInterpolationTypes.Count < newPath.points.Count) { newPath.positionInterpolationTypes.Add(PositionInterpolationType.CubicSpline); }
@@ -70,7 +72,7 @@ namespace CameraTools
 			pathNode.AddValue("rotationInterpolationTypes", WriteEnumTypeList(rotationInterpolationTypes));
 			pathNode.AddValue("times", WriteFloatList(times));
 			pathNode.AddValue("zooms", WriteFloatList(zooms));
-			pathNode.AddValue("lerpRate", lerpRate);
+			pathNode.AddValue("secondarySmoothing", secondarySmoothing);
 			pathNode.AddValue("timeScale", timeScale);
 		}
 

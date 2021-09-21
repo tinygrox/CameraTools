@@ -64,7 +64,7 @@ namespace CameraTools
 		[CTPersistantField] public string fmRightKey = "[6]";
 		[CTPersistantField] public string fmZoomInKey = "[9]";
 		[CTPersistantField] public string fmZoomOutKey = "[3]";
-		[CTPersistantField] public string fmMovementModifier = "right shift";
+		[CTPersistantField] public string fmMovementModifier = "enter";
 		bool waitingForTarget = false;
 		bool waitingForPosition = false;
 		bool mouseUp = false;
@@ -250,7 +250,8 @@ namespace CameraTools
 		string currKeyTimeString;
 		bool showKeyframeEditor = false;
 		float pathStartTime;
-		public float pathingLerpRate = 1f;
+		public float pathingSecondarySmoothing = 0f;
+		public float pathingLerpRate = 1; // Lerp rate corresponding to the secondary smoothing factor.
 		public float pathingTimeScale = 1f;
 		bool isPlayingPath = false;
 		float pathTime
@@ -355,7 +356,7 @@ namespace CameraTools
 				{"dogfightOffsetY", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset)},
 				{"dogfightLerp", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightLerp, 0.01f, 0.5f)},
 				{"dogfightRoll", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightRoll, 0f, 1f)},
-				{"pathingLerpRate", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingLerpRate, 0.01f, 1f)},
+				{"pathingSecondarySmoothing", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingSecondarySmoothing, 0f, 1f)},
 				{"pathingTimeScale", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingTimeScale, 0.05f, 4f)},
 				{"randomModeDogfightChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeDogfightChance, 0f, 100f)},
 				{"randomModeIVAChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeIVAChance, 0f, 100f)},
@@ -1283,6 +1284,7 @@ namespace CameraTools
 			{
 				cameraUp = Vector3.up;
 			}
+			pathingLerpRate = Mathf.Pow(10, -2f * currentPath.secondarySmoothing);
 
 			cameraParent.transform.position = vessel.transform.position;
 			cameraParent.transform.rotation = vessel.transform.rotation;
@@ -1302,9 +1304,9 @@ namespace CameraTools
 			if (isPlayingPath)
 			{
 				CameraTransformation tf = currentPath.Evaulate(pathTime * currentPath.timeScale);
-				flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, tf.position, currentPath.lerpRate);
-				flightCamera.transform.localRotation = Quaternion.Slerp(flightCamera.transform.localRotation, tf.rotation, currentPath.lerpRate);
-				zoomExp = Mathf.Lerp(zoomExp, tf.zoom, currentPath.lerpRate);
+				flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, tf.position, pathingLerpRate);
+				flightCamera.transform.localRotation = Quaternion.Slerp(flightCamera.transform.localRotation, tf.rotation, pathingLerpRate);
+				zoomExp = Mathf.Lerp(zoomExp, tf.zoom, pathingLerpRate);
 
 			}
 			else
@@ -2002,9 +2004,9 @@ namespace CameraTools
 		Rect LabelRect(float line)
 		{ return new Rect(leftIndent, contentTop + line * entryHeight, contentWidth, entryHeight); }
 		Rect LeftRect(float line)
-		{ return new Rect(leftIndent, contentTop + line * entryHeight, contentWidth / 2, entryHeight); }
+		{ return new Rect(leftIndent, contentTop + line * entryHeight, windowWidth / 2f + leftIndent*2f, entryHeight); }
 		Rect RightRect(float line)
-		{ return new Rect(windowWidth / 2 + leftIndent, contentTop + line * entryHeight, contentWidth / 2 - leftIndent, entryHeight); }
+		{ return new Rect(windowWidth / 2f + 3f * leftIndent, contentTop + line * entryHeight, contentWidth / 2f - 3f * leftIndent, entryHeight); }
 		Rect QuarterRect(float line, int quarter)
 		{ return new Rect(leftIndent + quarter * contentWidth / 4, contentTop + line * entryHeight, contentWidth / 4, entryHeight); }
 		void SetupInputFieldStyle()
@@ -2044,7 +2046,7 @@ namespace CameraTools
 					}
 					if (currentPath != null)
 					{
-						currentPath.lerpRate = pathingLerpRate;
+						currentPath.secondarySmoothing = pathingSecondarySmoothing;
 						currentPath.timeScale = pathingTimeScale;
 					}
 					freeMoveSpeedRaw = Mathf.Log10(freeMoveSpeed);
@@ -2054,7 +2056,7 @@ namespace CameraTools
 				{
 					if (currentPath != null)
 					{
-						pathingLerpRate = currentPath.lerpRate;
+						pathingSecondarySmoothing = currentPath.secondarySmoothing;
 						pathingTimeScale = currentPath.timeScale;
 					}
 					foreach (var field in inputFields.Keys)
@@ -2318,16 +2320,16 @@ namespace CameraTools
 				{
 					if (!textInput)
 					{
-						GUI.Label(LabelRect(++line), "Camera Lerp Rate: " + currentPath.lerpRate.ToString("G2"));
-						var logLerp = Mathf.Round(20f * (1f + Mathf.Log10(currentPath.lerpRate)));
-						logLerp = Mathf.Round(GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth, entryHeight), logLerp, -20f, 20f));
-						currentPath.lerpRate = Mathf.Pow(10f, logLerp / 20f - 1f);
+						GUI.Label(LabelRect(++line), "Secondary Smoothing: " + currentPath.secondarySmoothing.ToString("G2"));
+						if (currentPath.secondarySmoothing != (currentPath.secondarySmoothing = Mathf.Round(GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight) + 4f, contentWidth, entryHeight), currentPath.secondarySmoothing, 0f, 1f) * 100f) / 100f))
+						{ pathingLerpRate = Mathf.Pow(10, -2f * currentPath.secondarySmoothing); }
 					}
 					else
 					{
-						GUI.Label(LeftRect(++line), "Camera Lerp Rate:");
-						inputFields["pathingLerpRate"].tryParseValue(GUI.TextField(RightRect(line), inputFields["pathingLerpRate"].possibleValue, 8, inputFieldStyle));
-						currentPath.lerpRate = inputFields["pathingLerpRate"].currentValue;
+						GUI.Label(LeftRect(++line), "Secondary Smoothing:");
+						inputFields["pathingSecondarySmoothing"].tryParseValue(GUI.TextField(RightRect(line), inputFields["pathingSecondarySmoothing"].possibleValue, 8, inputFieldStyle));
+						if (currentPath.secondarySmoothing != (currentPath.secondarySmoothing = inputFields["pathingSecondarySmoothing"].currentValue))
+						{ pathingLerpRate = Mathf.Pow(10, -2f * currentPath.secondarySmoothing); }
 					}
 					if (!textInput)
 					{
