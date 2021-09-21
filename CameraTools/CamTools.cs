@@ -1895,7 +1895,7 @@ namespace CameraTools
 				flightCamera.transform.position = origPosition;
 				flightCamera.transform.rotation = origRotation;
 				flightCamera.SetDistanceImmediate(origDistance);
-				flightCamera.setModeImmediate(origMode);
+				flightCamera.mode = origMode; // Note: using flightCamera.setModeImmediate(origMode); causes the annoying camera mode change messages to appear, simply setting the value doesn't do this and seems to work fine.
 				cameraParentWasStolen = false;
 			}
 			if (HighLogic.LoadedSceneIsFlight)
