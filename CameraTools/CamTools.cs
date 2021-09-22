@@ -27,6 +27,7 @@ namespace CameraTools
 		float origNearClip;
 		float origDistance;
 		FlightCamera.Modes origMode;
+		float origFov = 60;
 		FlightCamera flightCamera;
 		Part camTarget = null;
 		Vector3 cameraUp = Vector3.up;
@@ -1301,8 +1302,9 @@ namespace CameraTools
 					Vector3 up = flightCamera.transform.up;
 					if (Input.GetKey(fmMovementModifier))
 					{
-						up = cameraUp;
-						forwardLevelAxis = (Quaternion.AngleAxis(-90, cameraUp) * flightCamera.transform.right).normalized;
+						up = vessel.ReferenceTransform.forward * -1;
+						forwardLevelAxis = vessel.ReferenceTransform.up * -1;
+						rightAxis = vessel.ReferenceTransform.right * -1;
 					}
 
 					if (Input.GetKey(fmUpKey))
@@ -1323,11 +1325,11 @@ namespace CameraTools
 					}
 					if (Input.GetKey(fmLeftKey))
 					{
-						flightCamera.transform.position -= flightCamera.transform.right * freeMoveSpeed * Time.fixedDeltaTime;
+						flightCamera.transform.position -= rightAxis * freeMoveSpeed * Time.fixedDeltaTime;
 					}
 					else if (Input.GetKey(fmRightKey))
 					{
-						flightCamera.transform.position += flightCamera.transform.right * freeMoveSpeed * Time.fixedDeltaTime;
+						flightCamera.transform.position += rightAxis * freeMoveSpeed * Time.fixedDeltaTime;
 					}
 
 					//keyZoom
@@ -1492,6 +1494,12 @@ namespace CameraTools
 
 			if (!cameraToolActive)
 			{
+				if (flightCamera.FieldOfView != flightCamera.fovDefault)
+                {
+					zoomFactor = 60 / flightCamera.FieldOfView;
+					zoomExp = Mathf.Log(zoomFactor) + 1f;
+				}
+
 				if (!cameraParentWasStolen)
 					SaveOriginalCamera();
 				SetCameraParent(FlightGlobals.ActiveVessel.transform);
@@ -1888,6 +1896,8 @@ namespace CameraTools
 					flightCamera.transform.rotation = origRotation;
 				}
 				flightCamera.mode = origMode; // Restore the camera mode. Note: using flightCamera.setModeImmediate(origMode); causes the annoying camera mode change messages to appear, simply setting the value doesn't do this and seems to work fine.
+				flightCamera.SetFoV(origFov);
+				currentFOV = origFov;
 				cameraParentWasStolen = false;
 			}
 			if (HighLogic.LoadedSceneIsFlight)
@@ -1895,9 +1905,7 @@ namespace CameraTools
 			else
 				Camera.main.nearClipPlane = origNearClip;
 
-			flightCamera.SetFoV(60);
 			flightCamera.ActivateUpdate();
-			currentFOV = 60;
 
 			cameraToolActive = false;
 
@@ -1925,6 +1933,7 @@ namespace CameraTools
 			origNearClip = HighLogic.LoadedSceneIsFlight ? flightCamera.mainCamera.nearClipPlane : Camera.main.nearClipPlane;
 			origDistance = flightCamera.Distance;
 			origMode = flightCamera.mode;
+			origFov = flightCamera.FieldOfView;
 		}
 
 		void PostDeathRevert()
