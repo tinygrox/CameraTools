@@ -1495,7 +1495,7 @@ namespace CameraTools
 			if (!cameraToolActive)
 			{
 				if (flightCamera.FieldOfView != flightCamera.fovDefault)
-                {
+				{
 					zoomFactor = 60 / flightCamera.FieldOfView;
 					zoomExp = Mathf.Log(zoomFactor) + 1f;
 				}
