@@ -54,6 +54,10 @@ namespace CameraTools
 		float PositionInterpolationTypeMax = Enum.GetNames(typeof(PositionInterpolationType)).Length - 1;
 		float RotationInterpolationTypeMax = Enum.GetNames(typeof(RotationInterpolationType)).Length - 1;
 
+		Vector3 upAxis;
+		Vector3 forwardAxis;
+		Vector3 rightAxis;
+
 		#region Input
 		[CTPersistantField] public string cameraKey = "home";
 		[CTPersistantField] public string revertKey = "end";
@@ -972,7 +976,7 @@ namespace CameraTools
 				{
 					cameraUp = Vector3.up;
 				}
-				Vector3 rightAxis = -Vector3.Cross(vessel.srf_velocity, vessel.upAxis).normalized;
+				rightAxis = -Vector3.Cross(vessel.srf_velocity, vessel.upAxis).normalized;
 
 				if (flightCamera.transform.parent != cameraParent.transform)
 				{
@@ -1134,8 +1138,8 @@ namespace CameraTools
 			}
 
 			//mouse panning, moving
-			Vector3 forwardLevelAxis = (Quaternion.AngleAxis(-90, cameraUp) * flightCamera.transform.right).normalized;
-			Vector3 rightAxis = (Quaternion.AngleAxis(90, forwardLevelAxis) * cameraUp).normalized;
+			forwardAxis = (Quaternion.AngleAxis(-90, cameraUp) * flightCamera.transform.right).normalized; // FIXME Why are these calculated like this? They ought to either use pre-existing axes or cross products.
+			rightAxis = (Quaternion.AngleAxis(90, forwardAxis) * cameraUp).normalized;
 
 			//free move
 			if (enableKeypad && !boundThisFrame)
@@ -1150,11 +1154,11 @@ namespace CameraTools
 				}
 				if (Input.GetKey(fmForwardKey))
 				{
-					manualPosition += forwardLevelAxis * freeMoveSpeed * Time.fixedDeltaTime;
+					manualPosition += forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
 				}
 				else if (Input.GetKey(fmBackKey))
 				{
-					manualPosition -= forwardLevelAxis * freeMoveSpeed * Time.fixedDeltaTime;
+					manualPosition -= forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
 				}
 				if (Input.GetKey(fmLeftKey))
 				{
@@ -1199,7 +1203,7 @@ namespace CameraTools
 			if (Input.GetKey(KeyCode.Mouse2))
 			{
 				manualPosition += flightCamera.transform.right * Input.GetAxis("Mouse X") * 2;
-				manualPosition += forwardLevelAxis * Input.GetAxis("Mouse Y") * 2;
+				manualPosition += forwardAxis * Input.GetAxis("Mouse Y") * 2;
 			}
 			manualPosition += cameraUp * 10 * Input.GetAxis("Mouse ScrollWheel");
 
@@ -1295,33 +1299,36 @@ namespace CameraTools
 			{
 				//move
 				//mouse panning, moving
-				Vector3 forwardLevelAxis = flightCamera.transform.forward;//(Quaternion.AngleAxis(-90, cameraUp) * flightCamera.transform.right).normalized;
-				Vector3 rightAxis = flightCamera.transform.right;//(Quaternion.AngleAxis(90, forwardLevelAxis) * cameraUp).normalized;
+				if (Input.GetKey(fmMovementModifier))
+				{
+					upAxis = -vessel.ReferenceTransform.forward;
+					forwardAxis = vessel.ReferenceTransform.up;
+					rightAxis = vessel.ReferenceTransform.right;
+				}
+				else
+				{
+					upAxis = flightCamera.transform.up;
+					forwardAxis = flightCamera.transform.forward;
+					rightAxis = flightCamera.transform.right;
+				}
+
 				if (enableKeypad && !boundThisFrame)
 				{
-					Vector3 up = flightCamera.transform.up;
-					if (Input.GetKey(fmMovementModifier))
-					{
-						up = vessel.ReferenceTransform.forward * -1;
-						forwardLevelAxis = vessel.ReferenceTransform.up * -1;
-						rightAxis = vessel.ReferenceTransform.right * -1;
-					}
-
 					if (Input.GetKey(fmUpKey))
 					{
-						flightCamera.transform.position += up * freeMoveSpeed * Time.fixedDeltaTime;
+						flightCamera.transform.position += upAxis * freeMoveSpeed * Time.fixedDeltaTime;
 					}
 					else if (Input.GetKey(fmDownKey))
 					{
-						flightCamera.transform.position -= up * freeMoveSpeed * Time.fixedDeltaTime;
+						flightCamera.transform.position -= upAxis * freeMoveSpeed * Time.fixedDeltaTime;
 					}
 					if (Input.GetKey(fmForwardKey))
 					{
-						flightCamera.transform.position += forwardLevelAxis * freeMoveSpeed * Time.fixedDeltaTime;
+						flightCamera.transform.position += forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
 					}
 					else if (Input.GetKey(fmBackKey))
 					{
-						flightCamera.transform.position -= forwardLevelAxis * freeMoveSpeed * Time.fixedDeltaTime;
+						flightCamera.transform.position -= forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
 					}
 					if (Input.GetKey(fmLeftKey))
 					{
@@ -1357,22 +1364,26 @@ namespace CameraTools
 					}
 				}
 
-				if (Input.GetKey(KeyCode.Mouse1) && Input.GetKey(KeyCode.Mouse2))
+				if (Input.GetKey(KeyCode.Mouse1) && Input.GetKey(KeyCode.Mouse2)) // Middle & right: tilt left/right
 				{
 					flightCamera.transform.rotation = Quaternion.AngleAxis(Input.GetAxis("Mouse X") * -1.7f, flightCamera.transform.forward) * flightCamera.transform.rotation;
 				}
+				else if (Input.GetKey(KeyCode.Mouse0) && Input.GetKey(KeyCode.Mouse2)) // Left & middle: move up/down
+				{
+					flightCamera.transform.position += upAxis * Input.GetAxis("Mouse Y") * 2;
+				}
 				else
 				{
-					if (Input.GetKey(KeyCode.Mouse1))
+					if (Input.GetKey(KeyCode.Mouse1)) // Right: rotate around target
 					{
 						flightCamera.transform.rotation *= Quaternion.AngleAxis(Input.GetAxis("Mouse X") * 1.7f / (zoomExp * zoomExp), Vector3.up); //*(Mathf.Abs(Mouse.delta.x)/7)
 						flightCamera.transform.rotation *= Quaternion.AngleAxis(-Input.GetAxis("Mouse Y") * 1.7f / (zoomExp * zoomExp), Vector3.right);
 						flightCamera.transform.rotation = Quaternion.LookRotation(flightCamera.transform.forward, flightCamera.transform.up);
 					}
-					if (Input.GetKey(KeyCode.Mouse2))
+					if (Input.GetKey(KeyCode.Mouse2)) // Middle: move left/right and forward/backward
 					{
-						flightCamera.transform.position += flightCamera.transform.right * Input.GetAxis("Mouse X") * 2;
-						flightCamera.transform.position += forwardLevelAxis * Input.GetAxis("Mouse Y") * 2;
+						flightCamera.transform.position += rightAxis * Input.GetAxis("Mouse X") * 2;
+						flightCamera.transform.position += forwardAxis * Input.GetAxis("Mouse Y") * 2;
 					}
 				}
 				if (freeMoveSpeedRaw != (freeMoveSpeedRaw = Mathf.Clamp(freeMoveSpeedRaw + 0.5f * Input.GetAxis("Mouse ScrollWheel"), freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw)))
