@@ -1,6 +1,25 @@
+v1.19.0
 Improvements:
  - Use a more stable direction for dogfight mode when the vessel is bobbing around on the ocean.
  - Auto-Enable for BDArmory when using surface AIs too.
+ - Interpolation rate setting renamed to 'Secondary Smoothing', which takes values in the linear range from 0 to 1 to try to give the user a more intuitive understanding of what the setting does. Actual Lerp values are calculated as 10 ^ {-2 * secondary smoothing} (i.e., 1 to 0.01). Old paths are automatically upgraded to use the new variable.
+ - The default hotkey for toggling the menu is now [0] (keypad 0) to avoid a conflict with the new AI GUI in BDArmory, which uses [/].
+ - A variety of QoL improvements for pathing mode by HatBat:
+	- Keys created during path playback are now automatically inserted at the current path time. Useful for molding paths in to specific shapes.
+	- Added a 'Maintain Speed' button to the keyframe editor that adjusts the duration of the current keyframe to approximately match the speed between the previous two keyframes. Useful for smoothly extending paths and correcting speed inconsistencies in complex paths.
+	- Camera updates can now be switched between Update or 'Real-time' and FixedUpdate or 'In-Game Time'. 'Real-time' creates smoother paths and works while the game is paused, which helps to reduce lag, while 'In-Game Time' is useful for making sure pathing speed is consistent with game physics and that none of the path is skipped when processing footage to remove lag. See FFmpeg's mpdecimate.
+	- New keyframes created while CameraTools is inactive are now correctly started at the current camera position, rather than on top of the vessel facing down or inside the vessel, and use the stock zoom.
+	- Path playback now starts from the selected keyframe if one is selected. Useful for previewing small changes to long paths.
+	- The flight camera now correctly reverts to its original distance, orientation, zoom state and mode when pathing is deactivated.
+	- Camera zoom is now updated immediately rather than gradually when selecting a keyframe or starting a path.
+	- [7]/[1] now moves the pathing camera up/down relative to the frame instead of the ground. This functionality was previously on the scroll wheel.
+	- Vertical movement with the mouse is now triggered by holding both the middle and left mouse buttons and moving the mouse forward/backward (replaces the previous scroll wheel functionality).
+	- Holding keypad Enter (configurable) modifies the reference frame for movement to be relative to the vessel instead of the camera. Also, left/right and forward/backward are reversed when viewing the vessel from the front for more natural movement.
+	- The scroll wheel now adjusts the move speed while the pathing camera is active. This is useful for quickly switching between fine adjustments and repositioning of the camera.
+	- The default time increment for new keys has been changed back to 10 seconds from 1 second. This is a more practical default path length and makes manually inserting new keys easier.
+	- The default rotation interpolation mode is now CubicSpline, was previously Slerp.
+	- The last path you used is now remembered between restarts.
+	- The GUI no longer closes on pressing save. Replaced by a bit of visual feedback. Useful for habitual save pressers.
 
 v1.18.2:
 Improvements:
