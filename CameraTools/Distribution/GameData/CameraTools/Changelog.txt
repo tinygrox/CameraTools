@@ -14,7 +14,7 @@ Improvements:
 	- Camera zoom is now updated immediately rather than gradually when selecting a keyframe or starting a path.
 	- [7]/[1] now moves the pathing camera up/down relative to the frame instead of the ground. This functionality was previously on the scroll wheel.
 	- Vertical movement with the mouse is now triggered by holding both the middle and left mouse buttons and moving the mouse forward/backward (replaces the previous scroll wheel functionality).
-	- Holding keypad Enter (configurable) modifies the reference frame for movement to be relative to the vessel instead of the camera. Also, left/right and forward/backward are reversed when viewing the vessel from the front for more natural movement.
+	- Holding keypad Enter (configurable) modifies the reference frame for movement to be relative to the vessel instead of the camera. Also, left/right and forward/backward are reversed for more natural movement when viewing the vessel from the front, which is the typical use-case.
 	- The scroll wheel now adjusts the move speed while the pathing camera is active. This is useful for quickly switching between fine adjustments and repositioning of the camera.
 	- The default time increment for new keys has been changed back to 10 seconds from 1 second. This is a more practical default path length and makes manually inserting new keys easier.
 	- The default rotation interpolation mode is now CubicSpline, was previously Slerp.
