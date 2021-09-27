@@ -1301,10 +1301,10 @@ namespace CameraTools
 				//mouse panning, moving
 				if (Input.GetKey(fmMovementModifier))
 				{
-					var reversed = Mathf.Sign(Vector3.Dot(flightCamera.transform.forward, vessel.ReferenceTransform.up)); // Reverse left/right and forward/back when viewing the vessel from the front.
+					// Note: The forwardAxis and rightAxis are reversed as this is more convenient when viewing the vessel from the front (which is a more typical use-case).
 					upAxis = -vessel.ReferenceTransform.forward;
-					forwardAxis = reversed * vessel.ReferenceTransform.up;
-					rightAxis = reversed * vessel.ReferenceTransform.right;
+					forwardAxis = -vessel.ReferenceTransform.up;
+					rightAxis = -vessel.ReferenceTransform.right;
 				}
 				else
 				{
