@@ -36,7 +36,7 @@ namespace CameraTools
 		System.Random rng;
 		[CTPersistantField] public bool autoEnableForBDA = false;
 		bool autoEnableOverriden = false;
-		bool autoEnableOverrideWhileSpawning = false;
+		bool autoEnableOverride = false;
 		bool cockpitView = false;
 		Type bdCompetitionType = null;
 		object bdCompetitionInstance = null;
@@ -45,6 +45,9 @@ namespace CameraTools
 		Type bdVesselSpawnerType = null;
 		object bdVesselSpawnerInstance = null;
 		FieldInfo bdVesselsSpawningField = null;
+		Type bdBDATournamentType = null;
+		object bdBDATournamentInstance = null;
+		FieldInfo bdTournamentWarpInProgressField = null;
 		[CTPersistantField] public bool DEBUG = false;
 		[CTPersistantField] public bool DEBUG2 = false;
 
@@ -394,7 +397,7 @@ namespace CameraTools
 			}
 			else if (mode == CameraManager.CameraMode.Flight)
 			{
-				if (wasActiveBeforeModeChange && !autoEnableOverriden && !autoEnableOverrideWhileSpawning)
+				if (wasActiveBeforeModeChange && !autoEnableOverriden && !autoEnableOverride)
 				{
 					Debug.Log("[CameraTools]: Camera mode changed to " + mode + ", reactivating " + toolMode + ".");
 					cockpitView = false; // Don't go back into cockpit view in case it was triggered by the user.
@@ -419,9 +422,6 @@ namespace CameraTools
 					case ToolModes.DogfightCamera:
 						cameraParent.transform.position += floatingKrakenAdjustment;
 						dogfightLastTargetPosition += floatingKrakenAdjustment;
-						break;
-					case ToolModes.StationaryCamera:
-						lastTargetPosition += floatingKrakenAdjustment;
 						break;
 				}
 				if (DEBUG && TimeWarp.WarpMode == TimeWarp.Modes.LOW && FloatingOrigin.Offset.sqrMagnitude > 10)
@@ -1097,6 +1097,7 @@ namespace CameraTools
 			if (hasSavedRotation) { flightCamera.transform.rotation = savedRotation; }
 		}
 
+		Vector3 lastOffset = Vector3.zero;
 		void UpdateStationaryCamera()
 		{
 			if (useAudioEffects)
@@ -1135,6 +1136,19 @@ namespace CameraTools
 			else if (hasTarget)
 			{
 				flightCamera.transform.rotation = Quaternion.LookRotation(lastTargetPosition - flightCamera.transform.position, cameraUp);
+			}
+
+			if (DEBUG2)
+			{
+				debug2Messages.Clear();
+				Debug2Log("warp mode: " + TimeWarp.WarpMode + ", warp factor: " + TimeWarp.CurrentRate);
+				Debug2Log("situation: " + vessel.situation);
+				Debug2Log("vessel velocity: " + vessel.Velocity().ToString("G3") + ", Kraken velocity: " + Krakensbane.GetFrameVelocity().ToString("G3") + ", ΔKv: " + Krakensbane.GetLastCorrection().ToString("G3"));
+				Debug2Log("floating origin offset: " + FloatingOrigin.Offset.ToString("G3") + ", offsetNonKB: " + FloatingOrigin.OffsetNonKrakensbane.ToString("G3"));
+				Debug2Log("floatingKrakenAdjustment: " + floatingKrakenAdjustment.ToString("G3"));
+				Debug2Log("vessel - camera offset: " + (vessel.transform.position - flightCamera.transform.position).ToString("G3"));
+				Debug2Log("Δoffset: " + (lastOffset - (vessel.transform.position - flightCamera.transform.position)).ToString("G3"));
+				lastOffset = vessel.transform.position - flightCamera.transform.position;
 			}
 
 			//mouse panning, moving
@@ -3040,6 +3054,15 @@ namespace CameraTools
 		{
 			// This checks for the existence of a BDArmory assembly and picks out the BDACompetitionMode and VesselSpawner singletons.
 			int foundCount = 0;
+			bdCompetitionType = null;
+			bdCompetitionInstance = null;
+			bdCompetitionIsActiveField = null;
+			bdCompetitionStartingField = null;
+			bdVesselSpawnerType = null;
+			bdVesselSpawnerInstance = null;
+			bdVesselsSpawningField = null;
+			bdBDATournamentType = null;
+			bdBDATournamentInstance = null;
 			foreach (var assy in AssemblyLoader.loadedAssemblies)
 			{
 				if (assy.assembly.FullName.Contains("BDArmory"))
@@ -3079,11 +3102,19 @@ namespace CameraTools
 											bdVesselsSpawningField = fieldInfo;
 									++foundCount;
 									break;
+								case "BDATournament":
+									bdBDATournamentType = t;
+									bdBDATournamentInstance = FindObjectOfType(bdBDATournamentType);
+									foreach (var fieldInfo in bdBDATournamentType.GetFields(BindingFlags.Public | BindingFlags.Instance))
+										if (fieldInfo != null && fieldInfo.Name == "warpingInProgress")
+											bdTournamentWarpInProgressField = fieldInfo;
+									++foundCount;
+									break;
 								default:
 									break;
 							}
 						}
-						if (foundCount == 3)
+						if (foundCount == 4)
 							return;
 					}
 				}
@@ -3131,61 +3162,69 @@ namespace CameraTools
 
 		private void AutoEnableForBDA()
 		{
-			if (bdCompetitionType != null && bdCompetitionInstance != null && bdVesselSpawnerType != null && bdVesselSpawnerInstance != null)
+			try
 			{
-				try
+				if (bdVesselsSpawningField != null && (bool)bdVesselsSpawningField.GetValue(bdVesselSpawnerInstance))
 				{
-					if ((bool)bdVesselsSpawningField.GetValue(bdVesselSpawnerInstance))
+					if (autoEnableOverride)
+						return; // Still spawning.
+					else
 					{
-						if (autoEnableOverrideWhileSpawning)
-						{
-							return; // Still spawning.
-						}
-						else
-						{
-							Debug.Log("[CameraTools]: Deactivating CameraTools while spawning vessels.");
-							autoEnableOverrideWhileSpawning = true;
-							RevertCamera();
-							return;
-						}
+						Debug.Log("[CameraTools]: Deactivating CameraTools while spawning vessels.");
+						autoEnableOverride = true;
+						RevertCamera();
+						return;
 					}
-					autoEnableOverrideWhileSpawning = false;
+				}
 
-					if (cameraToolActive) return; // It's already active.
-
-					if (vessel == null || (hasPilotAI && vessel.LandedOrSplashed)) return; // Don't activate for landed/splashed planes.
-					if ((bool)bdCompetitionStartingField.GetValue(bdCompetitionInstance))
+				if (bdTournamentWarpInProgressField != null && (bool)bdTournamentWarpInProgressField.GetValue(bdBDATournamentInstance))
+				{
+					if (autoEnableOverride)
+						return; // Still warping.
+					else
 					{
-						Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is starting.");
+						Debug.Log("[CameraTools]: Deactivating CameraTools while warping between rounds.");
+						autoEnableOverride = true;
+						RevertCamera();
+						return;
+					}
+				}
+
+				autoEnableOverride = false;
+				if (cameraToolActive) return; // It's already active.
+
+				if (vessel == null || (hasPilotAI && vessel.LandedOrSplashed)) return; // Don't activate for landed/splashed planes.
+				if (bdCompetitionStartingField != null && (bool)bdCompetitionStartingField.GetValue(bdCompetitionInstance))
+				{
+					Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is starting.");
+					cameraActivate();
+					return;
+				}
+				else if (bdCompetitionIsActiveField != null && (bool)bdCompetitionIsActiveField.GetValue(bdCompetitionInstance))
+				{
+					if (!(toolMode == ToolModes.DogfightCamera && dogfightTarget == null)) // Don't activate dogfight mode without a target once the competition is active.
+					{
+						Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is active.");
 						cameraActivate();
 						return;
 					}
-					else if ((bool)bdCompetitionIsActiveField.GetValue(bdCompetitionInstance))
+					else // Try to acquire a valid dogfightTarget so we can re-enable the camera.
 					{
-						if (!(toolMode == ToolModes.DogfightCamera && dogfightTarget == null)) // Don't activate dogfight mode without a target once the competition is active.
-						{
-							Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is active.");
-							cameraActivate();
-							return;
-						}
-						else // Try to acquire a valid dogfightTarget so we can re-enable the camera.
-						{
-							UpdateAIDogfightTarget();
-						}
+						UpdateAIDogfightTarget();
 					}
 				}
-				catch (Exception e)
-				{
-					Debug.LogError("[CameraTools]: Checking competition state of BDArmory failed: " + e.Message);
-					bdCompetitionIsActiveField = null;
-					bdCompetitionStartingField = null;
-					bdCompetitionInstance = null;
-					bdCompetitionType = null;
-					bdVesselsSpawningField = null;
-					bdVesselSpawnerInstance = null;
-					bdVesselSpawnerType = null;
-					CheckForBDA();
-				}
+			}
+			catch (Exception e)
+			{
+				Debug.LogError("[CameraTools]: Checking competition state of BDArmory failed: " + e.Message);
+				bdCompetitionIsActiveField = null;
+				bdCompetitionStartingField = null;
+				bdCompetitionInstance = null;
+				bdCompetitionType = null;
+				bdVesselsSpawningField = null;
+				bdVesselSpawnerInstance = null;
+				bdVesselSpawnerType = null;
+				CheckForBDA();
 			}
 		}
 
