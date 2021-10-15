@@ -1720,9 +1720,12 @@ namespace CameraTools
 			}
 
 			// Debug.Log($"DEBUG Setting doppler");
-			// Debug.Log($"DEBUG audio spatializer: {AudioSettings.GetSpatializerPluginName()}");
+			// Debug.Log($"DEBUG audio spatializer: {AudioSettings.GetSpatializerPluginName()}"); This is an empty string, so doppler effects using Unity's built-in settings are not available.
+			// Manually handling doppler effects won't work either as there's no events for newly added audioSources and no way to check when the pitch is adjusted for other reasons.
+
 			audioSources = FindObjectsOfType<AudioSource>();
 			originalAudioSourceDoppler = new float[audioSources.Length];
+			// Debug.Log($"DEBUG AudioSource pitch: "+ string.Join(", ", audioSources.Where(a => a.isPlaying).Select(a => $"{a.name}: {a.pitch}")));
 
 			for (int i = 0; i < audioSources.Length; i++)
 			{

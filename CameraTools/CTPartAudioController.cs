@@ -64,7 +64,6 @@ namespace CameraTools
 			float lagAudioFactor = (75000 / (Vector3.Distance(vessel.transform.position, FlightCamera.fetch.mainCamera.transform.position) * srfSpeed * angleToCam / 90));
 			lagAudioFactor = Mathf.Clamp(lagAudioFactor * lagAudioFactor * lagAudioFactor, 0, 4);
 			lagAudioFactor += srfSpeed / 230;
-			// lagAudioFactor += srfSpeed / (float)CamTools.speedOfSound; FIXME test this and then add in manual doppler effects by adjusting the pitch of playing audio sources
 
 			float waveFrontFactor = ((3.67f * angleToCam) / srfSpeed);
 			waveFrontFactor = Mathf.Clamp(waveFrontFactor * waveFrontFactor * waveFrontFactor, 0, 2);
