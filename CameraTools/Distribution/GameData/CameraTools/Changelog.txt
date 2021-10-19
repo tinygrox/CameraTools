@@ -5,6 +5,8 @@ Bugfixes:
  - Reset the zoom slider when resetting the FOV.
  - Auto-switch the auto-zoom to regular zoom when entering pathing mode as pathing only uses the regular zoom.
  - Remove the temporaryRevert code (I think that was a Scott Manley hack).
+Improvements:
+ - Adds autoEnableOverride for BDArmory's tournament inter-round time-warping.
 
 v1.19.0
 Improvements:
