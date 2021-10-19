@@ -1,3 +1,11 @@
+v1.19.1
+Bugfixes:
+ - Fix random mode transitions that got broken in the last release.
+ - Delay activating the new camera mode on vessel switches until LateUpdate for all camera modes, not just dogfight mode.
+ - Reset the zoom slider when resetting the FOV.
+ - Auto-switch the auto-zoom to regular zoom when entering pathing mode as pathing only uses the regular zoom.
+ - Remove the temporaryRevert code (I think that was a Scott Manley hack).
+
 v1.19.0
 Improvements:
  - Use a more stable direction for dogfight mode when the vessel is bobbing around on the ocean.

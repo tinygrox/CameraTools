@@ -136,7 +136,6 @@ namespace CameraTools
 		[CTPersistantField] bool saveRotation = false;
 		bool hasSavedRotation = false;
 		Quaternion savedRotation;
-		bool temporaryRevert = false;
 		bool wasActiveBeforeModeChange = false;
 		Vector3 lastTargetPosition = Vector3.zero;
 		bool hasTarget = false;
@@ -445,13 +444,11 @@ namespace CameraTools
 				if (Input.GetKeyDown(revertKey))
 				{
 					autoEnableOverriden = true;
-					temporaryRevert = false;
 					RevertCamera();
 				}
 				else if (Input.GetKeyDown(cameraKey))
 				{
 					autoEnableOverriden = false;
-					temporaryRevert = true;
 					if (!cameraToolActive && randomMode)
 					{
 						ChooseRandomMode();
@@ -628,13 +625,7 @@ namespace CameraTools
 			if (cameraToolActive && vesselSwitched) // We perform this here instead of waiting for the next frame to avoid a flicker of the camera being switched during a FixedUpdate.
 			{
 				vesselSwitched = false;
-				switch (toolMode)
-				{
-					case ToolModes.DogfightCamera:
-						UpdateAIDogfightTarget();
-						StartDogfightCamera();
-						break;
-				}
+				cameraActivate();
 			}
 		}
 
@@ -987,6 +978,8 @@ namespace CameraTools
 				if (randomMode)
 				{
 					camTarget = FlightGlobals.ActiveVessel.GetReferenceTransformPart();
+					if (camTarget == null) // Sometimes the vessel doesn't have the reference transform part set up. It ought to be the root part usually.
+						camTarget = FlightGlobals.ActiveVessel.rootPart;
 				}
 				hasTarget = (camTarget != null) ? true : false;
 				if (vessel != null)
@@ -1354,28 +1347,14 @@ namespace CameraTools
 						flightCamera.transform.position += rightAxis * freeMoveSpeed * Time.fixedDeltaTime;
 					}
 
-					//keyZoom
-					if (!autoFOV)
+					//keyZoom Note: pathing doesn't use autoZoomMargin
+					if (Input.GetKey(fmZoomInKey))
 					{
-						if (Input.GetKey(fmZoomInKey))
-						{
-							zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
-						}
-						else if (Input.GetKey(fmZoomOutKey))
-						{
-							zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
-						}
+						zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
 					}
-					else
+					else if (Input.GetKey(fmZoomOutKey))
 					{
-						if (Input.GetKey(fmZoomInKey))
-						{
-							autoZoomMargin = Mathf.Clamp(autoZoomMargin + (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
-						}
-						else if (Input.GetKey(fmZoomOutKey))
-						{
-							autoZoomMargin = Mathf.Clamp(autoZoomMargin - (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
-						}
+						zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
 					}
 				}
 
@@ -1802,12 +1781,6 @@ namespace CameraTools
 			engines.Clear();
 
 			CheckForBDAI(v);
-			// reactivate camera if it was reverted
-			if (temporaryRevert && randomMode)
-			{
-				cameraToolActive = true;
-				toolMode = ToolModes.Pathing;
-			}
 			if (cameraToolActive)
 			{
 				if (hasBDAI && useBDAutoTarget)
@@ -1818,33 +1791,14 @@ namespace CameraTools
 				{
 					var lowAlt = Math.Max(30d, -3d * vessel.verticalSpeed); // 30m or 3s to impact, whichever is higher.
 					var stationarySurfaceVessel = (vessel.Landed && vessel.Speed() < 1) || (vessel.Splashed && vessel.Speed() < 5); // Land or water vessel that isn't moving much.
-					if (stationarySurfaceVessel || (!vessel.LandedOrSplashed && vessel.radarAltitude < lowAlt))
+					if (stationarySurfaceVessel || (hasPilotAI && vessel.radarAltitude < lowAlt))
 					{
 						StartStationaryCamera();
-						// RevertCamera();
 					}
 					else
 					{
-						var oldToolMode = toolMode;
 						ChooseRandomMode();
-						switch (toolMode)
-						{
-							case ToolModes.DogfightCamera:
-								break;
-							case ToolModes.StationaryCamera:
-								StartStationaryCamera();
-								break;
-							case ToolModes.Pathing:
-								StartPathingCam(); // but temporaryRevert will remain true. FIXME figure out what temporaryRevert is meant for!
-								break;
-						}
-
-						if (cameraToolActive && toolMode != oldToolMode)
-						{
-							// recover and change to new mode
-							RevertCamera();
-							cameraActivate();
-						}
+						// Actual switching is delayed until the LateUpdate to avoid a flicker.
 					}
 				}
 
@@ -1927,6 +1881,8 @@ namespace CameraTools
 				flightCamera.mode = origMode; // Restore the camera mode. Note: using flightCamera.setModeImmediate(origMode); causes the annoying camera mode change messages to appear, simply setting the value doesn't do this and seems to work fine.
 				flightCamera.SetFoV(origFov);
 				currentFOV = origFov;
+				zoomFactor = 60 / flightCamera.FieldOfView;
+				zoomExp = Mathf.Log(zoomFactor) + 1f;
 				cameraParentWasStolen = false;
 			}
 			if (HighLogic.LoadedSceneIsFlight)
@@ -2099,7 +2055,7 @@ namespace CameraTools
 			autoEnableForBDA = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoEnableForBDA, "Auto-Enable for BDArmory");
 
 			line++;
-			if (autoFOV)
+			if (autoFOV && toolMode != ToolModes.Pathing)
 			{
 				GUI.Label(LeftRect(++line), "Autozoom Margin: ");
 				if (!textInput)
@@ -2936,6 +2892,7 @@ namespace CameraTools
 		private void CheckForBDAI(Vessel v)
 		{
 			hasBDAI = false;
+			hasPilotAI = false;
 			aiComponent = null;
 			if (v)
 			{
