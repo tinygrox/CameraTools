@@ -294,6 +294,11 @@ namespace CameraTools
 		{
 			windowRect = new Rect(Screen.width - windowWidth - 40, 0, windowWidth, windowHeight);
 			flightCamera = FlightCamera.fetch;
+			if (flightCamera == null){
+				Debug.LogError("[CameraTools.CamTools]: Flight Camera is null! Unable to start CameraTools!");
+				Destroy(this);
+				return;
+			}
 			cameraToolActive = false;
 			SaveOriginalCamera();
 
