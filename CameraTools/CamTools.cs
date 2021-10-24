@@ -1043,7 +1043,7 @@ namespace CameraTools
 							{
 								break;
 							} // We're clear.
-						} while (hit.collider != null && ++count < 20); // Max 1km higher.
+						} while (hit.collider != null && ++count < 100); // Max 5km higher.
 					}
 				}
 				else if (manualOffset)
