@@ -294,7 +294,8 @@ namespace CameraTools
 		{
 			windowRect = new Rect(Screen.width - windowWidth - 40, 0, windowWidth, windowHeight);
 			flightCamera = FlightCamera.fetch;
-			if (flightCamera == null){
+			if (flightCamera == null)
+			{
 				Debug.LogError("[CameraTools.CamTools]: Flight Camera is null! Unable to start CameraTools!");
 				Destroy(this);
 				return;
@@ -570,7 +571,7 @@ namespace CameraTools
 					case ToolModes.StationaryCamera:
 						if (!FloatingOrigin.Offset.IsZero() || !Krakensbane.GetFrameVelocity().IsZero())
 						{
-							if (FloatingOrigin.OffsetNonKrakensbane.sqrMagnitude < maxRelVSqr * TimeWarp.fixedDeltaTime * TimeWarp.fixedDeltaTime) // Account for maxRelV.
+							if (randomMode || FloatingOrigin.OffsetNonKrakensbane.sqrMagnitude < maxRelVSqr * TimeWarp.fixedDeltaTime * TimeWarp.fixedDeltaTime) // Account for maxRelV unless in random mode.
 							{ lastVesselCoM -= FloatingOrigin.OffsetNonKrakensbane; }
 							else // If the floating origin is not fixed, then it moves with the current vessel.
 							{ lastVesselCoM -= maxRelV * TimeWarp.fixedDeltaTime * FloatingOrigin.OffsetNonKrakensbane.normalized; }
@@ -987,10 +988,7 @@ namespace CameraTools
 						camTarget = FlightGlobals.ActiveVessel.rootPart;
 				}
 				hasTarget = (camTarget != null) ? true : false;
-				if (vessel != null)
-				{
-					lastVesselCoM = vessel.CoM;
-				}
+				lastVesselCoM = vessel.CoM;
 
 				// Camera position.
 				if (autoFlybyPosition || randomMode)
@@ -1112,7 +1110,7 @@ namespace CameraTools
 				var offsetSinceLastFrame = vessel.CoM - lastVesselCoM;
 				lastVesselCoM = vessel.CoM;
 				cameraParent.transform.position = manualPosition + vessel.CoM;
-				if (vessel.srfSpeed > maxRelV / 2 && offsetSinceLastFrame.sqrMagnitude > maxRelVSqr * TimeWarp.fixedDeltaTime * TimeWarp.fixedDeltaTime) // Account for maxRelV. Note: we use fixedDeltaTime here as we're interested in how far it jumped on the physics update. Also check for srfSpeed to account for changes in CoM when on launchpad (srfSpeed < maxRelV/2 should be good for maxRelV down to around 1 in most cases).
+				if (!randomMode && vessel.srfSpeed > maxRelV / 2 && offsetSinceLastFrame.sqrMagnitude > maxRelVSqr * TimeWarp.fixedDeltaTime * TimeWarp.fixedDeltaTime) // Account for maxRelV. Note: we use fixedDeltaTime here as we're interested in how far it jumped on the physics update. Also check for srfSpeed to account for changes in CoM when on launchpad (srfSpeed < maxRelV/2 should be good for maxRelV down to around 1 in most cases). Also, ignore this when using random mode.
 				{
 					offsetSinceLastFrame = maxRelV * TimeWarp.fixedDeltaTime * offsetSinceLastFrame.normalized;
 				}
@@ -3291,9 +3289,9 @@ namespace CameraTools
 		public static float GetRadarAltitudeAtPos(Vector3 position)
 		{
 			var geoCoords = FlightGlobals.currentMainBody.GetLatitudeAndLongitude(position);
-			var altitude = (float)FlightGlobals.currentMainBody.GetAltitude(position);
-			var terrainAltitude = (float)FlightGlobals.currentMainBody.TerrainAltitude(geoCoords.x, geoCoords.y);
-			return altitude - Mathf.Max(terrainAltitude, 0f);
+			var altitude = FlightGlobals.currentMainBody.GetAltitude(position);
+			var terrainAltitude = FlightGlobals.currentMainBody.TerrainAltitude(geoCoords.x, geoCoords.y);
+			return (float)(altitude - Math.Max(terrainAltitude, 0));
 		}
 
 		public float GetTime()
