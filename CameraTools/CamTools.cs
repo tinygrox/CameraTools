@@ -2950,25 +2950,20 @@ namespace CameraTools
 				BDAIFieldsNeedUpdating = false;
 			}
 
-			if (!hasBDAI || aiComponent == null || bdAiTargetField == null)
-			{
-				return null;
-			}
-
 			if (hasBDWM && wmComponent != null && bdWmThreatField != null)
 			{
 				bool underFire = (bool)bdWmUnderFireField.GetValue(wmComponent);
 				bool underAttack = (bool)bdWmUnderAttackField.GetValue(wmComponent);
 
 				if (bdWmMissileField != null)
-					return (Vessel)bdWmMissileField.GetValue(wmComponent);
-				else if (underFire || underAttack)
-					return (Vessel)bdWmThreatField.GetValue(wmComponent);
-				else
-					return (Vessel)bdAiTargetField.GetValue(aiComponent);
+					return (Vessel)bdWmMissileField.GetValue(wmComponent); // Priority 1: incoming missiles.
+				if (underFire || underAttack)
+					return (Vessel)bdWmThreatField.GetValue(wmComponent); // Priority 2: incoming fire.
 			}
+			if (hasBDAI && aiComponent != null && bdAiTargetField != null)
+				return (Vessel)bdAiTargetField.GetValue(aiComponent); // Priority 3: the current vessel's target.
 
-			return (Vessel)bdAiTargetField.GetValue(aiComponent);
+			return null;
 		}
 
 		private Type AIModuleType()
