@@ -38,7 +38,6 @@ namespace CameraTools
 			origRolloffMode = audioSource.rolloffMode;
 			audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
 			audioSource.spatialBlend = 1;
-
 		}
 
 		void FixedUpdate()
@@ -77,14 +76,11 @@ namespace CameraTools
 
 			audioSource.minDistance = Mathf.Lerp(origMinDist, modMinDist * lagAudioFactor, Mathf.Clamp01((float)vessel.srfSpeed / 30));
 			audioSource.maxDistance = Mathf.Lerp(origMaxDist, Mathf.Clamp(modMaxDist * lagAudioFactor, audioSource.minDistance, 16000), Mathf.Clamp01((float)vessel.srfSpeed / 30));
-
 		}
 
 		void OnDestroy()
 		{
 			CamTools.OnResetCTools -= OnResetCTools;
-
-
 		}
 
 		void OnResetCTools()
@@ -97,8 +93,6 @@ namespace CameraTools
 			}
 			Destroy(this);
 		}
-
-
 	}
 }
 
