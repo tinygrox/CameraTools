@@ -1,5 +1,10 @@
+v1.19.2
 Bugfixes:
 - Check for the flight camera being null on startup (caused by other modules crashing KSP).
+- Fix check for secondary camera target priorities (incoming missiles are prioritised, then incoming fire, then current vessel's target).
+- Ignore maxRelV when random mode is enabled (should fix badly placed stationary camera on vessel switches).
+Improvements:
+- Allow the stationary camera to be placed up to 5km higher to avoid potential terrain line-of-sight issues.
 
 v1.19.1
 Bugfixes:
