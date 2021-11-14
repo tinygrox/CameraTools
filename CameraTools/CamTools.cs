@@ -434,7 +434,7 @@ namespace CameraTools
 				{"randomModePathingChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModePathingChance, 0f, 100f)},
 				{"freeMoveSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, freeMoveSpeed, freeMoveSpeedMin, freeMoveSpeedMax)},
 				{"keyZoomSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, keyZoomSpeed, keyZoomSpeedMin, keyZoomSpeedMax)},
-				{"maxRelV", gameObject.AddComponent<FloatInputField>().Initialise(0, maxRelV, 0f)},
+				{"maxRelV", gameObject.AddComponent<FloatInputField>().Initialise(0, maxRelV)},
 			};
 		}
 
