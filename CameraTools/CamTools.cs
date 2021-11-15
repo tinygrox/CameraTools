@@ -182,7 +182,32 @@ namespace CameraTools
 		[CTPersistantField] public float dogfightRoll = 0f;
 		Quaternion dogfightCameraRoll = Quaternion.identity;
 		Vector3 dogfightCameraRollUp = Vector3.up;
-		[CTPersistantField] public float autoZoomMargin = 20;
+		[CTPersistantField] public float autoZoomMarginDogfight = 20;
+		[CTPersistantField] public float autoZoomMarginStationary = 20;
+		public float autoZoomMargin
+		{
+			get
+			{
+				switch (toolMode)
+				{
+					case ToolModes.DogfightCamera: return autoZoomMarginDogfight;
+					case ToolModes.StationaryCamera: return autoZoomMarginStationary;
+					default: return 20f;
+				}
+			}
+			set
+			{
+				switch (toolMode)
+				{
+					case ToolModes.DogfightCamera:
+						autoZoomMarginDogfight = value;
+						break;
+					case ToolModes.StationaryCamera:
+						autoZoomMarginStationary = value;
+						break;
+				}
+			}
+		}
 		List<Vessel> loadedVessels;
 		bool showingVesselList = false;
 		bool dogfightLastTarget = false;
@@ -226,7 +251,37 @@ namespace CameraTools
 		public float zoomFactor = 1;
 		[CTPersistantField] public float keyZoomSpeedMin = 0.01f;
 		[CTPersistantField] public float keyZoomSpeedMax = 10f;
-		[CTPersistantField] public float zoomExp = 1;
+		[CTPersistantField] public float zoomExpDogfight = 1f;
+		[CTPersistantField] public float zoomExpStationary = 1f;
+		public float zoomExp
+		{
+			get
+			{
+				switch (toolMode)
+				{
+					case ToolModes.DogfightCamera: return zoomExpDogfight;
+					case ToolModes.StationaryCamera: return zoomExpStationary;
+					case ToolModes.Pathing: return zoomExpPathing;
+					default: return 1f;
+				}
+			}
+			set
+			{
+				switch (toolMode)
+				{
+					case ToolModes.DogfightCamera:
+						zoomExpDogfight = value;
+						break;
+					case ToolModes.StationaryCamera:
+						zoomExpStationary = value;
+						break;
+					case ToolModes.Pathing:
+						zoomExpPathing = value;
+						break;
+				}
+			}
+		}
+		[CTPersistantField] public float zoomExpPathing = 1f;
 		[CTPersistantField] public float maxRelV = 2500;
 		[CTPersistantField] public bool maintainInitialVelocity = false;
 		Vector3d initialVelocity = Vector3d.zero;
@@ -1884,8 +1939,6 @@ namespace CameraTools
 				flightCamera.mode = origMode; // Restore the camera mode. Note: using flightCamera.setModeImmediate(origMode); causes the annoying camera mode change messages to appear, simply setting the value doesn't do this and seems to work fine.
 				flightCamera.SetFoV(origFov);
 				currentFOV = origFov;
-				zoomFactor = 60 / flightCamera.FieldOfView;
-				zoomExp = Mathf.Log(zoomFactor) + 1f;
 				cameraParentWasStolen = false;
 			}
 			if (HighLogic.LoadedSceneIsFlight)
@@ -2031,7 +2084,13 @@ namespace CameraTools
 					foreach (var field in inputFields.Keys)
 					{
 						inputFields[field].tryParseValueNow();
-						typeof(CamTools).GetField(field).SetValue(this, inputFields[field].currentValue);
+						var fieldInfo = typeof(CamTools).GetField(field);
+						if (fieldInfo != null) { fieldInfo.SetValue(this, inputFields[field].currentValue); }
+						else
+						{
+							var propInfo = typeof(CamTools).GetProperty(field);
+							propInfo.SetValue(this, inputFields[field].currentValue);
+						}
 					}
 					if (currentPath != null)
 					{
@@ -2049,7 +2108,16 @@ namespace CameraTools
 						pathingTimeScale = currentPath.timeScale;
 					}
 					foreach (var field in inputFields.Keys)
-					{ inputFields[field].currentValue = (float)typeof(CamTools).GetField(field).GetValue(this); }
+					{
+						var fieldInfo = typeof(CamTools).GetField(field);
+						if (fieldInfo != null) { inputFields[field].currentValue = (float)fieldInfo.GetValue(this); }
+						else
+						{
+							var propInfo = typeof(CamTools).GetProperty(field);
+							inputFields[field].currentValue = (float)propInfo.GetValue(this);
+						}
+					}
+
 				}
 			}
 			line++;
@@ -2089,9 +2157,10 @@ namespace CameraTools
 			}
 			if (toolMode != ToolModes.Pathing)
 			{
-				autoFOV = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoFOV, "Auto Zoom");//, leftLabel);
+				autoFOV = GUI.Toggle(LabelRect(++line), autoFOV, "Auto Zoom");
 			}
 
+			++line;
 			GUI.Label(LeftRect(++line), "Camera Shake:");
 			if (!textInput)
 			{
@@ -2950,25 +3019,20 @@ namespace CameraTools
 				BDAIFieldsNeedUpdating = false;
 			}
 
-			if (!hasBDAI || aiComponent == null || bdAiTargetField == null)
-			{
-				return null;
-			}
-
 			if (hasBDWM && wmComponent != null && bdWmThreatField != null)
 			{
 				bool underFire = (bool)bdWmUnderFireField.GetValue(wmComponent);
 				bool underAttack = (bool)bdWmUnderAttackField.GetValue(wmComponent);
 
 				if (bdWmMissileField != null)
-					return (Vessel)bdWmMissileField.GetValue(wmComponent);
-				else if (underFire || underAttack)
-					return (Vessel)bdWmThreatField.GetValue(wmComponent);
-				else
-					return (Vessel)bdAiTargetField.GetValue(aiComponent);
+					return (Vessel)bdWmMissileField.GetValue(wmComponent); // Priority 1: incoming missiles.
+				if (underFire || underAttack)
+					return (Vessel)bdWmThreatField.GetValue(wmComponent); // Priority 2: incoming fire.
 			}
+			if (hasBDAI && aiComponent != null && bdAiTargetField != null)
+				return (Vessel)bdAiTargetField.GetValue(aiComponent); // Priority 3: the current vessel's target.
 
-			return (Vessel)bdAiTargetField.GetValue(aiComponent);
+			return null;
 		}
 
 		private Type AIModuleType()
