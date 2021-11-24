@@ -76,7 +76,7 @@ namespace CameraTools
 
 		void FixedUpdate()
 		{
-			if (!vessel || !vessel.loaded || !vessel.isActiveAndEnabled)
+			if (vessel == null || !vessel.loaded || !vessel.isActiveAndEnabled || FlightCamera.fetch == null || FlightCamera.fetch.mainCamera == null)
 			{
 				return;
 			}
