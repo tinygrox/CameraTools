@@ -287,7 +287,7 @@ namespace CameraTools
 		Vector3d initialVelocity = Vector3d.zero;
 		Orbit initialOrbit;
 		[CTPersistantField] public bool useOrbital = false;
-		float maxRelVSqr;
+		float signedMaxRelVSqr;
 		#endregion
 
 		#region Pathing Camera Fields
@@ -1050,9 +1050,9 @@ namespace CameraTools
 				{
 					setPresetOffset = false;
 
-					float clampedSpeed = Mathf.Clamp((float)vessel.srfSpeed, 0, maxRelV);
+					float clampedSpeed = Mathf.Clamp((float)vessel.srfSpeed, 0, Mathf.Abs(maxRelV));
 					float sideDistance = Mathf.Clamp(20 + (clampedSpeed / 10), 20, 150);
-					float distanceAhead = Mathf.Clamp(4 * clampedSpeed, 30, 3500);
+					float distanceAhead = Mathf.Clamp(4 * clampedSpeed, 30, 3500) * Mathf.Sign(maxRelV);
 
 					if (vessel.Velocity().sqrMagnitude > 1)
 					{ flightCamera.transform.position = vessel.transform.position + distanceAhead * vessel.Velocity().normalized; }
@@ -1165,7 +1165,7 @@ namespace CameraTools
 				var offsetSinceLastFrame = vessel.CoM - lastVesselCoM;
 				lastVesselCoM = vessel.CoM;
 				cameraParent.transform.position = manualPosition + vessel.CoM;
-				if (!randomMode && vessel.srfSpeed > maxRelV / 2 && offsetSinceLastFrame.sqrMagnitude > maxRelVSqr * TimeWarp.fixedDeltaTime * TimeWarp.fixedDeltaTime) // Account for maxRelV. Note: we use fixedDeltaTime here as we're interested in how far it jumped on the physics update. Also check for srfSpeed to account for changes in CoM when on launchpad (srfSpeed < maxRelV/2 should be good for maxRelV down to around 1 in most cases). Also, ignore this when using random mode.
+				if (!randomMode && vessel.srfSpeed > maxRelV / 2 && offsetSinceLastFrame.sqrMagnitude > signedMaxRelVSqr * TimeWarp.fixedDeltaTime * TimeWarp.fixedDeltaTime) // Account for maxRelV. Note: we use fixedDeltaTime here as we're interested in how far it jumped on the physics update. Also check for srfSpeed to account for changes in CoM when on launchpad (srfSpeed < maxRelV/2 should be good for maxRelV down to around 1 in most cases). Also, ignore this when using random mode.
 				{
 					offsetSinceLastFrame = maxRelV * TimeWarp.fixedDeltaTime * offsetSinceLastFrame.normalized;
 				}
@@ -2180,7 +2180,7 @@ namespace CameraTools
 				GUI.Label(LeftRect(++line), "Max Relative Vel.: ", leftLabel);
 				inputFields["maxRelV"].tryParseValue(GUI.TextField(RightRect(line), inputFields["maxRelV"].possibleValue, 12, inputFieldStyle));
 				maxRelV = inputFields["maxRelV"].currentValue;
-				maxRelVSqr = maxRelV * maxRelV;
+				signedMaxRelVSqr = Mathf.Abs(maxRelV) * maxRelV;
 
 				maintainInitialVelocity = GUI.Toggle(LeftRect(++line), maintainInitialVelocity, "Maintain Vel.");
 				if (maintainInitialVelocity) useOrbital = GUI.Toggle(RightRect(line), useOrbital, "Use Orbital");
@@ -3501,7 +3501,7 @@ namespace CameraTools
 			zoomSpeedRaw = Mathf.Log10(keyZoomSpeed);
 			zoomSpeedMinRaw = Mathf.Log10(keyZoomSpeedMin);
 			zoomSpeedMaxRaw = Mathf.Log10(keyZoomSpeedMax);
-			maxRelVSqr = maxRelV * maxRelV;
+			signedMaxRelVSqr = Mathf.Abs(maxRelV) * maxRelV;
 			guiOffsetForward = manualOffsetForward.ToString();
 			guiOffsetRight = manualOffsetRight.ToString();
 			guiOffsetUp = manualOffsetUp.ToString();
