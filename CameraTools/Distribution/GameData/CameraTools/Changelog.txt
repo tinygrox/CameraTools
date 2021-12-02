@@ -1,7 +1,9 @@
 Bugfixes:
 - Don't reset the zoom value when reverting the FoV.
+- Fix the lower limit of the camera shake multiplier when using numeric fields.
 Improvements:
 - Separate zoom and autozoom parameters for the different modes so that adjusting zoom levels in one mode doesn't affect other modes.
+- Tweak the camera shake slider to use steps of 0.1.
 
 v1.19.2
 Bugfixes:
