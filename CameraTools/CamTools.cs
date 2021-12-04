@@ -3410,13 +3410,11 @@ namespace CameraTools
 		#endregion
 
 		#region Load/Save
-		public static string oldPathSaveURL = "GameData/CameraTools/paths.cfg";
-		public static string pathSaveURL = "GameData/CameraTools/PluginData/paths.cfg";
 		void Save()
 		{
 			CTPersistantField.Save();
 
-			ConfigNode pathFileNode = ConfigNode.Load(pathSaveURL);
+			ConfigNode pathFileNode = ConfigNode.Load(CameraPath.pathSaveURL);
 
 			if (pathFileNode == null)
 				pathFileNode = new ConfigNode();
@@ -3431,15 +3429,15 @@ namespace CameraTools
 			{
 				path.Save(pathsNode);
 			}
-			if (!Directory.GetParent(pathSaveURL).Exists)
-			{ Directory.GetParent(pathSaveURL).Create(); }
-			var success = pathFileNode.Save(pathSaveURL);
+			if (!Directory.GetParent(CameraPath.pathSaveURL).Exists)
+			{ Directory.GetParent(CameraPath.pathSaveURL).Create(); }
+			var success = pathFileNode.Save(CameraPath.pathSaveURL);
 			if (success)
 			{
 				lastSavedTime = Time.unscaledTime;
 
-				if (File.Exists(oldPathSaveURL))
-				{ File.Delete(oldPathSaveURL); } // Remove the old settings if it exists and the new settings were saved.
+				if (File.Exists(CameraPath.oldPathSaveURL))
+				{ File.Delete(CameraPath.oldPathSaveURL); } // Remove the old settings if it exists and the new settings were saved.
 			}
 		}
 
@@ -3454,10 +3452,10 @@ namespace CameraTools
 
 			DeselectKeyframe();
 			availablePaths = new List<CameraPath>();
-			ConfigNode pathFileNode = ConfigNode.Load(pathSaveURL);
+			ConfigNode pathFileNode = ConfigNode.Load(CameraPath.pathSaveURL);
 			if (pathFileNode == null)
 			{
-				pathFileNode = ConfigNode.Load(oldPathSaveURL);
+				pathFileNode = ConfigNode.Load(CameraPath.oldPathSaveURL);
 			}
 			if (pathFileNode != null)
 			{
