@@ -14,6 +14,7 @@ namespace CameraTools
 		#region Fields
 		public static CamTools fetch;
 
+		string Version = "unknown";
 		GameObject cameraParent;
 		Vessel vessel;
 		List<ModuleEngines> engines = new List<ModuleEngines>();
@@ -124,6 +125,7 @@ namespace CameraTools
 		GUIStyle leftLabelBold;
 		GUIStyle titleStyle;
 		GUIStyle inputFieldStyle;
+		GUIStyle watermarkStyle;
 		Dictionary<string, FloatInputField> inputFields;
 		List<Tuple<double, string>> debug2Messages = new List<Tuple<double, string>>();
 		void Debug2Log(string m) => debug2Messages.Add(new Tuple<double, string>(Time.time, m));
@@ -341,6 +343,7 @@ namespace CameraTools
 
 			fetch = this;
 
+			GetVersion();
 			Load();
 
 			rng = new System.Random();
@@ -416,6 +419,9 @@ namespace CameraTools
 			titleStyle = new GUIStyle(centerLabel);
 			titleStyle.fontSize = 24;
 			titleStyle.alignment = TextAnchor.MiddleCenter;
+			watermarkStyle = new GUIStyle(leftLabel);
+			watermarkStyle.normal.textColor = XKCDColors.LightBlueGrey;
+			watermarkStyle.fontSize = 12;
 			contentWidth = (windowWidth) - (2 * leftIndent);
 
 			inputFields = new Dictionary<string, FloatInputField> {
@@ -2070,8 +2076,27 @@ namespace CameraTools
 		{
 			GUI.DragWindow(new Rect(0, 0, windowWidth, draggableHeight));
 
-			float line = 1;
 			GUI.Label(new Rect(0, contentTop, windowWidth, 40), "Camera Tools", titleStyle);
+			GUI.Label(new Rect(windowWidth / 2f, contentTop + 35f, windowWidth / 2f - leftIndent - entryHeight, entryHeight), $"Version: {Version}", watermarkStyle);
+			if (GUI.Toggle(new Rect(windowWidth - leftIndent - 14f, contentTop + 31f, 20f, 20f), cameraToolActive, "") != cameraToolActive)
+			{
+				if (cameraToolActive)
+				{
+					autoEnableOverriden = true;
+					RevertCamera();
+				}
+				else
+				{
+					autoEnableOverriden = false;
+					if (randomMode)
+					{
+						ChooseRandomMode();
+					}
+					cameraActivate();
+				}
+			}
+
+			float line = 1.75f;
 			float parseResult;
 
 			//tool mode switcher
@@ -3085,6 +3110,19 @@ namespace CameraTools
 			}
 
 			return null;
+		}
+
+		private string GetVersion()
+		{
+			try
+			{
+				Version = this.GetType().Assembly.GetName().Version.ToString();
+			}
+			catch (Exception e)
+			{
+				Debug.LogWarning($"[CameraTools]: Failed to get version string: {e.Message}");
+			}
+			return Version;
 		}
 
 		private void CheckForBDA()
