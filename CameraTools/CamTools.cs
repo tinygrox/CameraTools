@@ -50,6 +50,12 @@ namespace CameraTools
 		object bdBDATournamentInstance = null;
 		FieldInfo bdTournamentWarpInProgressField = null;
 		Vessel.Situations lastVesselSituation = Vessel.Situations.FLYING;
+		object timeControlInstance = null;
+		PropertyInfo timeControlCameraZoomFixProperty = null;
+		bool timeControlCameraZoomFixOriginalValue = false;
+		object betterTimeWarpInstance = null;
+		FieldInfo betterTimeWarpScaleCameraSpeedField = null;
+		bool betterTimeWarpScaleCameraSpeedOriginalValue = false;
 		[CTPersistantField] public bool DEBUG = false;
 		[CTPersistantField] public bool DEBUG2 = false;
 
@@ -374,7 +380,8 @@ namespace CameraTools
 			deathCam = new GameObject("CameraToolsDeathCam");
 
 			CheckForBDA();
-			DisableTimeControlsCameraZoomFix(); // Time Control's camera zoom fix breaks CameraTools.
+			FindTimeControlCameraZoomFix(); // Time Control's camera zoom fix breaks CameraTools.
+			FindBetterTimeWarpScaleWarpSpeed();
 			if (FlightGlobals.ActiveVessel != null)
 			{
 				cameraParent.transform.position = FlightGlobals.ActiveVessel.transform.position;
@@ -591,7 +598,7 @@ namespace CameraTools
 		void FixedUpdate()
 		{
 			// Note: we have to perform several of the camera adjustments during FixedUpdate to avoid jitter in the Lerps in the camera position and rotation due to inconsistent numbers of physics updates per frame.
-			if (!FlightGlobals.ready) return;
+			if (!FlightGlobals.ready || GameIsPaused) return;
 			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight) return;
 
 			if (cameraToolActive)
@@ -705,6 +712,11 @@ namespace CameraTools
 		private void cameraActivate()
 		{
 			if (DEBUG) { Debug.Log("[CameraTools]: Activating camera."); DebugLog("Activating camera"); }
+			if (!cameraToolActive)
+			{
+				SetTimeControlCameraZoomFix(false);
+				SetBetterTimeWarpScaleCameraSpeed(false);
+			}
 			if (!cameraToolActive && !cameraParentWasStolen)
 			{
 				SaveOriginalCamera();
@@ -1966,7 +1978,6 @@ namespace CameraTools
 
 			cameraToolActive = false;
 
-
 			StopPlayingPath();
 
 			ResetDoppler();
@@ -1978,6 +1989,10 @@ namespace CameraTools
 			}
 			catch (Exception e)
 			{ Debug.Log("[CameraTools]: Caught exception resetting CameraTools " + e.ToString()); }
+
+			// Reset the parameters we set in other mods so as not to mess with them while we're not active.
+			SetTimeControlCameraZoomFix(true);
+			SetBetterTimeWarpScaleCameraSpeed(true);
 		}
 
 		void SaveOriginalCamera()
@@ -3196,7 +3211,7 @@ namespace CameraTools
 			}
 		}
 
-		private void DisableTimeControlsCameraZoomFix()
+		private void FindTimeControlCameraZoomFix()
 		{
 			try
 			{
@@ -3209,18 +3224,16 @@ namespace CameraTools
 							if (type == null) continue;
 							if (type.Name == "GlobalSettings")
 							{
-								var globalSettingsInstance = FindObjectOfType(type);
-								if (globalSettingsInstance != null)
+								timeControlInstance = FindObjectOfType(type);
+								if (timeControlInstance != null)
 								{
 									foreach (var propertyInfo in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
 									{
 										if (propertyInfo != null && propertyInfo.Name == "CameraZoomFix")
 										{
-											if ((bool)propertyInfo.GetValue(globalSettingsInstance))
-											{
-												Debug.LogWarning("[CameraTools]: Setting CameraZoomFix variable in TimeControl.GlobalSettings to false as it breaks CameraTools when running in slow-mo.");
-												propertyInfo.SetValue(globalSettingsInstance, false);
-											}
+											timeControlCameraZoomFixProperty = propertyInfo;
+											timeControlCameraZoomFixOriginalValue = (bool)propertyInfo.GetValue(timeControlInstance);
+											return;
 										}
 									}
 								}
@@ -3231,8 +3244,61 @@ namespace CameraTools
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[CameraTools.CamTools]: Failed to disable CameraZoomFix in TimeControl: {e.Message}");
+				Debug.LogError($"[CameraTools.CamTools]: Failed to locate CameraZoomFix in TimeControl: {e.Message}");
 			}
+		}
+
+		private void SetTimeControlCameraZoomFix(bool restore)
+		{
+			if (timeControlCameraZoomFixProperty == null || !timeControlCameraZoomFixOriginalValue) return; // Not found or it was originally false, so we can ignore it.
+			if (restore) Debug.Log("[CameraTools]: Restoring CameraZoomFix variable in TimeControl.GlobalSettings to true.");
+			else Debug.Log("[CameraTools]: Setting CameraZoomFix variable in TimeControl.GlobalSettings to false as it breaks CameraTools when running in slow-mo.");
+			timeControlCameraZoomFixProperty.SetValue(timeControlInstance, restore && timeControlCameraZoomFixOriginalValue);
+		}
+
+		private void FindBetterTimeWarpScaleWarpSpeed()
+		{
+			try
+			{
+				foreach (var assy in AssemblyLoader.loadedAssemblies)
+				{
+					if (assy.assembly.FullName.Contains("BetterTimeWarp")) // BetterTimeWarpContinued
+					{
+						foreach (var type in assy.assembly.GetTypes())
+						{
+							if (type == null) continue;
+							if (type.Name == "BetterTimeWarp")
+							{
+								betterTimeWarpInstance = FindObjectOfType(type);
+								if (betterTimeWarpInstance != null)
+								{
+									foreach (var fieldInfo in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+									{
+										if (fieldInfo != null && fieldInfo.Name == "ScaleCameraSpeed")
+										{
+											betterTimeWarpScaleCameraSpeedField = fieldInfo;
+											betterTimeWarpScaleCameraSpeedOriginalValue = (bool)fieldInfo.GetValue(betterTimeWarpInstance);
+											return;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				Debug.LogError($"[CameraTools.CamTools]: Failed to locate ScaleCameraSpeed in BetterTimeWarp (Continued): {e.Message}");
+			}
+		}
+
+		private void SetBetterTimeWarpScaleCameraSpeed(bool restore)
+		{
+			if (betterTimeWarpScaleCameraSpeedField == null || !betterTimeWarpScaleCameraSpeedOriginalValue) return; // Not found or it was originally false, so we can ignore it.
+			if (restore) Debug.Log("[CameraTools]: Restoring ScaleCameraSpeed variable in BetterTimeWarp.BetterTimeWarp to true.");
+			else Debug.Log("[CameraTools]: Setting ScaleCameraSpeed variable in BetterTimeWarp.BetterTimeWarp to false as it breaks CameraTools when running in slow-mo.");
+			betterTimeWarpScaleCameraSpeedField.SetValue(betterTimeWarpInstance, restore);
 		}
 
 		private void AutoEnableForBDA()
@@ -3444,6 +3510,11 @@ namespace CameraTools
 			flightCamera.DeactivateUpdate();
 			flightCamera.transform.localPosition = Vector3.zero;
 			flightCamera.transform.localRotation = Quaternion.identity;
+		}
+
+		public static bool GameIsPaused
+		{
+			get { return PauseMenu.isOpen || Time.timeScale == 0; }
 		}
 		#endregion
 
