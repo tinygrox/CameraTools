@@ -228,6 +228,7 @@ namespace CameraTools
 		bool hasPilotAI = false;
 		bool hasBDWM = false;
 		[CTPersistantField] public bool useBDAutoTarget = false;
+		[CTPersistantField] public bool autoTargetIncomingMissiles = true;
 		object aiComponent = null;
 		object wmComponent = null;
 		FieldInfo bdAiTargetField;
@@ -2352,7 +2353,8 @@ namespace CameraTools
 				}
 				if (hasBDAI)
 				{
-					useBDAutoTarget = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), useBDAutoTarget, "BDA AI Auto target");
+					useBDAutoTarget = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), useBDAutoTarget, "BDA AI Auto Target");
+					autoTargetIncomingMissiles = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), autoTargetIncomingMissiles, "Target Incoming Missiles");
 				}
 				line++;
 
@@ -3074,7 +3076,7 @@ namespace CameraTools
 				bool underFire = (bool)bdWmUnderFireField.GetValue(wmComponent);
 				bool underAttack = (bool)bdWmUnderAttackField.GetValue(wmComponent);
 
-				if (bdWmMissileField != null)
+				if (autoTargetIncomingMissiles && bdWmMissileField != null)
 					return (Vessel)bdWmMissileField.GetValue(wmComponent); // Priority 1: incoming missiles.
 				if (underFire || underAttack)
 					return (Vessel)bdWmThreatField.GetValue(wmComponent); // Priority 2: incoming fire.
