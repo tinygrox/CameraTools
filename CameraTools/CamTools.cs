@@ -3073,8 +3073,8 @@ namespace CameraTools
 
 			if (hasBDWM && wmComponent != null && bdWmThreatField != null)
 			{
-				bool underFire = (bool)bdWmUnderFireField.GetValue(wmComponent);
-				bool underAttack = (bool)bdWmUnderAttackField.GetValue(wmComponent);
+				bool underFire = (bool)bdWmUnderFireField.GetValue(wmComponent); // Getting attacked by guns.
+				bool underAttack = autoTargetIncomingMissiles && (bool)bdWmUnderAttackField.GetValue(wmComponent); // Getting attacked by guns or missiles.
 
 				if (autoTargetIncomingMissiles && bdWmMissileField != null)
 					return (Vessel)bdWmMissileField.GetValue(wmComponent); // Priority 1: incoming missiles.
