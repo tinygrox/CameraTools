@@ -16,7 +16,7 @@ Improvements:
 - Corrections to the KrakensbaneWarpCorrection for dogfight and stationary camera modes so that they work (almost) correctly at all altitudes and warp levels.
 	- Known issues for the stationary camera when maintaining orbital velocity are:
 		- When changing low warp rate at above 100km altitude a slow drift begins, as if the orbit calculation position is slightly wrong. I.e., starting at a given low warp and staying there is fine, but once changed the drift begins.
-		- Below 100km altitude, there is a small unsteady drift when not in high warp (and exagerated by low warp) and once noticeably present continues after entering high warp.
+		- Below 100km altitude, there is a small unsteady drift when not in high warp (and exaggerated by low warp) and once noticeably present continues after entering high warp.
 		- Switching in and out of map mode returns the camera to the wrong position.
 
 v1.19.2
