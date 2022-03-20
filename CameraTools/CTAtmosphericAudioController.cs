@@ -76,10 +76,9 @@ namespace CameraTools
 
 		void FixedUpdate()
 		{
-			if (!vessel || !vessel.loaded || !vessel.isActiveAndEnabled)
-			{
-				return;
-			}
+			if (vessel == null || !vessel.loaded || !vessel.isActiveAndEnabled) return; // Vessel is dead or not ready.
+			if (FlightCamera.fetch == null || FlightCamera.fetch.mainCamera == null) return; // Flight camera is broken.
+			if (FlightGlobals.currentMainBody != null && vessel.altitude > FlightGlobals.currentMainBody.atmosphereDepth) return; // Vessel is outside the atmosphere.
 			if (sleep && Time.time - startedSleepAt < sleepDuration) return;
 			sleep = false;
 			if (!PauseMenu.isOpen && Time.timeScale > 0 && vessel.dynamicPressurekPa > 0)

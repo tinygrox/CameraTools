@@ -1,7 +1,23 @@
+v1.20.0
 Bugfixes:
 - Don't reset the zoom value when reverting the FoV.
+- Fix the lower limit of the camera shake multiplier when using numeric fields.
+- Make the config paths relative to the KSP app location (makes it more relocatable).
+- Fix an NRE in the audio controller.
 Improvements:
+- Add a version number and activation toggle/indicator to the GUI.
 - Separate zoom and autozoom parameters for the different modes so that adjusting zoom levels in one mode doesn't affect other modes.
+- Tweak the camera shake slider to use steps of 0.1.
+- Move the floating origin corrections for the stationary camera to the BetterLateThanNever timing phase to avoid the occasional flicker.
+- Remove the 0 minimum of the max relative velocity to allow reverse fly-bys with the stationary camera again.
+- Only disable TimeControl's CameraZoomFix while CameraTools is active so as to avoid interfering with that mod while CameraTools isn't active.
+- Look for and disable BetterTimeWarp's ScaleCameraSpeed while CameraTools is active, since that also messes with CameraTools during slow-mo.
+- BDA Auto Targeting: add an option to not target incoming missiles.
+- Corrections to the KrakensbaneWarpCorrection for dogfight and stationary camera modes so that they work (almost) correctly at all altitudes and warp levels.
+	- Known issues for the stationary camera when maintaining orbital velocity are:
+		- When changing low warp rate at above 100km altitude a slow drift begins, as if the orbit calculation position is slightly wrong. I.e., starting at a given low warp and staying there is fine, but once changed the drift begins.
+		- Below 100km altitude, there is a small unsteady drift when not in high warp (and exaggerated by low warp) and once noticeably present continues after entering high warp.
+		- Switching in and out of map mode returns the camera to the wrong position.
 
 v1.19.2
 Bugfixes:
