@@ -2977,6 +2977,13 @@ namespace CameraTools
 						aiComponent = (object)p.GetComponent("BDModulePilotAI");
 						return;
 					}
+					if (p.GetComponent("BDModuleVTOLAI"))
+					{
+						hasBDAI = true;
+						hasPilotAI = true;
+						aiComponent = (object)p.GetComponent("BDModuleVTOLAI");
+						return;
+					}
 					if (p.GetComponent("BDModuleSurfaceAI"))
 					{
 						hasBDAI = true;
