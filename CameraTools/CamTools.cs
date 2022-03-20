@@ -39,13 +39,12 @@ namespace CameraTools
 		bool autoEnableOverriden = false;
 		bool autoEnableOverride = false;
 		bool cockpitView = false;
-		Type bdCompetitionType = null;
 		object bdCompetitionInstance = null;
 		FieldInfo bdCompetitionStartingField = null;
 		FieldInfo bdCompetitionIsActiveField = null;
-		Type bdVesselSpawnerType = null;
 		object bdVesselSpawnerInstance = null;
 		FieldInfo bdVesselsSpawningField = null;
+		PropertyInfo bdVesselsSpawningProperty = null;
 		Type bdBDATournamentType = null;
 		object bdBDATournamentInstance = null;
 		FieldInfo bdTournamentWarpInProgressField = null;
@@ -765,11 +764,6 @@ namespace CameraTools
 						if (dogfightTarget && dogfightTarget.isActiveVessel)
 						{
 							dogfightTarget = null;
-							if (cameraToolActive) // UpdateDogfightCamera may disable the camera.
-							{
-								if (DEBUG) Debug.Log("[CameraTools]: Reverting because dogfightTarget is null");
-								RevertCamera();
-							}
 						}
 						break;
 					case ToolModes.StationaryCamera:
@@ -3279,14 +3273,12 @@ namespace CameraTools
 		private void CheckForBDA()
 		{
 			// This checks for the existence of a BDArmory assembly and picks out the BDACompetitionMode and VesselSpawner singletons.
-			int foundCount = 0;
-			bdCompetitionType = null;
 			bdCompetitionInstance = null;
 			bdCompetitionIsActiveField = null;
 			bdCompetitionStartingField = null;
-			bdVesselSpawnerType = null;
 			bdVesselSpawnerInstance = null;
 			bdVesselsSpawningField = null;
+			bdVesselsSpawningProperty = null;
 			bdBDATournamentType = null;
 			bdBDATournamentInstance = null;
 			foreach (var assy in AssemblyLoader.loadedAssemblies)
@@ -3300,48 +3292,59 @@ namespace CameraTools
 							switch (t.Name)
 							{
 								case "BDACompetitionMode":
-									bdCompetitionType = t;
-									bdCompetitionInstance = FindObjectOfType(bdCompetitionType);
-									foreach (var fieldInfo in bdCompetitionType.GetFields(BindingFlags.Public | BindingFlags.Instance))
+									bdCompetitionInstance = FindObjectOfType(t);
+									foreach (var fieldInfo in t.GetFields(BindingFlags.Public | BindingFlags.Instance))
 										if (fieldInfo != null)
 										{
 											switch (fieldInfo.Name)
 											{
 												case "competitionStarting":
 													bdCompetitionStartingField = fieldInfo;
-													++foundCount;
 													break;
 												case "competitionIsActive":
 													bdCompetitionIsActiveField = fieldInfo;
-													++foundCount;
 													break;
 												default:
 													break;
 											}
 										}
 									break;
+								case "VesselSpawnerStatus":
+									foreach (var propertyInfo in t.GetProperties(BindingFlags.Public | BindingFlags.Static))
+										if (propertyInfo != null && propertyInfo.Name == "inhibitCameraTools")
+										{
+											bdVesselsSpawningProperty = propertyInfo;
+											if (bdVesselsSpawningField != null) // Clear the deprecated field.
+											{ bdVesselsSpawningField = null; }
+											break;
+										}
+									break;
 								case "VesselSpawner":
-									bdVesselSpawnerType = t;
-									bdVesselSpawnerInstance = FindObjectOfType(bdVesselSpawnerType);
-									foreach (var fieldInfo in bdVesselSpawnerType.GetFields(BindingFlags.Public | BindingFlags.Instance))
-										if (fieldInfo != null && fieldInfo.Name == "vesselsSpawning")
-											bdVesselsSpawningField = fieldInfo;
-									++foundCount;
+									if (bdVesselsSpawningProperty == null)
+									{
+										bdVesselSpawnerInstance = FindObjectOfType(t);
+										foreach (var fieldInfo in t.GetFields(BindingFlags.Public | BindingFlags.Instance))
+											if (fieldInfo != null && fieldInfo.Name == "vesselsSpawning") // deprecated in favour of VesselSpawnerStatus.inhibitCameraTools
+											{
+												bdVesselsSpawningField = fieldInfo;
+												break;
+											}
+									}
 									break;
 								case "BDATournament":
 									bdBDATournamentType = t;
 									bdBDATournamentInstance = FindObjectOfType(bdBDATournamentType);
 									foreach (var fieldInfo in bdBDATournamentType.GetFields(BindingFlags.Public | BindingFlags.Instance))
 										if (fieldInfo != null && fieldInfo.Name == "warpingInProgress")
+										{
 											bdTournamentWarpInProgressField = fieldInfo;
-									++foundCount;
+											break;
+										}
 									break;
 								default:
 									break;
 							}
 						}
-						if (foundCount == 4)
-							return;
 					}
 				}
 			}
@@ -3441,7 +3444,20 @@ namespace CameraTools
 		{
 			try
 			{
-				if (bdVesselsSpawningField != null && (bool)bdVesselsSpawningField.GetValue(bdVesselSpawnerInstance))
+				if (bdVesselsSpawningProperty != null && (bool)bdVesselsSpawningProperty.GetValue(null))
+				{
+					if (autoEnableOverride)
+						return; // Still spawning.
+					else
+					{
+						Debug.Log("[CameraTools]: Deactivating CameraTools while spawning vessels.");
+						autoEnableOverride = true;
+						RevertCamera();
+						return;
+					}
+				}
+
+				if (bdVesselsSpawningField != null && (bool)bdVesselsSpawningField.GetValue(bdVesselSpawnerInstance)) // Deprecated.
 				{
 					if (autoEnableOverride)
 						return; // Still spawning.
@@ -3479,16 +3495,10 @@ namespace CameraTools
 				}
 				else if (bdCompetitionIsActiveField != null && (bool)bdCompetitionIsActiveField.GetValue(bdCompetitionInstance))
 				{
-					if (!(toolMode == ToolModes.DogfightCamera && dogfightTarget == null)) // Don't activate dogfight mode without a target once the competition is active.
-					{
-						Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is active.");
-						cameraActivate();
-						return;
-					}
-					else // Try to acquire a valid dogfightTarget so we can re-enable the camera.
-					{
-						UpdateAIDogfightTarget();
-					}
+					Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is active.");
+					UpdateAIDogfightTarget();
+					cameraActivate();
+					return;
 				}
 			}
 			catch (Exception e)
@@ -3497,10 +3507,9 @@ namespace CameraTools
 				bdCompetitionIsActiveField = null;
 				bdCompetitionStartingField = null;
 				bdCompetitionInstance = null;
-				bdCompetitionType = null;
 				bdVesselsSpawningField = null;
+				bdVesselsSpawningProperty = null;
 				bdVesselSpawnerInstance = null;
-				bdVesselSpawnerType = null;
 				CheckForBDA();
 			}
 		}
