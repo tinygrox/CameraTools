@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -7,6 +8,8 @@ namespace CameraTools
 {
 	public class CameraPath
 	{
+		public static string oldPathSaveURL = Path.GetFullPath(Path.Combine(KSPUtil.ApplicationRootPath, "GameData/CameraTools/paths.cfg"));
+		public static string pathSaveURL = Path.GetFullPath(Path.Combine(KSPUtil.ApplicationRootPath, "GameData/CameraTools/PluginData/paths.cfg"));
 		public string pathName;
 		public int keyframeCount { get { return points.Count; } }
 		public List<Vector3> points;

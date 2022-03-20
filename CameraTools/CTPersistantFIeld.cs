@@ -7,8 +7,8 @@ namespace CameraTools
 	[AttributeUsage(AttributeTargets.Field)]
 	public class CTPersistantField : Attribute
 	{
-		static string oldSettingsURL = "GameData/CameraTools/settings.cfg"; // Migrate from the old settings file to the new one in PluginData so that we don't invalidate the ModuleManager cache.
-		public static string settingsURL = "GameData/CameraTools/PluginData/settings.cfg";
+		static string oldSettingsURL = Path.GetFullPath(Path.Combine(KSPUtil.ApplicationRootPath, "GameData/CameraTools/settings.cfg")); // Migrate from the old settings file to the new one in PluginData so that we don't invalidate the ModuleManager cache.
+		public static string settingsURL = Path.GetFullPath(Path.Combine(KSPUtil.ApplicationRootPath, "GameData/CameraTools/PluginData/settings.cfg"));
 
 		public CTPersistantField() { }
 
