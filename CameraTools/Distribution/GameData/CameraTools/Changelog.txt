@@ -1,6 +1,6 @@
 v1.21.0
 Improvements:
-- Updated fields/properties for refactor in BDArmory.
+- Updated fields/properties for an internal refactor in BDArmory.
 - Don't revert the camera when there's no further dogfight targets.
 
 v1.20.0
