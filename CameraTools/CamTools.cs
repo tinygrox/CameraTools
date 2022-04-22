@@ -3329,6 +3329,7 @@ namespace CameraTools
 								case "VesselSpawner":
 									if (bdVesselsSpawningProperty == null)
 									{
+										if (!t.IsSubclassOf(typeof(UnityEngine.Object))) continue; // In BDArmory v1.5.0 and upwards, VesselSpawner is a static class.
 										bdVesselSpawnerInstance = FindObjectOfType(t);
 										foreach (var fieldInfo in t.GetFields(BindingFlags.Public | BindingFlags.Instance))
 											if (fieldInfo != null && fieldInfo.Name == "vesselsSpawning") // deprecated in favour of VesselSpawnerStatus.inhibitCameraTools
