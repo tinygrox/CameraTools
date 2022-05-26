@@ -19,6 +19,7 @@ namespace CameraTools
 		Vessel vessel;
 		List<ModuleEngines> engines = new List<ModuleEngines>();
 		List<ModuleCommand> cockpits = new List<ModuleCommand>();
+		List<Vessel> bdWMVessels;
 		public static HashSet<VesselType> ignoreVesselTypesForAudio = new HashSet<VesselType> { VesselType.Debris, VesselType.SpaceObject, VesselType.Unknown, VesselType.Flag }; // Ignore some vessel types to avoid using up all the SoundManager's channels.
 		Vector3 origPosition;
 		Quaternion origRotation;
@@ -135,6 +136,7 @@ namespace CameraTools
 		List<Tuple<double, string>> debug2Messages = new List<Tuple<double, string>>();
 		void Debug2Log(string m) => debug2Messages.Add(new Tuple<double, string>(Time.time, m));
 		float lastSavedTime = 0;
+		float updateTimer = 0;
 
 		#endregion
 
@@ -228,6 +230,7 @@ namespace CameraTools
 		bool hasBDWM = false;
 		[CTPersistantField] public bool useBDAutoTarget = false;
 		[CTPersistantField] public bool autoTargetIncomingMissiles = true;
+		[CTPersistantField] public bool useCentroid = false;
 		object aiComponent = null;
 		object wmComponent = null;
 		FieldInfo bdAiTargetField;
@@ -721,6 +724,11 @@ namespace CameraTools
 					default: // Other modes are handled in FixedUpdate due to relying on interpolation of positions updated in the physics update.
 						break;
 				}
+				if (Time.time - updateTimer >= 1)
+				{
+					UpdatebdWMVesselList();
+					updateTimer = Time.time;    //update once a second.
+				}
 			}
 			boundThisFrame = false;
 		}
@@ -839,6 +847,7 @@ namespace CameraTools
 			}
 			else if (toolMode == ToolModes.DogfightCamera)
 			{
+				UpdatebdWMVesselList();
 				StartDogfightCamera();
 			}
 			else if (toolMode == ToolModes.Pathing)
@@ -929,9 +938,34 @@ namespace CameraTools
 
 			if (dogfightTarget)
 			{
-				dogfightLastTarget = true;
-				dogfightLastTargetPosition = dogfightTarget.CoM;
-				dogfightLastTargetVelocity = dogfightTarget.Velocity();
+				if (loadedVessels == null) UpdateLoadedVessels();
+				if (bdWMVessels == null) UpdatebdWMVesselList();
+				if (useCentroid && bdWMVessels.Count > 2)
+				{
+					dogfightLastTarget = true;
+					dogfightLastTargetVelocity = Vector3.zero;
+					Vector3 centroid = Vector3.zero;
+					int count = 1;
+
+					foreach (var v in bdWMVessels)
+					{
+						if (v == null || !v.loaded || v.packed) continue;
+						if ((v.CoM - FlightGlobals.ActiveVessel.CoM).magnitude > 20000) continue;
+						if (!v.isActiveVessel)
+						{
+							centroid += v.transform.position;
+							++count;
+						}
+					}
+					centroid /= (float)count;
+					dogfightLastTargetPosition = centroid;
+				}
+				else
+				{
+					dogfightLastTarget = true;
+					dogfightLastTargetPosition = dogfightTarget.CoM;
+					dogfightLastTargetVelocity = dogfightTarget.Velocity();
+				}
 			}
 			else if (dogfightLastTarget)
 			{
@@ -939,7 +973,6 @@ namespace CameraTools
 				{ dogfightLastTargetPosition -= FloatingOrigin.OffsetNonKrakensbane; }
 				dogfightLastTargetPosition += dogfightLastTargetVelocity * TimeWarp.fixedDeltaTime;
 			}
-
 			cameraParent.transform.position = vessel.CoM;
 
 			if (dogfightVelocityChase)
@@ -2446,44 +2479,49 @@ namespace CameraTools
 			}
 			else if (toolMode == ToolModes.DogfightCamera)
 			{
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Secondary Target:");
-				string tVesselLabel;
-				if (showingVesselList)
-				{ tVesselLabel = "Clear"; }
-				else if (dogfightTarget)
-				{ tVesselLabel = dogfightTarget.vesselName; }
-				else
-				{ tVesselLabel = "None"; }
-				if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), tVesselLabel))
-				{
+					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Secondary Target:");
+					string tVesselLabel;
 					if (showingVesselList)
-					{
-						showingVesselList = false;
-						dogfightTarget = null;
-					}
+					{ tVesselLabel = "Clear"; }
+					else if (dogfightTarget)
+					{ tVesselLabel = dogfightTarget.vesselName; }
 					else
+					{ tVesselLabel = "None"; }
+					if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), tVesselLabel))
 					{
-						UpdateLoadedVessels();
-						showingVesselList = true;
-					}
-				}
-				if (showingVesselList)
-				{
-					foreach (var v in loadedVessels)
-					{
-						if (!v || !v.loaded) continue;
-						if (GUI.Button(new Rect(leftIndent + 10f, contentTop + (++line * entryHeight), contentWidth - 10f, entryHeight), v.vesselName))
+						if (showingVesselList)
 						{
-							dogfightTarget = v;
 							showingVesselList = false;
+							dogfightTarget = null;
+						}
+						else
+						{
+							UpdateLoadedVessels();
+							showingVesselList = true;
 						}
 					}
-				}
-				if (hasBDAI)
+					if (showingVesselList)
+					{
+						foreach (var v in loadedVessels)
+						{
+							if (!v || !v.loaded) continue;
+							if (GUI.Button(new Rect(leftIndent + 10f, contentTop + (++line * entryHeight), contentWidth - 10f, entryHeight), v.vesselName))
+							{
+								dogfightTarget = v;
+								showingVesselList = false;
+							}
+						}
+					}
+				if (!useCentroid)
 				{
-					useBDAutoTarget = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), useBDAutoTarget, "BDA AI Auto Target");
-					autoTargetIncomingMissiles = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), autoTargetIncomingMissiles, "Target Incoming Missiles");
+					if (hasBDAI)
+					{
+						useBDAutoTarget = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), useBDAutoTarget, "BDA AI Auto Target");
+						autoTargetIncomingMissiles = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), autoTargetIncomingMissiles, "Target Incoming Missiles");
+					}
 				}
+				useCentroid = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), useCentroid, "Target Dogfight Centroid");
+
 				line++;
 
 				GUI.Label(LeftRect(++line), "Distance: " + dogfightDistance.ToString("G3"));
@@ -3132,8 +3170,9 @@ namespace CameraTools
 				loadedVessels.Clear();
 			}
 
-			foreach (var v in FlightGlobals.Vessels)
+			foreach (Vessel v in FlightGlobals.Vessels)
 			{
+				if (v == null || !v.loaded || v.packed) continue;
 				if (v.loaded && v.vesselType != VesselType.Debris && !v.isActiveVessel)
 				{
 					loadedVessels.Add(v);
@@ -3175,7 +3214,7 @@ namespace CameraTools
 			}
 		}
 
-		private void CheckForBDWM(Vessel v)
+		private bool CheckForBDWM(Vessel v)
 		{
 			hasBDWM = false;
 			wmComponent = null;
@@ -3187,10 +3226,11 @@ namespace CameraTools
 					{
 						hasBDWM = true;
 						wmComponent = (object)p.GetComponent("MissileFire");
-						return;
+						return true;
 					}
 				}
 			}
+			return false;
 		}
 
 		private Vessel GetAITargetedVessel()
@@ -3615,6 +3655,32 @@ namespace CameraTools
 			}
 
 			return null;
+		}
+
+		private void UpdatebdWMVesselList()
+		{
+			if (bdWMVessels == null)
+			{
+				bdWMVessels = new List<Vessel>();
+			}
+			else
+			{
+				bdWMVessels.Clear();
+			}
+			if (FlightGlobals.Vessels == null) return;
+			using (var v = FlightGlobals.Vessels.GetEnumerator())
+				while (v.MoveNext())
+				{
+					if (v.Current == null || !v.Current.loaded || v.Current.packed) continue;
+					//if (!v.Current.isCommandable()) continue;
+					if (v.Current.vesselType != VesselType.Debris || v.Current.vesselType != VesselType.Unknown || v.Current.vesselType != VesselType.SpaceObject)
+					{
+						if (CheckForBDWM(v.Current))
+						{
+							bdWMVessels.Add(v.Current);
+						}
+					}
+				}
 		}
 
 		public static float GetRadarAltitudeAtPos(Vector3 position)
