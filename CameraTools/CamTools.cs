@@ -2479,39 +2479,39 @@ namespace CameraTools
 			}
 			else if (toolMode == ToolModes.DogfightCamera)
 			{
-					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Secondary Target:");
-					string tVesselLabel;
+				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Secondary Target:");
+				string tVesselLabel;
+				if (showingVesselList)
+				{ tVesselLabel = "Clear"; }
+				else if (dogfightTarget)
+				{ tVesselLabel = dogfightTarget.vesselName; }
+				else
+				{ tVesselLabel = "None"; }
+				if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), tVesselLabel))
+				{
 					if (showingVesselList)
-					{ tVesselLabel = "Clear"; }
-					else if (dogfightTarget)
-					{ tVesselLabel = dogfightTarget.vesselName; }
+					{
+						showingVesselList = false;
+						dogfightTarget = null;
+					}
 					else
-					{ tVesselLabel = "None"; }
-					if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), tVesselLabel))
 					{
-						if (showingVesselList)
+						UpdateLoadedVessels();
+						showingVesselList = true;
+					}
+				}
+				if (showingVesselList)
+				{
+					foreach (var v in loadedVessels)
+					{
+						if (!v || !v.loaded) continue;
+						if (GUI.Button(new Rect(leftIndent + 10f, contentTop + (++line * entryHeight), contentWidth - 10f, entryHeight), v.vesselName))
 						{
+							dogfightTarget = v;
 							showingVesselList = false;
-							dogfightTarget = null;
-						}
-						else
-						{
-							UpdateLoadedVessels();
-							showingVesselList = true;
 						}
 					}
-					if (showingVesselList)
-					{
-						foreach (var v in loadedVessels)
-						{
-							if (!v || !v.loaded) continue;
-							if (GUI.Button(new Rect(leftIndent + 10f, contentTop + (++line * entryHeight), contentWidth - 10f, entryHeight), v.vesselName))
-							{
-								dogfightTarget = v;
-								showingVesselList = false;
-							}
-						}
-					}
+				}
 				if (!useCentroid)
 				{
 					if (hasBDAI)

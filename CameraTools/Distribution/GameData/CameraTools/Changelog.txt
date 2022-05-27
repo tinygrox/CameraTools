@@ -1,3 +1,5 @@
+- Add check for the class type of VesselSpawner due to the current changes in BDA dev.
+
 v1.21.0
 Improvements:
 - Updated fields/properties for an internal refactor in BDArmory.
