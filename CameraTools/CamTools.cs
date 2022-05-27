@@ -35,19 +35,6 @@ namespace CameraTools
 		bool cameraToolActive = false;
 		bool cameraParentWasStolen = false;
 		System.Random rng;
-		[CTPersistantField] public bool autoEnableForBDA = false;
-		bool autoEnableOverriden = false;
-		bool autoEnableOverride = false;
-		bool cockpitView = false;
-		object bdCompetitionInstance = null;
-		FieldInfo bdCompetitionStartingField = null;
-		FieldInfo bdCompetitionIsActiveField = null;
-		object bdVesselSpawnerInstance = null;
-		FieldInfo bdVesselsSpawningField = null;
-		PropertyInfo bdVesselsSpawningProperty = null;
-		Type bdBDATournamentType = null;
-		object bdBDATournamentInstance = null;
-		FieldInfo bdTournamentWarpInProgressField = null;
 		Vessel.Situations lastVesselSituation = Vessel.Situations.FLYING;
 		object timeControlInstance = null;
 		PropertyInfo timeControlCameraZoomFixProperty = null;
@@ -222,19 +209,6 @@ namespace CameraTools
 		Vector3 dogfightLastTargetPosition;
 		Vector3 dogfightLastTargetVelocity;
 		bool dogfightVelocityChase = false;
-		//bdarmory
-		bool hasBDAI = false;
-		bool hasPilotAI = false;
-		bool hasBDWM = false;
-		[CTPersistantField] public bool useBDAutoTarget = false;
-		[CTPersistantField] public bool autoTargetIncomingMissiles = true;
-		object aiComponent = null;
-		object wmComponent = null;
-		FieldInfo bdAiTargetField;
-		FieldInfo bdWmThreatField;
-		FieldInfo bdWmMissileField;
-		FieldInfo bdWmUnderFireField;
-		FieldInfo bdWmUnderAttackField;
 		double targetUpdateTime = 0;
 		#endregion
 
@@ -337,6 +311,38 @@ namespace CameraTools
 		Vector2 keysScrollPos;
 		public bool interpolationType = false;
 		[CTPersistantField] public bool useRealTime = true;
+		#endregion
+
+		#region BDArmory
+		[CTPersistantField] public bool autoEnableForBDA = false;
+		bool autoEnableOverriden = false;
+		bool autoEnableOverride = false;
+		bool cockpitView = false;
+		object bdCompetitionInstance = null;
+		FieldInfo bdCompetitionStartingField = null;
+		FieldInfo bdCompetitionIsActiveField = null;
+		object bdVesselSpawnerInstance = null;
+		FieldInfo bdVesselsSpawningField = null;
+		PropertyInfo bdVesselsSpawningProperty = null;
+		Type bdBDATournamentType = null;
+		object bdBDATournamentInstance = null;
+		FieldInfo bdTournamentWarpInProgressField = null;
+		bool hasBDAI = false;
+		bool hasPilotAI = false;
+		bool hasBDWM = false;
+		[CTPersistantField] public bool useBDAutoTarget = false;
+		[CTPersistantField] public bool autoTargetIncomingMissiles = true;
+		[CTPersistantField] public bool useCentroid = false;
+		object aiComponent = null;
+		object wmComponent = null;
+		FieldInfo bdAiTargetField;
+		FieldInfo bdWmThreatField;
+		FieldInfo bdWmMissileField;
+		FieldInfo bdWmUnderFireField;
+		FieldInfo bdWmUnderAttackField;
+		object bdLoadedVesselSwitcherInstance = null;
+		PropertyInfo bdLoadedVesselSwitcherVesselsProperty = null;
+		Dictionary<string, List<Vessel>> bdActiveVessels = new Dictionary<string, List<Vessel>>();
 		#endregion
 		#endregion
 
@@ -3286,6 +3292,7 @@ namespace CameraTools
 			bdVesselSpawnerInstance = null;
 			bdVesselsSpawningField = null;
 			bdVesselsSpawningProperty = null;
+			bdLoadedVesselSwitcherVesselsProperty = null;
 			bdBDATournamentType = null;
 			bdBDATournamentInstance = null;
 			foreach (var assy in AssemblyLoader.loadedAssemblies)
@@ -3323,6 +3330,15 @@ namespace CameraTools
 											bdVesselsSpawningProperty = propertyInfo;
 											if (bdVesselsSpawningField != null) // Clear the deprecated field.
 											{ bdVesselsSpawningField = null; }
+											break;
+										}
+									break;
+								case "LoadedVesselSwitcher":
+									bdLoadedVesselSwitcherInstance = FindObjectOfType(t);
+									foreach (var propertyInfo in t.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+										if (propertyInfo != null && propertyInfo.Name == "Vessels")
+										{
+											bdLoadedVesselSwitcherVesselsProperty = propertyInfo;
 											break;
 										}
 									break;
@@ -3615,6 +3631,12 @@ namespace CameraTools
 			}
 
 			return null;
+		}
+
+		private void GetBDVessels()
+		{
+			if (bdLoadedVesselSwitcherInstance == null) return;
+			bdActiveVessels = (Dictionary<string, List<Vessel>>)bdLoadedVesselSwitcherVesselsProperty.GetValue(bdLoadedVesselSwitcherInstance);
 		}
 
 		public static float GetRadarAltitudeAtPos(Vector3 position)
