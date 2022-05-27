@@ -926,7 +926,7 @@ namespace CameraTools
 					}
 					catch (Exception e)
 					{
-						Debug.LogError($"[CameraTools.CamTools]: Exception thrown trying to set IVA camera mode, aborting. {e.Message}");
+						Debug.LogWarning($"[CameraTools.CamTools]: Exception thrown trying to set IVA camera mode, aborting. {e.Message}");
 						cockpitView = false;
 					}
 				}
