@@ -3178,10 +3178,8 @@ namespace CameraTools
 			foreach (Vessel v in FlightGlobals.Vessels)
 			{
 				if (v == null || !v.loaded || v.packed) continue;
-				if (v.loaded && v.vesselType != VesselType.Debris && !v.isActiveVessel)
-				{
-					loadedVessels.Add(v);
-				}
+				if (v.vesselType == VesselType.Debris || v.isActiveVessel) continue; // Ignore debris and the active vessel.
+				loadedVessels.Add(v);
 			}
 		}
 
