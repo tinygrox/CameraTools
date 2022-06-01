@@ -1,4 +1,10 @@
+Bugfixes:
 - Add check for the class type of VesselSpawner due to the current changes in BDA dev.
+- Fix BindingFlags for initial reflection due to changes in BDArmory.
+Improvements:
+- Add a target centroid option for the dogfight mode.
+- Replace reflection for BDArmory with delegates for much faster field/property access.
+- Lower the log error for not being able to set IVA camera mode to a warning.
 
 v1.21.0
 Improvements:
