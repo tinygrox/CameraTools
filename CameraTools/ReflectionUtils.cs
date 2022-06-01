@@ -7,6 +7,7 @@ namespace CameraTools
 {
 	/// <summary>
 	/// Using delegates to speed up reflection for frequently accessed properties and fields.
+	/// This can give up to 1000x faster (but typically around 50-200x faster) access to these properties and fields.
 	/// https://stackoverflow.com/questions/10820453/reflection-performance-create-delegate-properties-c for properties.
 	/// https://stackoverflow.com/questions/16073091/is-there-a-way-to-create-a-delegate-to-get-and-set-values-for-a-fieldinfo for fields.
 	/// </summary>
