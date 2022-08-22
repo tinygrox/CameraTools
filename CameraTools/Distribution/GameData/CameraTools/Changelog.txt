@@ -1,3 +1,6 @@
+Bugfixes:
+- Fix some memory leaks detected by KSPCF.
+
 v1.22.0
 Bugfixes:
 - Add check for the class type of VesselSpawner due to the current changes in BDA dev.

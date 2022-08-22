@@ -467,6 +467,10 @@ namespace CameraTools
 
 		void OnDestroy()
 		{
+			GameEvents.onHideUI.Remove(GameUIDisable);
+			GameEvents.onShowUI.Remove(GameUIEnable);
+			GameEvents.OnVesselRecoveryRequested.Remove(PostDeathRevert);
+			GameEvents.onGameSceneLoadRequested.Remove(PostDeathRevert);
 			GameEvents.onVesselChange.Remove(SwitchToVessel);
 			GameEvents.onVesselWillDestroy.Remove(CurrentVesselWillDestroy);
 			GameEvents.OnCameraChange.Remove(CameraModeChange);
