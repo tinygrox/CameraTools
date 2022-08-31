@@ -12,23 +12,23 @@ namespace CameraTools
 
 		public CTPersistantField() { }
 
-		public static void Save()
+		public static void Save(string section, Type type, object instance)
 		{
 			ConfigNode fileNode = ConfigNode.Load(settingsURL);
 			if (fileNode == null)
 				fileNode = new ConfigNode();
 
-			if (!fileNode.HasNode("CToolsSettings"))
-				fileNode.AddNode("CToolsSettings");
+			if (!fileNode.HasNode(section))
+				fileNode.AddNode(section);
 
-			ConfigNode settings = fileNode.GetNode("CToolsSettings");
+			ConfigNode settings = fileNode.GetNode(section);
 
-			foreach (var field in typeof(CamTools).GetFields())
+			foreach (var field in type.GetFields())
 			{
 				if (field == null) continue;
 				if (!field.IsDefined(typeof(CTPersistantField), false)) continue;
 
-				settings.SetValue(field.Name, field.GetValue(CamTools.fetch).ToString(), true);
+				settings.SetValue(field.Name, field.GetValue(instance).ToString(), true);
 			}
 
 			if (!Directory.GetParent(settingsURL).Exists)
@@ -38,7 +38,7 @@ namespace CameraTools
 			{ File.Delete(oldSettingsURL); }
 		}
 
-		public static void Load()
+		public static void Load(string section, Type type, object instance)
 		{
 			ConfigNode fileNode = ConfigNode.Load(settingsURL);
 			if (fileNode == null)
@@ -49,11 +49,11 @@ namespace CameraTools
 				Debug.LogWarning("[CameraTools]: Loading settings from old config file. New config file is now in GameData/CameraTools/PluginData to improve compatibility with ModuleManager.");
 			}
 
-			if (fileNode.HasNode("CToolsSettings"))
+			if (fileNode.HasNode(section))
 			{
-				ConfigNode settings = fileNode.GetNode("CToolsSettings");
+				ConfigNode settings = fileNode.GetNode(section);
 
-				foreach (var field in typeof(CamTools).GetFields())
+				foreach (var field in type.GetFields())
 				{
 					if (field == null) continue;
 					if (!field.IsDefined(typeof(CTPersistantField), false)) continue;
@@ -63,7 +63,7 @@ namespace CameraTools
 						object parsedValue = ParseValue(field.FieldType, settings.GetValue(field.Name));
 						if (parsedValue != null)
 						{
-							field.SetValue(CamTools.fetch, parsedValue);
+							field.SetValue(instance, parsedValue);
 						}
 					}
 				}

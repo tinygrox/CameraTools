@@ -1,5 +1,7 @@
+v1.23.0
 Bugfixes:
 - Fix some memory leaks detected by KSPCF.
+- Refactor integration with other mods into their own files (mostly). Some BDArmory-related settings may need resetting.
 
 v1.22.0
 Bugfixes:

@@ -6,6 +6,8 @@ using System.Reflection;
 using System;
 using UnityEngine;
 
+using CameraTools.Integration;
+
 namespace CameraTools
 {
 	[KSPAddon(KSPAddon.Startup.Flight, false)]
@@ -16,10 +18,10 @@ namespace CameraTools
 
 		string Version = "unknown";
 		GameObject cameraParent;
-		Vessel vessel;
+		public Vessel vessel;
 		List<ModuleEngines> engines = new List<ModuleEngines>();
 		List<ModuleCommand> cockpits = new List<ModuleCommand>();
-		List<Vessel> bdWMVessels;
+		// List<Vessel> bdWMVessels;
 		public static HashSet<VesselType> ignoreVesselTypesForAudio = new HashSet<VesselType> { VesselType.Debris, VesselType.SpaceObject, VesselType.Unknown, VesselType.Flag }; // Ignore some vessel types to avoid using up all the SoundManager's channels.
 		Vector3 origPosition;
 		Quaternion origRotation;
@@ -33,18 +35,13 @@ namespace CameraTools
 		FlightCamera flightCamera;
 		Part camTarget = null;
 		Vector3 cameraUp = Vector3.up;
-		bool cameraToolActive = false;
+		public bool cameraToolActive = false;
 		bool cameraParentWasStolen = false;
+		bool autoEnableOverriden = false; // Override auto-enabling for various integrations, e.g., BDArmory.
 		System.Random rng;
 		Vessel.Situations lastVesselSituation = Vessel.Situations.FLYING;
-		object timeControlInstance = null;
-		PropertyInfo timeControlCameraZoomFixProperty = null;
-		bool timeControlCameraZoomFixOriginalValue = false;
-		object betterTimeWarpInstance = null;
-		FieldInfo betterTimeWarpScaleCameraSpeedField = null;
-		bool betterTimeWarpScaleCameraSpeedOriginalValue = false;
-		[CTPersistantField] public bool DEBUG = false;
-		[CTPersistantField] public bool DEBUG2 = false;
+		[CTPersistantField] public static bool DEBUG = false;
+		[CTPersistantField] public static bool DEBUG2 = false;
 
 		string message;
 		bool vesselSwitched = false;
@@ -105,8 +102,8 @@ namespace CameraTools
 		string guiOffsetRight = "50";
 		string guiOffsetUp = "5";
 		[CTPersistantField] public bool targetCoM = false;
-		List<Tuple<double, string>> debugMessages = new List<Tuple<double, string>>();
-		void DebugLog(string m) => debugMessages.Add(new Tuple<double, string>(Time.time, m));
+		static List<Tuple<double, string>> debugMessages = new List<Tuple<double, string>>();
+		public static void DebugLog(string m) => debugMessages.Add(new Tuple<double, string>(Time.time, m));
 		Rect cShadowRect = new Rect(Screen.width * 3 / 5, 100, Screen.width / 3 - 50, 100);
 		Rect cDebugRect = new Rect(Screen.width * 3 / 5 + 2, 100 + 2, Screen.width / 3 - 50, 100);
 		GUIStyle cStyle;
@@ -122,7 +119,6 @@ namespace CameraTools
 		List<Tuple<double, string>> debug2Messages = new List<Tuple<double, string>>();
 		void Debug2Log(string m) => debug2Messages.Add(new Tuple<double, string>(Time.time, m));
 		float lastSavedTime = 0;
-		float updateTimer = 0;
 
 		#endregion
 
@@ -169,7 +165,7 @@ namespace CameraTools
 
 		#region Dogfight Camera Fields
 		Vessel dogfightPrevTarget;
-		Vessel dogfightTarget;
+		public Vessel dogfightTarget;
 		[CTPersistantField] public float dogfightDistance = 30f;
 		[CTPersistantField] public float dogfightOffsetX = 10f;
 		[CTPersistantField] public float dogfightOffsetY = 4f;
@@ -210,7 +206,7 @@ namespace CameraTools
 		Vector3 dogfightLastTargetPosition;
 		Vector3 dogfightLastTargetVelocity;
 		bool dogfightVelocityChase = false;
-		float AItargetUpdateTime = 0;
+		bool cockpitView = false;
 		#endregion
 
 		#region Stationary Camera Fields
@@ -314,37 +310,10 @@ namespace CameraTools
 		[CTPersistantField] public bool useRealTime = true;
 		#endregion
 
-		#region BDArmory
-		[CTPersistantField] public bool autoEnableForBDA = false;
-		bool autoEnableOverriden = false;
-		bool autoEnableOverride = false;
-		bool cockpitView = false;
-		object bdCompetitionInstance = null;
-		Func<object, bool> bdCompetitionStartingFieldGetter = null;
-		Func<object, bool> bdCompetitionIsActiveFieldGetter = null;
-		object bdVesselSpawnerInstance = null;
-		Func<object, bool> bdVesselsSpawningFieldGetter = null;
-		Func<object, object> bdVesselsSpawningPropertyGetter = null;
-		Type bdBDATournamentType = null;
-		object bdBDATournamentInstance = null;
-		Func<object, bool> bdTournamentWarpInProgressFieldGetter = null;
-		bool hasBDA = false;
-		bool hasBDAI = false;
-		bool hasPilotAI = false;
-		bool hasBDWM = false;
-		[CTPersistantField] public bool useBDAutoTarget = false;
-		[CTPersistantField] public bool autoTargetIncomingMissiles = true;
-		[CTPersistantField] public bool useCentroid = false;
-		object aiComponent = null;
-		object wmComponent = null;
-		Func<object, Vessel> bdAITargetFieldGetter = null;
-		Func<object, Vessel> bdWmThreatFieldGetter = null;
-		Func<object, Vessel> bdWmMissileFieldGetter = null;
-		Func<object, bool> bdWmUnderFireFieldGetter = null;
-		Func<object, bool> bdWmUnderAttackFieldGetter = null;
-		object bdLoadedVesselSwitcherInstance = null;
-		Func<object, object> bdLoadedVesselSwitcherVesselsPropertyGetter = null;
-		Dictionary<string, List<Vessel>> bdActiveVessels = new Dictionary<string, List<Vessel>>();
+		#region Integration
+		BDArmory bdArmory;
+		TimeControl timeControl;
+		BetterTimeWarp betterTimeWarp;
 		#endregion
 		#endregion
 
@@ -387,29 +356,16 @@ namespace CameraTools
 			cameraParent = new GameObject("CameraToolsCameraParent");
 			deathCam = new GameObject("CameraToolsDeathCam");
 
-			CheckForBDA();
-			if (hasBDA)
-			{
-				GetAITargetField();
-				GetThreatField();
-				GetMissileField();
-				GetUnderFireField();
-				GetUnderAttackField();
-			}
-			FindTimeControlCameraZoomFix(); // Time Control's camera zoom fix breaks CameraTools.
-			FindBetterTimeWarpScaleWarpSpeed();
+			bdArmory = BDArmory.instance;
+			timeControl = TimeControl.instance;
+			betterTimeWarp = BetterTimeWarp.instance;
+
 			if (FlightGlobals.ActiveVessel != null)
 			{
 				cameraParent.transform.position = FlightGlobals.ActiveVessel.transform.position;
 				vessel = FlightGlobals.ActiveVessel;
 				deathCam.transform.position = vessel.transform.position;
 				deathCam.transform.rotation = vessel.transform.rotation;
-
-				if (hasBDA)
-				{
-					CheckForBDAI(FlightGlobals.ActiveVessel);
-					CheckForBDWM(FlightGlobals.ActiveVessel);
-				}
 			}
 			GameEvents.onVesselChange.Add(SwitchToVessel);
 			GameEvents.onVesselWillDestroy.Add(CurrentVesselWillDestroy);
@@ -487,7 +443,7 @@ namespace CameraTools
 			}
 			else if (mode == CameraManager.CameraMode.Flight)
 			{
-				if (wasActiveBeforeModeChange && !autoEnableOverriden && !autoEnableOverride)
+				if (wasActiveBeforeModeChange && !autoEnableOverriden && !bdArmory.autoEnableOverride)
 				{
 					Debug.Log("[CameraTools]: Camera mode changed to " + mode + ", reactivating " + toolMode + ".");
 					cockpitView = false; // Don't go back into cockpit view in case it was triggered by the user.
@@ -735,11 +691,6 @@ namespace CameraTools
 							UpdatePathingCam();
 						break;
 					case ToolModes.DogfightCamera: // Dogfight mode is mostly handled in FixedUpdate due to relying on interpolation of positions updated in the physics update.
-						if (Time.time - updateTimer >= 1)
-						{
-							GetBDVessels();
-							updateTimer = Time.time;    //update once a second.
-						}
 						break;
 					default:
 						break;
@@ -774,9 +725,9 @@ namespace CameraTools
 				vessel = FlightGlobals.ActiveVessel;
 			}
 
-			if (autoEnableForBDA && !autoEnableOverriden && (toolMode != ToolModes.Pathing || (selectedPathIndex >= 0 && currentPath.keyframeCount > 0)))
+			if (!autoEnableOverriden && bdArmory.autoEnableForBDA && (toolMode != ToolModes.Pathing || (selectedPathIndex >= 0 && currentPath.keyframeCount > 0)))
 			{
-				AutoEnableForBDA();
+				bdArmory.AutoEnableForBDA();
 			}
 			if (cameraToolActive)
 			{
@@ -842,13 +793,13 @@ namespace CameraTools
 			}
 		}
 
-		private void cameraActivate()
+		public void cameraActivate()
 		{
 			if (DEBUG) { Debug.Log("[CameraTools]: Activating camera."); DebugLog("Activating camera"); }
 			if (!cameraToolActive)
 			{
-				SetTimeControlCameraZoomFix(false);
-				SetBetterTimeWarpScaleCameraSpeed(false);
+				timeControl.SetTimeControlCameraZoomFix(false);
+				betterTimeWarp.SetBetterTimeWarpScaleCameraSpeed(false);
 			}
 			if (!cameraToolActive && !cameraParentWasStolen)
 			{
@@ -862,7 +813,6 @@ namespace CameraTools
 			}
 			else if (toolMode == ToolModes.DogfightCamera)
 			{
-				GetBDVessels();
 				StartDogfightCamera();
 			}
 			else if (toolMode == ToolModes.Pathing)
@@ -954,26 +904,11 @@ namespace CameraTools
 			if (dogfightTarget)
 			{
 				if (loadedVessels == null) UpdateLoadedVessels();
-				if (bdWMVessels == null) GetBDVessels();
-				if (useCentroid && bdWMVessels.Count > 2)
+				if (bdArmory.hasBDA && bdArmory.useCentroid && bdArmory.bdWMVessels.Count > 2)
 				{
 					dogfightLastTarget = true;
 					dogfightLastTargetVelocity = Vector3.zero;
-					Vector3 centroid = Vector3.zero;
-					int count = 1;
-
-					foreach (var v in bdWMVessels)
-					{
-						if (v == null || !v.loaded || v.packed) continue;
-						if ((v.CoM - FlightGlobals.ActiveVessel.CoM).magnitude > 20000) continue;
-						if (!v.isActiveVessel)
-						{
-							centroid += v.transform.position;
-							++count;
-						}
-					}
-					centroid /= (float)count;
-					dogfightLastTargetPosition = centroid;
+					dogfightLastTargetPosition = bdArmory.GetCentroid();
 				}
 				else
 				{
@@ -1146,9 +1081,9 @@ namespace CameraTools
 				}
 			}
 
-			if (hasBDAI && useBDAutoTarget)
+			if (bdArmory.hasBDA && bdArmory.hasBDAI && bdArmory.useBDAutoTarget)
 			{
-				UpdateAIDogfightTarget(); // Using delegates instead of reflection allows us to check every frame.
+				bdArmory.UpdateAIDogfightTarget(); // Using delegates instead of reflection allows us to check every frame.
 			}
 
 			if (dogfightTarget != dogfightPrevTarget)
@@ -1157,25 +1092,25 @@ namespace CameraTools
 			}
 		}
 
-		Vessel newAITarget = null;
-		void UpdateAIDogfightTarget()
-		{
-			if (hasBDAI && hasBDWM && useBDAutoTarget)
-			{
-				newAITarget = GetAITargetedVessel();
-				if (newAITarget != null && newAITarget != dogfightTarget)
-				{
-					if (DEBUG)
-					{
-						message = "Switching dogfight target to " + newAITarget.vesselName + (dogfightTarget != null ? " from " + dogfightTarget.vesselName : "");
-						Debug.Log("[CameraTools]: " + message);
-						DebugLog(message);
-					}
-					dogfightTarget = newAITarget;
-					AItargetUpdateTime = Time.time;
-				}
-			}
-		}
+		// Vessel newAITarget = null;
+		// void UpdateAIDogfightTarget()
+		// {
+		// 	if (hasBDAI && hasBDWM && useBDAutoTarget)
+		// 	{
+		// 		newAITarget = GetAITargetedVessel();
+		// 		if (newAITarget != null && newAITarget != dogfightTarget)
+		// 		{
+		// 			if (DEBUG)
+		// 			{
+		// 				message = "Switching dogfight target to " + newAITarget.vesselName + (dogfightTarget != null ? " from " + dogfightTarget.vesselName : "");
+		// 				Debug.Log("[CameraTools]: " + message);
+		// 				DebugLog(message);
+		// 			}
+		// 			dogfightTarget = newAITarget;
+		// 			AItargetUpdateTime = Time.time;
+		// 		}
+		// 	}
+		// }
 		#endregion
 
 		#region Stationary Camera
@@ -2031,16 +1966,19 @@ namespace CameraTools
 			cockpits.Clear();
 			engines.Clear();
 
-			CheckForBDAI(v);
-			CheckForBDWM(v);
-			UpdateAIDogfightTarget();
+			if (bdArmory.hasBDA)
+			{
+				bdArmory.CheckForBDAI(v);
+				bdArmory.CheckForBDWM(v);
+				bdArmory.UpdateAIDogfightTarget();
+			}
 			if (cameraToolActive)
 			{
 				if (randomMode)
 				{
 					var lowAlt = Math.Max(30d, -3d * vessel.verticalSpeed); // 30m or 3s to impact, whichever is higher.
 					var stationarySurfaceVessel = (vessel.Landed && vessel.Speed() < 1) || (vessel.Splashed && vessel.Speed() < 5); // Land or water vessel that isn't moving much.
-					if (stationarySurfaceVessel || (hasPilotAI && vessel.radarAltitude < lowAlt))
+					if (stationarySurfaceVessel || (bdArmory.hasPilotAI && vessel.radarAltitude < lowAlt))
 					{
 						StartStationaryCamera();
 					}
@@ -2154,8 +2092,8 @@ namespace CameraTools
 			{ Debug.Log("[CameraTools]: Caught exception resetting CameraTools " + e.ToString()); }
 
 			// Reset the parameters we set in other mods so as not to mess with them while we're not active.
-			SetTimeControlCameraZoomFix(true);
-			SetBetterTimeWarpScaleCameraSpeed(true);
+			timeControl.SetTimeControlCameraZoomFix(true);
+			betterTimeWarp.SetBetterTimeWarpScaleCameraSpeed(true);
 		}
 
 		void SaveOriginalCamera()
@@ -2336,7 +2274,7 @@ namespace CameraTools
 			line++;
 
 			useAudioEffects = GUI.Toggle(LabelRect(++line), useAudioEffects, "Use Audio Effects");
-			autoEnableForBDA = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoEnableForBDA, "Auto-Enable for BDArmory");
+			if (bdArmory.hasBDA) bdArmory.autoEnableForBDA = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), bdArmory.autoEnableForBDA, "Auto-Enable for BDArmory");
 
 			line++;
 			if (autoFOV && toolMode != ToolModes.Pathing)
@@ -2516,15 +2454,18 @@ namespace CameraTools
 						}
 					}
 				}
-				if (!useCentroid)
+				if (bdArmory.hasBDA)
 				{
-					if (hasBDAI)
+					if (!bdArmory.useCentroid)
 					{
-						useBDAutoTarget = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), useBDAutoTarget, "BDA AI Auto Target");
-						autoTargetIncomingMissiles = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), autoTargetIncomingMissiles, "Target Incoming Missiles");
+						if (bdArmory.hasBDAI)
+						{
+							bdArmory.useBDAutoTarget = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), bdArmory.useBDAutoTarget, "BDA AI Auto Target");
+							bdArmory.autoTargetIncomingMissiles = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), bdArmory.autoTargetIncomingMissiles, "Target Incoming Missiles");
+						}
 					}
+					bdArmory.useCentroid = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), bdArmory.useCentroid, "Target Dogfight Centroid");
 				}
-				useCentroid = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), useCentroid, "Target Dogfight Centroid");
 
 				line++;
 
@@ -3177,502 +3118,17 @@ namespace CameraTools
 			}
 		}
 
-		private void CheckForBDAI(Vessel v)
-		{
-			hasBDAI = false;
-			hasPilotAI = false;
-			aiComponent = null;
-			if (v)
-			{
-				foreach (Part p in v.parts)
-				{ // We actually want BDGenericAIBase, but we can't use GetComponent(string) to find it, so we look for its subclasses.
-					if (p.GetComponent("BDModulePilotAI"))
-					{
-						hasBDAI = true;
-						hasPilotAI = true;
-						aiComponent = (object)p.GetComponent("BDModulePilotAI");
-						return;
-					}
-					if (p.GetComponent("BDModuleVTOLAI"))
-					{
-						hasBDAI = true;
-						hasPilotAI = true;
-						aiComponent = (object)p.GetComponent("BDModuleVTOLAI");
-						return;
-					}
-					if (p.GetComponent("BDModuleSurfaceAI"))
-					{
-						hasBDAI = true;
-						hasPilotAI = false;
-						aiComponent = (object)p.GetComponent("BDModuleSurfaceAI");
-						return;
-					}
-				}
-			}
-		}
-
-		private bool CheckForBDWM(Vessel v)
-		{
-			hasBDWM = false;
-			wmComponent = null;
-			if (v)
-			{
-				foreach (Part p in v.parts)
-				{
-					if (p.GetComponent("MissileFire"))
-					{
-						hasBDWM = true;
-						wmComponent = (object)p.GetComponent("MissileFire");
-						return true;
-					}
-				}
-			}
-			return false;
-		}
-
-		private Vessel GetAITargetedVessel()
-		{
-			// Missiles are high priority.
-			if (autoTargetIncomingMissiles && hasBDWM && wmComponent != null && bdWmMissileFieldGetter != null)
-			{
-				var missile = bdWmMissileFieldGetter(wmComponent); // Priority 1: incoming missiles.
-				if (missile != null) return missile;
-			}
-
-			// Don't update too often unless there's no target.
-			if (dogfightTarget != null && Time.time - AItargetUpdateTime < 3) return dogfightTarget;
-
-			// Threats
-			if (hasBDWM && wmComponent != null && bdWmThreatFieldGetter != null)
-			{
-				bool underFire = bdWmUnderFireFieldGetter(wmComponent); // Getting attacked by guns.
-				bool underAttack = autoTargetIncomingMissiles && bdWmUnderAttackFieldGetter(wmComponent); // Getting attacked by guns or missiles.
-
-				if (underFire || underAttack)
-				{
-					var threat = bdWmThreatFieldGetter(wmComponent); // Priority 2: incoming fire (can also be missiles).
-					if (threat != null) return threat;
-				}
-			}
-
-			// Targets
-			if (hasBDAI && aiComponent != null && bdAITargetFieldGetter != null)
-			{
-				var target = bdAITargetFieldGetter(aiComponent); // Priority 3: the current vessel's target.
-				if (target != null) return target;
-			}
-			return null;
-		}
-
-		private Type AIModuleType()
-		{
-			foreach (var assy in AssemblyLoader.loadedAssemblies)
-			{
-				if (assy.assembly.FullName.Contains("BDArmory"))
-				{
-					foreach (var t in assy.assembly.GetTypes())
-					{
-						if (t.Name == "BDGenericAIBase")
-						{
-							if (DEBUG) Debug.Log("[CameraTools]: Found BDGenericAIBase type.");
-							return t;
-						}
-					}
-				}
-			}
-
-			return null;
-		}
-
-		private Type WeaponManagerType()
-		{
-			foreach (var assy in AssemblyLoader.loadedAssemblies)
-			{
-				if (assy.assembly.FullName.Contains("BDArmory"))
-				{
-					foreach (var t in assy.assembly.GetTypes())
-					{
-						if (t.Name == "MissileFire")
-						{
-							if (DEBUG) Debug.Log("[CameraTools]: Found MissileFire type.");
-							return t;
-						}
-					}
-				}
-			}
-
-			return null;
-		}
-
 		private string GetVersion()
 		{
 			try
 			{
-				Version = this.GetType().Assembly.GetName().Version.ToString();
+				Version = this.GetType().Assembly.GetName().Version.ToString(3);
 			}
 			catch (Exception e)
 			{
 				Debug.LogWarning($"[CameraTools]: Failed to get version string: {e.Message}");
 			}
 			return Version;
-		}
-
-		private void CheckForBDA()
-		{
-			// This checks for the existence of a BDArmory assembly and picks out the BDACompetitionMode and VesselSpawner singletons.
-			bdCompetitionInstance = null;
-			bdCompetitionIsActiveFieldGetter = null;
-			bdCompetitionStartingFieldGetter = null;
-			bdVesselSpawnerInstance = null;
-			bdVesselsSpawningFieldGetter = null;
-			bdVesselsSpawningPropertyGetter = null;
-			bdLoadedVesselSwitcherVesselsPropertyGetter = null;
-			bdBDATournamentType = null;
-			bdBDATournamentInstance = null;
-			foreach (var assy in AssemblyLoader.loadedAssemblies)
-			{
-				if (assy.assembly.FullName.Contains("BDArmory"))
-				{
-					hasBDA = true;
-					foreach (var t in assy.assembly.GetTypes())
-					{
-						if (t != null)
-						{
-							switch (t.Name)
-							{
-								case "BDACompetitionMode":
-									bdCompetitionInstance = FindObjectOfType(t);
-									foreach (var fieldInfo in t.GetFields(BindingFlags.Public | BindingFlags.Instance))
-										if (fieldInfo != null)
-										{
-											switch (fieldInfo.Name)
-											{
-												case "competitionStarting":
-													bdCompetitionStartingFieldGetter = ReflectionUtils.CreateGetter<object, bool>(fieldInfo);
-													break;
-												case "competitionIsActive":
-													bdCompetitionIsActiveFieldGetter = ReflectionUtils.CreateGetter<object, bool>(fieldInfo);
-													break;
-												default:
-													break;
-											}
-										}
-									break;
-								case "VesselSpawnerStatus":
-									foreach (var propertyInfo in t.GetProperties(BindingFlags.Public | BindingFlags.Static))
-										if (propertyInfo != null && propertyInfo.Name == "inhibitCameraTools")
-										{
-											bdVesselsSpawningPropertyGetter = ReflectionUtils.BuildGetAccessor(propertyInfo.GetGetMethod());
-											if (bdVesselsSpawningFieldGetter != null) // Clear the deprecated field.
-											{ bdVesselsSpawningFieldGetter = null; }
-											break;
-										}
-									break;
-								case "LoadedVesselSwitcher":
-									bdLoadedVesselSwitcherInstance = FindObjectOfType(t);
-									foreach (var propertyInfo in t.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-										if (propertyInfo != null && propertyInfo.Name == "Vessels")
-										{
-											bdLoadedVesselSwitcherVesselsPropertyGetter = ReflectionUtils.BuildGetAccessor(propertyInfo.GetGetMethod());
-											break;
-										}
-									break;
-								case "VesselSpawner":
-									if (bdVesselsSpawningPropertyGetter == null)
-									{
-										if (!t.IsSubclassOf(typeof(UnityEngine.Object))) continue; // In BDArmory v1.5.0 and upwards, VesselSpawner is a static class.
-										bdVesselSpawnerInstance = FindObjectOfType(t);
-										foreach (var fieldInfo in t.GetFields(BindingFlags.Public | BindingFlags.Instance))
-											if (fieldInfo != null && fieldInfo.Name == "vesselsSpawning") // deprecated in favour of VesselSpawnerStatus.inhibitCameraTools
-											{
-												bdVesselsSpawningFieldGetter = ReflectionUtils.CreateGetter<object, bool>(fieldInfo);
-												break;
-											}
-									}
-									break;
-								case "BDATournament":
-									bdBDATournamentType = t;
-									bdBDATournamentInstance = FindObjectOfType(bdBDATournamentType);
-									foreach (var fieldInfo in bdBDATournamentType.GetFields(BindingFlags.Public | BindingFlags.Instance))
-										if (fieldInfo != null && fieldInfo.Name == "warpingInProgress")
-										{
-											bdTournamentWarpInProgressFieldGetter = ReflectionUtils.CreateGetter<object, bool>(fieldInfo);
-											break;
-										}
-									break;
-								default:
-									break;
-							}
-						}
-					}
-				}
-			}
-		}
-
-		private void FindTimeControlCameraZoomFix()
-		{
-			try
-			{
-				foreach (var assy in AssemblyLoader.loadedAssemblies)
-				{
-					if (assy.assembly.FullName.Contains("TimeControl"))
-					{
-						foreach (var type in assy.assembly.GetTypes())
-						{
-							if (type == null) continue;
-							if (type.Name == "GlobalSettings")
-							{
-								timeControlInstance = FindObjectOfType(type);
-								if (timeControlInstance != null)
-								{
-									foreach (var propertyInfo in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-									{
-										if (propertyInfo != null && propertyInfo.Name == "CameraZoomFix")
-										{
-											timeControlCameraZoomFixProperty = propertyInfo;
-											timeControlCameraZoomFixOriginalValue = (bool)propertyInfo.GetValue(timeControlInstance);
-											return;
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			catch (Exception e)
-			{
-				Debug.LogError($"[CameraTools.CamTools]: Failed to locate CameraZoomFix in TimeControl: {e.Message}");
-			}
-		}
-
-		private void SetTimeControlCameraZoomFix(bool restore)
-		{
-			if (timeControlCameraZoomFixProperty == null || !timeControlCameraZoomFixOriginalValue) return; // Not found or it was originally false, so we can ignore it.
-			if (restore) Debug.Log("[CameraTools]: Restoring CameraZoomFix variable in TimeControl.GlobalSettings to true.");
-			else Debug.Log("[CameraTools]: Setting CameraZoomFix variable in TimeControl.GlobalSettings to false as it breaks CameraTools when running in slow-mo.");
-			timeControlCameraZoomFixProperty.SetValue(timeControlInstance, restore && timeControlCameraZoomFixOriginalValue);
-		}
-
-		private void FindBetterTimeWarpScaleWarpSpeed()
-		{
-			try
-			{
-				foreach (var assy in AssemblyLoader.loadedAssemblies)
-				{
-					if (assy.assembly.FullName.Contains("BetterTimeWarp")) // BetterTimeWarpContinued
-					{
-						foreach (var type in assy.assembly.GetTypes())
-						{
-							if (type == null) continue;
-							if (type.Name == "BetterTimeWarp")
-							{
-								betterTimeWarpInstance = FindObjectOfType(type);
-								if (betterTimeWarpInstance != null)
-								{
-									foreach (var fieldInfo in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
-									{
-										if (fieldInfo != null && fieldInfo.Name == "ScaleCameraSpeed")
-										{
-											betterTimeWarpScaleCameraSpeedField = fieldInfo;
-											betterTimeWarpScaleCameraSpeedOriginalValue = (bool)fieldInfo.GetValue(betterTimeWarpInstance);
-											return;
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			catch (Exception e)
-			{
-				Debug.LogError($"[CameraTools.CamTools]: Failed to locate ScaleCameraSpeed in BetterTimeWarp (Continued): {e.Message}");
-			}
-		}
-
-		private void SetBetterTimeWarpScaleCameraSpeed(bool restore)
-		{
-			if (betterTimeWarpScaleCameraSpeedField == null || !betterTimeWarpScaleCameraSpeedOriginalValue) return; // Not found or it was originally false, so we can ignore it.
-			if (restore) Debug.Log("[CameraTools]: Restoring ScaleCameraSpeed variable in BetterTimeWarp.BetterTimeWarp to true.");
-			else Debug.Log("[CameraTools]: Setting ScaleCameraSpeed variable in BetterTimeWarp.BetterTimeWarp to false as it breaks CameraTools when running in slow-mo.");
-			betterTimeWarpScaleCameraSpeedField.SetValue(betterTimeWarpInstance, restore);
-		}
-
-		private void AutoEnableForBDA()
-		{
-			try
-			{
-				if (bdVesselsSpawningPropertyGetter != null && (bool)bdVesselsSpawningPropertyGetter(null))
-				{
-					if (autoEnableOverride)
-						return; // Still spawning.
-					else
-					{
-						Debug.Log("[CameraTools]: Deactivating CameraTools while spawning vessels.");
-						autoEnableOverride = true;
-						RevertCamera();
-						return;
-					}
-				}
-
-				if (bdVesselsSpawningFieldGetter != null && bdVesselsSpawningFieldGetter(bdVesselSpawnerInstance)) // Deprecated.
-				{
-					if (autoEnableOverride)
-						return; // Still spawning.
-					else
-					{
-						Debug.Log("[CameraTools]: Deactivating CameraTools while spawning vessels.");
-						autoEnableOverride = true;
-						RevertCamera();
-						return;
-					}
-				}
-
-				if (bdTournamentWarpInProgressFieldGetter != null && bdTournamentWarpInProgressFieldGetter(bdBDATournamentInstance))
-				{
-					if (autoEnableOverride)
-						return; // Still warping.
-					else
-					{
-						Debug.Log("[CameraTools]: Deactivating CameraTools while warping between rounds.");
-						autoEnableOverride = true;
-						RevertCamera();
-						return;
-					}
-				}
-
-				autoEnableOverride = false;
-				if (cameraToolActive) return; // It's already active.
-
-				if (vessel == null || (hasPilotAI && vessel.LandedOrSplashed)) return; // Don't activate for landed/splashed planes.
-				if (bdCompetitionStartingFieldGetter != null && bdCompetitionStartingFieldGetter(bdCompetitionInstance))
-				{
-					Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is starting.");
-					cameraActivate();
-					return;
-				}
-				else if (bdCompetitionIsActiveFieldGetter != null && bdCompetitionIsActiveFieldGetter(bdCompetitionInstance))
-				{
-					Debug.Log("[CameraTools]: Activating CameraTools for BDArmory competition as competition is active.");
-					UpdateAIDogfightTarget();
-					cameraActivate();
-					return;
-				}
-			}
-			catch (Exception e)
-			{
-				Debug.LogError("[CameraTools]: Checking competition state of BDArmory failed: " + e.Message);
-				bdCompetitionIsActiveFieldGetter = null;
-				bdCompetitionStartingFieldGetter = null;
-				bdCompetitionInstance = null;
-				bdVesselsSpawningFieldGetter = null;
-				bdVesselsSpawningPropertyGetter = null;
-				bdVesselSpawnerInstance = null;
-				CheckForBDA();
-			}
-		}
-
-		private FieldInfo GetThreatField()
-		{
-			Type wmModType = WeaponManagerType();
-			if (wmModType == null) return null;
-
-			FieldInfo[] fields = wmModType.GetFields(BindingFlags.Public | BindingFlags.Instance);
-			foreach (var f in fields)
-			{
-				if (f.Name == "incomingThreatVessel")
-				{
-					bdWmThreatFieldGetter = ReflectionUtils.CreateGetter<object, Vessel>(f);
-					if (DEBUG) Debug.Log($"[CameraTools]: Created bdWmThreatFieldGetter.");
-					return f;
-				}
-			}
-
-			return null;
-		}
-
-		private FieldInfo GetMissileField()
-		{
-			Type wmModType = WeaponManagerType();
-			if (wmModType == null) return null;
-
-			FieldInfo[] fields = wmModType.GetFields(BindingFlags.Public | BindingFlags.Instance);
-			foreach (var f in fields)
-			{
-				if (f.Name == "incomingMissileVessel")
-				{
-					bdWmMissileFieldGetter = ReflectionUtils.CreateGetter<object, Vessel>(f);
-					if (DEBUG) Debug.Log($"[CameraTools]: Created bdWmMissileFieldGetter.");
-					return f;
-				}
-			}
-
-			return null;
-		}
-
-		private FieldInfo GetUnderFireField()
-		{
-			Type wmModType = WeaponManagerType();
-			if (wmModType == null) return null;
-
-			FieldInfo[] fields = wmModType.GetFields(BindingFlags.Public | BindingFlags.Instance);
-			foreach (var f in fields)
-			{
-				if (f.Name == "underFire")
-				{
-					bdWmUnderFireFieldGetter = ReflectionUtils.CreateGetter<object, bool>(f);
-					if (DEBUG) Debug.Log($"[CameraTools]: Created bdWmUnderFireFieldGetter.");
-					return f;
-				}
-			}
-
-			return null;
-		}
-
-		private FieldInfo GetUnderAttackField()
-		{
-			Type wmModType = WeaponManagerType();
-			if (wmModType == null) return null;
-
-			FieldInfo[] fields = wmModType.GetFields(BindingFlags.Public | BindingFlags.Instance);
-			foreach (var f in fields)
-			{
-				if (f.Name == "underAttack")
-				{
-					bdWmUnderAttackFieldGetter = ReflectionUtils.CreateGetter<object, bool>(f);
-					if (DEBUG) Debug.Log("[CameraTools]: Created bdWmUnderAttackFieldGetter.");
-					return f;
-				}
-			}
-
-			return null;
-		}
-
-		private FieldInfo GetAITargetField()
-		{
-			Type aiModType = AIModuleType();
-			if (aiModType == null) return null;
-
-			FieldInfo[] fields = aiModType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
-			foreach (var f in fields)
-			{
-				if (f.Name == "targetVessel")
-				{
-					bdAITargetFieldGetter = ReflectionUtils.CreateGetter<object, Vessel>(f);
-					if (DEBUG) Debug.Log("[CameraTools]: Created bdAITargetFieldGetter.");
-					return f;
-				}
-			}
-
-			return null;
-		}
-
-		private void GetBDVessels()
-		{
-			if (bdLoadedVesselSwitcherVesselsPropertyGetter == null || bdLoadedVesselSwitcherInstance == null) return;
-			bdActiveVessels = (Dictionary<string, List<Vessel>>)bdLoadedVesselSwitcherVesselsPropertyGetter(bdLoadedVesselSwitcherInstance);
-			bdWMVessels = bdActiveVessels.SelectMany(kvp => kvp.Value).ToList(); // FIXME Remove this once SI updates the Centroid mode using bdActiveVessels.
 		}
 
 		public static float GetRadarAltitudeAtPos(Vector3 position)
@@ -3732,7 +3188,7 @@ namespace CameraTools
 		#region Load/Save
 		void Save()
 		{
-			CTPersistantField.Save();
+			CTPersistantField.Save("CToolsSettings", typeof(CamTools), this);
 
 			ConfigNode pathFileNode = ConfigNode.Load(CameraPath.pathSaveURL);
 
@@ -3763,7 +3219,7 @@ namespace CameraTools
 
 		void Load()
 		{
-			CTPersistantField.Load();
+			CTPersistantField.Load("CToolsSettings", typeof(CamTools), this);
 			guiOffsetForward = manualOffsetForward.ToString();
 			guiOffsetRight = manualOffsetRight.ToString();
 			guiOffsetUp = manualOffsetUp.ToString();
