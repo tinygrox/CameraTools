@@ -7,13 +7,22 @@ namespace CameraTools
 	// C# generics doesn't have a generic numeric type, so we can't do this generically.
 	public class FloatInputField : MonoBehaviour
 	{
-		public FloatInputField Initialise(double lastUpdated, float currentValue, float minValue = float.MinValue, float maxValue = float.MaxValue) { this.lastUpdated = lastUpdated; this.currentValue = currentValue; this.minValue = minValue; this.maxValue = maxValue; return this; }
+		public FloatInputField Initialise(double lastUpdated, float currentValue, float minValue = float.MinValue, float maxValue = float.MaxValue, int precision = 6)
+		{
+			this.lastUpdated = lastUpdated;
+			this.currentValue = currentValue;
+			this.minValue = minValue;
+			this.maxValue = maxValue;
+			this.precision = precision;
+			return this;
+		}
 		public double lastUpdated;
 		public string possibleValue = string.Empty;
 		private float _value;
-		public float currentValue { get { return _value; } set { _value = value; possibleValue = _value.ToString("G6"); } }
+		public float currentValue { get { return _value; } set { _value = value; possibleValue = _value.ToString($"G{precision}"); } }
 		private float minValue;
 		private float maxValue;
+		private int precision;
 		private bool coroutineRunning = false;
 		private Coroutine coroutine;
 
@@ -48,7 +57,7 @@ namespace CameraTools
 				currentValue = Math.Min(Math.Max(newValue, minValue), maxValue);
 				lastUpdated = Time.time;
 			}
-			possibleValue = currentValue.ToString("G6");
+			possibleValue = currentValue.ToString($"G{precision}");
 		}
 
 		// Parse the current possible value immediately.

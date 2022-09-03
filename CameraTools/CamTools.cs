@@ -405,23 +405,23 @@ namespace CameraTools
 			contentWidth = (windowWidth) - (2 * leftIndent);
 
 			inputFields = new Dictionary<string, FloatInputField> {
-				{"autoZoomMargin", gameObject.AddComponent<FloatInputField>().Initialise(0, autoZoomMargin, 0f, 50f)},
-				{"zoomFactor", gameObject.AddComponent<FloatInputField>().Initialise(0, zoomFactor, 1f, 1096.63f)},
-				{"shakeMultiplier", gameObject.AddComponent<FloatInputField>().Initialise(0, shakeMultiplier, 0f, 10f)},
-				{"dogfightDistance", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightDistance, 1f, 100f)},
-				{"dogfightOffsetX", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset)},
-				{"dogfightOffsetY", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset)},
-				{"dogfightLerp", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightLerp, 0.01f, 0.5f)},
-				{"dogfightRoll", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightRoll, 0f, 1f)},
-				{"pathingSecondarySmoothing", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingSecondarySmoothing, 0f, 1f)},
-				{"pathingTimeScale", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingTimeScale, 0.05f, 4f)},
-				{"randomModeDogfightChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeDogfightChance, 0f, 100f)},
-				{"randomModeIVAChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeIVAChance, 0f, 100f)},
-				{"randomModeStationaryChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeStationaryChance, 0f, 100f)},
-				{"randomModePathingChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModePathingChance, 0f, 100f)},
-				{"freeMoveSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, freeMoveSpeed, freeMoveSpeedMin, freeMoveSpeedMax)},
-				{"keyZoomSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, keyZoomSpeed, keyZoomSpeedMin, keyZoomSpeedMax)},
-				{"maxRelV", gameObject.AddComponent<FloatInputField>().Initialise(0, maxRelV)},
+				{"autoZoomMargin", gameObject.AddComponent<FloatInputField>().Initialise(0, autoZoomMargin, 0f, 50f, 4)},
+				{"zoomFactor", gameObject.AddComponent<FloatInputField>().Initialise(0, zoomFactor, 1f, 1096.63f, 4)},
+				{"shakeMultiplier", gameObject.AddComponent<FloatInputField>().Initialise(0, shakeMultiplier, 0f, 10f, 1)},
+				{"dogfightDistance", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightDistance, 1f, 100f, 3)},
+				{"dogfightOffsetX", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset, 3)},
+				{"dogfightOffsetY", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset, 3)},
+				{"dogfightLerp", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightLerp, 0.01f, 0.5f, 3)},
+				{"dogfightRoll", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightRoll, 0f, 1f, 3)},
+				{"pathingSecondarySmoothing", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingSecondarySmoothing, 0f, 1f, 4)},
+				{"pathingTimeScale", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingTimeScale, 0.05f, 4f, 4)},
+				{"randomModeDogfightChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeDogfightChance, 0f, 100f, 3)},
+				{"randomModeIVAChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeIVAChance, 0f, 100f, 3)},
+				{"randomModeStationaryChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeStationaryChance, 0f, 100f, 3)},
+				{"randomModePathingChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModePathingChance, 0f, 100f, 3)},
+				{"freeMoveSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, freeMoveSpeed, freeMoveSpeedMin, freeMoveSpeedMax, 4)},
+				{"keyZoomSpeed", gameObject.AddComponent<FloatInputField>().Initialise(0, keyZoomSpeed, keyZoomSpeedMin, keyZoomSpeedMax, 4)},
+				{"maxRelV", gameObject.AddComponent<FloatInputField>().Initialise(0, maxRelV, 6)},
 			};
 		}
 
@@ -643,12 +643,19 @@ namespace CameraTools
 
 				if (Input.GetKeyDown(fmModeToggleKey))
 				{
-					// Cycle through the free move modes.
-					var fmModes = (fmModeTypes[])Enum.GetValues(typeof(fmModeTypes));
-					var fmModeIndex = (fmModes.IndexOf(fmMode) + 1) % fmModes.Length;
-					fmMode = fmModes[fmModeIndex];
-					fmSpeeds = Vector4.zero;
-					if (DEBUG) DebugLog($"Switching to free move mode {fmMode}");
+					if (!textInput)
+					{
+						// Cycle through the free move modes.
+						var fmModes = (fmModeTypes[])Enum.GetValues(typeof(fmModeTypes));
+						var fmModeIndex = (fmModes.IndexOf(fmMode) + 1) % fmModes.Length;
+						fmMode = fmModes[fmModeIndex];
+						fmSpeeds = Vector4.zero;
+						if (DEBUG) DebugLog($"Switching to free move mode {fmMode}");
+					}
+					else
+					{
+						if (DEBUG) DebugLog($"Unable to switch to free move mode {fmModeTypes.Speed} while in numeric input mode.");
+					}
 				}
 			}
 
@@ -1076,31 +1083,37 @@ namespace CameraTools
 							{
 								dogfightOffsetY += freeMoveSpeed * Time.fixedDeltaTime;
 								dogfightOffsetY = Mathf.Clamp(dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
+								if (textInput) inputFields["dogfightOffsetY"].currentValue = dogfightOffsetY;
 							}
 							else if (Input.GetKey(fmDownKey))
 							{
 								dogfightOffsetY -= freeMoveSpeed * Time.fixedDeltaTime;
 								dogfightOffsetY = Mathf.Clamp(dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
+								if (textInput) inputFields["dogfightOffsetY"].currentValue = dogfightOffsetY;
 							}
 							if (Input.GetKey(fmForwardKey))
 							{
 								dogfightDistance -= freeMoveSpeed * Time.fixedDeltaTime;
 								dogfightDistance = Mathf.Clamp(dogfightDistance, 1f, 100f);
+								if (textInput) inputFields["dogfightDistance"].currentValue = dogfightDistance;
 							}
 							else if (Input.GetKey(fmBackKey))
 							{
 								dogfightDistance += freeMoveSpeed * Time.fixedDeltaTime;
 								dogfightDistance = Mathf.Clamp(dogfightDistance, 1f, 100f);
+								if (textInput) inputFields["dogfightDistance"].currentValue = dogfightDistance;
 							}
 							if (Input.GetKey(fmLeftKey))
 							{
 								dogfightOffsetX -= freeMoveSpeed * Time.fixedDeltaTime;
 								dogfightOffsetX = Mathf.Clamp(dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
+								if (textInput) inputFields["dogfightOffsetX"].currentValue = dogfightOffsetX;
 							}
 							else if (Input.GetKey(fmRightKey))
 							{
 								dogfightOffsetX += freeMoveSpeed * Time.fixedDeltaTime;
 								dogfightOffsetX = Mathf.Clamp(dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
+								if (textInput) inputFields["dogfightOffsetX"].currentValue = dogfightOffsetX;
 							}
 
 							//keyZoom
@@ -1109,10 +1122,12 @@ namespace CameraTools
 								if (Input.GetKey(fmZoomInKey))
 								{
 									zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+									if (textInput) inputFields["zoomFactor"].currentValue = Mathf.Exp(zoomExp) / Mathf.Exp(1);
 								}
 								else if (Input.GetKey(fmZoomOutKey))
 								{
 									zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+									if (textInput) inputFields["zoomFactor"].currentValue = Mathf.Exp(zoomExp) / Mathf.Exp(1);
 								}
 							}
 							else
@@ -1120,10 +1135,12 @@ namespace CameraTools
 								if (Input.GetKey(fmZoomInKey))
 								{
 									autoZoomMargin = Mathf.Clamp(autoZoomMargin + (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
+									if (textInput) inputFields["autoZoomMargin"].currentValue = autoZoomMargin;
 								}
 								else if (Input.GetKey(fmZoomOutKey))
 								{
 									autoZoomMargin = Mathf.Clamp(autoZoomMargin - (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
+									if (textInput) inputFields["autoZoomMargin"].currentValue = autoZoomMargin;
 								}
 							}
 						}
@@ -1449,10 +1466,12 @@ namespace CameraTools
 								if (Input.GetKey(fmZoomInKey))
 								{
 									zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+									if (textInput) inputFields["zoomFactor"].currentValue = Mathf.Exp(zoomExp) / Mathf.Exp(1);
 								}
 								else if (Input.GetKey(fmZoomOutKey))
 								{
 									zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+									if (textInput) inputFields["zoomFactor"].currentValue = Mathf.Exp(zoomExp) / Mathf.Exp(1);
 								}
 							}
 							else
@@ -1460,10 +1479,12 @@ namespace CameraTools
 								if (Input.GetKey(fmZoomInKey))
 								{
 									autoZoomMargin = Mathf.Clamp(autoZoomMargin + (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
+									if (textInput) inputFields["autoZoomMargin"].currentValue = autoZoomMargin;
 								}
 								else if (Input.GetKey(fmZoomOutKey))
 								{
 									autoZoomMargin = Mathf.Clamp(autoZoomMargin - (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
+									if (textInput) inputFields["autoZoomMargin"].currentValue = autoZoomMargin;
 								}
 							}
 						}
@@ -1661,10 +1682,12 @@ namespace CameraTools
 								if (Input.GetKey(fmZoomInKey))
 								{
 									zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+									if (textInput) inputFields["zoomFactor"].currentValue = Mathf.Exp(zoomExp) / Mathf.Exp(1);
 								}
 								else if (Input.GetKey(fmZoomOutKey))
 								{
 									zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+									if (textInput) inputFields["zoomFactor"].currentValue = Mathf.Exp(zoomExp) / Mathf.Exp(1);
 								}
 							}
 							break;
@@ -1732,6 +1755,7 @@ namespace CameraTools
 				if (freeMoveSpeedRaw != (freeMoveSpeedRaw = Mathf.Clamp(freeMoveSpeedRaw + 0.5f * Input.GetAxis("Mouse ScrollWheel"), freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw)))
 				{
 					freeMoveSpeed = Mathf.Pow(10f, freeMoveSpeedRaw);
+					if (textInput) inputFields["freeMoveSpeed"].currentValue = freeMoveSpeed;
 				}
 			}
 
@@ -2430,7 +2454,8 @@ namespace CameraTools
 							inputFields[field].currentValue = (float)propInfo.GetValue(this);
 						}
 					}
-
+					if (DEBUG && fmMode == fmModeTypes.Speed) DebugLog("Disabling speed free move mode due to switching to numeric inputs.");
+					fmMode = fmModeTypes.Position; // Disable speed free move mode when using numeric inputs.
 				}
 			}
 			line++;
@@ -2923,7 +2948,7 @@ namespace CameraTools
 				{
 					freeMoveSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), freeMoveSpeedRaw, freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw) * 100f) / 100f;
 					freeMoveSpeed = Mathf.Pow(10f, freeMoveSpeedRaw);
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), freeMoveSpeed.ToString("G3"));
+					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), freeMoveSpeed.ToString("G4"));
 				}
 				else
 				{
