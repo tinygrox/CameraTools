@@ -66,10 +66,14 @@ namespace CameraTools
 		[CTPersistantField] public string fmZoomInKey = "[9]";
 		[CTPersistantField] public string fmZoomOutKey = "[3]";
 		[CTPersistantField] public string fmMovementModifier = "enter";
+		[CTPersistantField] public string fmModeToggleKey = "[2]";
 		bool waitingForTarget = false;
 		bool waitingForPosition = false;
 		bool mouseUp = false;
 		bool editingKeybindings = false;
+		enum fmModeTypes { Position, Speed };
+		fmModeTypes fmMode = fmModeTypes.Position;
+		Vector4 fmSpeeds = Vector4.zero; // x,y,z,zoom.
 		#endregion
 
 		#region GUI
@@ -636,6 +640,16 @@ namespace CameraTools
 					}
 					cameraActivate();
 				}
+
+				if (Input.GetKeyDown(fmModeToggleKey))
+				{
+					// Cycle through the free move modes.
+					var fmModes = (fmModeTypes[])Enum.GetValues(typeof(fmModeTypes));
+					var fmModeIndex = (fmModes.IndexOf(fmMode) + 1) % fmModes.Length;
+					fmMode = fmModes[fmModeIndex];
+					fmSpeeds = Vector4.zero;
+					if (DEBUG) DebugLog($"Switching to free move mode {fmMode}");
+				}
 			}
 
 			if (Input.GetMouseButtonUp(0))
@@ -739,12 +753,51 @@ namespace CameraTools
 						{
 							dogfightTarget = null;
 						}
+						if (fmMode == fmModeTypes.Speed)
+						{
+							dogfightOffsetY = Mathf.Clamp(dogfightOffsetY + fmSpeeds.y, -dogfightMaxOffset, dogfightMaxOffset);
+							if (Mathf.Abs(dogfightOffsetY) >= dogfightMaxOffset) fmSpeeds.y = 0;
+							dogfightOffsetX = Mathf.Clamp(dogfightOffsetX + fmSpeeds.x, -dogfightMaxOffset, dogfightMaxOffset);
+							if (Mathf.Abs(dogfightOffsetX) >= dogfightMaxOffset) fmSpeeds.x = 0;
+							dogfightDistance = Mathf.Clamp(dogfightDistance + fmSpeeds.z, 1f, 100f);
+							if (dogfightDistance <= 1f || dogfightDistance >= 100f) fmSpeeds.z = 0;
+							if (!autoFOV)
+							{
+								zoomExp = Mathf.Clamp(zoomExp + fmSpeeds.w, 1, 8);
+								if (zoomExp <= 1 || zoomExp >= 8) fmSpeeds.w = 0;
+							}
+							else
+							{
+								autoZoomMargin = Mathf.Clamp(autoZoomMargin + 10 * fmSpeeds.w, 0, 50);
+								if (autoZoomMargin <= 0 || autoZoomMargin >= 50) fmSpeeds.w = 0;
+							}
+						}
 						break;
 					case ToolModes.StationaryCamera:
 						// Updating of the stationary camera is handled in Update.
+						if (fmMode == fmModeTypes.Speed)
+						{
+							manualPosition += cameraUp * fmSpeeds.y + forwardAxis * fmSpeeds.z + flightCamera.transform.right * fmSpeeds.x;
+							if (!autoFOV)
+							{
+								zoomExp = Mathf.Clamp(zoomExp + fmSpeeds.w, 1f, 8f);
+								if (zoomExp <= 1f || zoomExp >= 8f) fmSpeeds.w = 0;
+							}
+							else
+							{
+								autoZoomMargin = Mathf.Clamp(autoZoomMargin + 10 * fmSpeeds.w, 0f, 50f);
+								if (autoZoomMargin <= 0f || autoZoomMargin >= 50f) fmSpeeds.w = 0;
+							}
+						}
 						break;
 					case ToolModes.Pathing:
 						if (!useRealTime) UpdatePathingCam();
+						if (fmMode == fmModeTypes.Speed)
+						{
+							flightCamera.transform.position += upAxis * fmSpeeds.y + forwardAxis * fmSpeeds.z + rightAxis * fmSpeeds.x; // Note: for vessel relative movement, the modifier key will need to be held.
+							zoomExp = Mathf.Clamp(zoomExp + fmSpeeds.w, 1f, 8f);
+							if (zoomExp <= 1f || zoomExp >= 8f) fmSpeeds.w = 0;
+						}
 						break;
 					default:
 						break;
@@ -1015,59 +1068,102 @@ namespace CameraTools
 			//free move
 			if (enableKeypad && !boundThisFrame)
 			{
-				if (Input.GetKey(fmUpKey))
+				switch (fmMode)
 				{
-					dogfightOffsetY += freeMoveSpeed * Time.fixedDeltaTime;
-					dogfightOffsetY = Mathf.Clamp(dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
-				}
-				else if (Input.GetKey(fmDownKey))
-				{
-					dogfightOffsetY -= freeMoveSpeed * Time.fixedDeltaTime;
-					dogfightOffsetY = Mathf.Clamp(dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
-				}
-				if (Input.GetKey(fmForwardKey))
-				{
-					dogfightDistance -= freeMoveSpeed * Time.fixedDeltaTime;
-					dogfightDistance = Mathf.Clamp(dogfightDistance, 1f, 100f);
-				}
-				else if (Input.GetKey(fmBackKey))
-				{
-					dogfightDistance += freeMoveSpeed * Time.fixedDeltaTime;
-					dogfightDistance = Mathf.Clamp(dogfightDistance, 1f, 100f);
-				}
-				if (Input.GetKey(fmLeftKey))
-				{
-					dogfightOffsetX -= freeMoveSpeed * Time.fixedDeltaTime;
-					dogfightOffsetX = Mathf.Clamp(dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
-				}
-				else if (Input.GetKey(fmRightKey))
-				{
-					dogfightOffsetX += freeMoveSpeed * Time.fixedDeltaTime;
-					dogfightOffsetX = Mathf.Clamp(dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
-				}
+					case fmModeTypes.Position:
+						{
+							if (Input.GetKey(fmUpKey))
+							{
+								dogfightOffsetY += freeMoveSpeed * Time.fixedDeltaTime;
+								dogfightOffsetY = Mathf.Clamp(dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
+							}
+							else if (Input.GetKey(fmDownKey))
+							{
+								dogfightOffsetY -= freeMoveSpeed * Time.fixedDeltaTime;
+								dogfightOffsetY = Mathf.Clamp(dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
+							}
+							if (Input.GetKey(fmForwardKey))
+							{
+								dogfightDistance -= freeMoveSpeed * Time.fixedDeltaTime;
+								dogfightDistance = Mathf.Clamp(dogfightDistance, 1f, 100f);
+							}
+							else if (Input.GetKey(fmBackKey))
+							{
+								dogfightDistance += freeMoveSpeed * Time.fixedDeltaTime;
+								dogfightDistance = Mathf.Clamp(dogfightDistance, 1f, 100f);
+							}
+							if (Input.GetKey(fmLeftKey))
+							{
+								dogfightOffsetX -= freeMoveSpeed * Time.fixedDeltaTime;
+								dogfightOffsetX = Mathf.Clamp(dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
+							}
+							else if (Input.GetKey(fmRightKey))
+							{
+								dogfightOffsetX += freeMoveSpeed * Time.fixedDeltaTime;
+								dogfightOffsetX = Mathf.Clamp(dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
+							}
 
-				//keyZoom
-				if (!autoFOV)
-				{
-					if (Input.GetKey(fmZoomInKey))
-					{
-						zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
-					}
-					else if (Input.GetKey(fmZoomOutKey))
-					{
-						zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
-					}
-				}
-				else
-				{
-					if (Input.GetKey(fmZoomInKey))
-					{
-						autoZoomMargin = Mathf.Clamp(autoZoomMargin + (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
-					}
-					else if (Input.GetKey(fmZoomOutKey))
-					{
-						autoZoomMargin = Mathf.Clamp(autoZoomMargin - (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
-					}
+							//keyZoom
+							if (!autoFOV)
+							{
+								if (Input.GetKey(fmZoomInKey))
+								{
+									zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+								}
+								else if (Input.GetKey(fmZoomOutKey))
+								{
+									zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+								}
+							}
+							else
+							{
+								if (Input.GetKey(fmZoomInKey))
+								{
+									autoZoomMargin = Mathf.Clamp(autoZoomMargin + (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
+								}
+								else if (Input.GetKey(fmZoomOutKey))
+								{
+									autoZoomMargin = Mathf.Clamp(autoZoomMargin - (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
+								}
+							}
+						}
+						break;
+					case fmModeTypes.Speed:
+						{
+							if (Input.GetKey(fmUpKey))
+							{
+								fmSpeeds.y += freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmDownKey))
+							{
+								fmSpeeds.y -= freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							if (Input.GetKey(fmForwardKey))
+							{
+								fmSpeeds.z -= freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmBackKey))
+							{
+								fmSpeeds.z += freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							if (Input.GetKey(fmLeftKey))
+							{
+								fmSpeeds.x -= freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmRightKey))
+							{
+								fmSpeeds.x += freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							if (Input.GetKey(fmZoomInKey))
+							{
+								fmSpeeds.w += keyZoomSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmZoomOutKey))
+							{
+								fmSpeeds.w -= keyZoomSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+						}
+						break;
 				}
 			}
 
@@ -1091,26 +1187,6 @@ namespace CameraTools
 				StartDogfightCamera();
 			}
 		}
-
-		// Vessel newAITarget = null;
-		// void UpdateAIDogfightTarget()
-		// {
-		// 	if (hasBDAI && hasBDWM && useBDAutoTarget)
-		// 	{
-		// 		newAITarget = GetAITargetedVessel();
-		// 		if (newAITarget != null && newAITarget != dogfightTarget)
-		// 		{
-		// 			if (DEBUG)
-		// 			{
-		// 				message = "Switching dogfight target to " + newAITarget.vesselName + (dogfightTarget != null ? " from " + dogfightTarget.vesselName : "");
-		// 				Debug.Log("[CameraTools]: " + message);
-		// 				DebugLog(message);
-		// 			}
-		// 			dogfightTarget = newAITarget;
-		// 			AItargetUpdateTime = Time.time;
-		// 		}
-		// 	}
-		// }
 		#endregion
 
 		#region Stationary Camera
@@ -1338,53 +1414,96 @@ namespace CameraTools
 			//free move
 			if (enableKeypad && !boundThisFrame)
 			{
-				if (Input.GetKey(fmUpKey))
+				switch (fmMode)
 				{
-					manualPosition += cameraUp * freeMoveSpeed * Time.fixedDeltaTime;
-				}
-				else if (Input.GetKey(fmDownKey))
-				{
-					manualPosition -= cameraUp * freeMoveSpeed * Time.fixedDeltaTime;
-				}
-				if (Input.GetKey(fmForwardKey))
-				{
-					manualPosition += forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
-				}
-				else if (Input.GetKey(fmBackKey))
-				{
-					manualPosition -= forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
-				}
-				if (Input.GetKey(fmLeftKey))
-				{
-					manualPosition -= flightCamera.transform.right * freeMoveSpeed * Time.fixedDeltaTime;
-				}
-				else if (Input.GetKey(fmRightKey))
-				{
-					manualPosition += flightCamera.transform.right * freeMoveSpeed * Time.fixedDeltaTime;
-				}
+					case fmModeTypes.Position:
+						{
+							if (Input.GetKey(fmUpKey))
+							{
+								manualPosition += cameraUp * freeMoveSpeed * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmDownKey))
+							{
+								manualPosition -= cameraUp * freeMoveSpeed * Time.fixedDeltaTime;
+							}
+							if (Input.GetKey(fmForwardKey))
+							{
+								manualPosition += forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmBackKey))
+							{
+								manualPosition -= forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
+							}
+							if (Input.GetKey(fmLeftKey))
+							{
+								manualPosition -= flightCamera.transform.right * freeMoveSpeed * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmRightKey))
+							{
+								manualPosition += flightCamera.transform.right * freeMoveSpeed * Time.fixedDeltaTime;
+							}
 
-				//keyZoom
-				if (!autoFOV)
-				{
-					if (Input.GetKey(fmZoomInKey))
-					{
-						zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
-					}
-					else if (Input.GetKey(fmZoomOutKey))
-					{
-						zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
-					}
-				}
-				else
-				{
-					if (Input.GetKey(fmZoomInKey))
-					{
-						autoZoomMargin = Mathf.Clamp(autoZoomMargin + (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
-					}
-					else if (Input.GetKey(fmZoomOutKey))
-					{
-						autoZoomMargin = Mathf.Clamp(autoZoomMargin - (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
-					}
+							//keyZoom
+							if (!autoFOV)
+							{
+								if (Input.GetKey(fmZoomInKey))
+								{
+									zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+								}
+								else if (Input.GetKey(fmZoomOutKey))
+								{
+									zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+								}
+							}
+							else
+							{
+								if (Input.GetKey(fmZoomInKey))
+								{
+									autoZoomMargin = Mathf.Clamp(autoZoomMargin + (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
+								}
+								else if (Input.GetKey(fmZoomOutKey))
+								{
+									autoZoomMargin = Mathf.Clamp(autoZoomMargin - (keyZoomSpeed * 10 * Time.fixedDeltaTime), 0, 50);
+								}
+							}
+						}
+						break;
+					case fmModeTypes.Speed:
+						{
+							if (Input.GetKey(fmUpKey))
+							{
+								fmSpeeds.y += freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmDownKey))
+							{
+								fmSpeeds.y -= freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							if (Input.GetKey(fmForwardKey))
+							{
+								fmSpeeds.z += freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmBackKey))
+							{
+								fmSpeeds.z -= freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							if (Input.GetKey(fmLeftKey))
+							{
+								fmSpeeds.x -= freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmRightKey))
+							{
+								fmSpeeds.x += freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							if (Input.GetKey(fmZoomInKey))
+							{
+								fmSpeeds.w += keyZoomSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+							else if (Input.GetKey(fmZoomOutKey))
+							{
+								fmSpeeds.w -= keyZoomSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+							}
+						}
+						break;
 				}
 			}
 
@@ -1509,39 +1628,82 @@ namespace CameraTools
 
 				if (enableKeypad && !boundThisFrame)
 				{
-					if (Input.GetKey(fmUpKey))
+					switch (fmMode)
 					{
-						flightCamera.transform.position += upAxis * freeMoveSpeed * Time.fixedDeltaTime;
-					}
-					else if (Input.GetKey(fmDownKey))
-					{
-						flightCamera.transform.position -= upAxis * freeMoveSpeed * Time.fixedDeltaTime;
-					}
-					if (Input.GetKey(fmForwardKey))
-					{
-						flightCamera.transform.position += forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
-					}
-					else if (Input.GetKey(fmBackKey))
-					{
-						flightCamera.transform.position -= forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
-					}
-					if (Input.GetKey(fmLeftKey))
-					{
-						flightCamera.transform.position -= rightAxis * freeMoveSpeed * Time.fixedDeltaTime;
-					}
-					else if (Input.GetKey(fmRightKey))
-					{
-						flightCamera.transform.position += rightAxis * freeMoveSpeed * Time.fixedDeltaTime;
-					}
+						case fmModeTypes.Position:
+							{
+								if (Input.GetKey(fmUpKey))
+								{
+									flightCamera.transform.position += upAxis * freeMoveSpeed * Time.fixedDeltaTime;
+								}
+								else if (Input.GetKey(fmDownKey))
+								{
+									flightCamera.transform.position -= upAxis * freeMoveSpeed * Time.fixedDeltaTime;
+								}
+								if (Input.GetKey(fmForwardKey))
+								{
+									flightCamera.transform.position += forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
+								}
+								else if (Input.GetKey(fmBackKey))
+								{
+									flightCamera.transform.position -= forwardAxis * freeMoveSpeed * Time.fixedDeltaTime;
+								}
+								if (Input.GetKey(fmLeftKey))
+								{
+									flightCamera.transform.position -= rightAxis * freeMoveSpeed * Time.fixedDeltaTime;
+								}
+								else if (Input.GetKey(fmRightKey))
+								{
+									flightCamera.transform.position += rightAxis * freeMoveSpeed * Time.fixedDeltaTime;
+								}
 
-					//keyZoom Note: pathing doesn't use autoZoomMargin
-					if (Input.GetKey(fmZoomInKey))
-					{
-						zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
-					}
-					else if (Input.GetKey(fmZoomOutKey))
-					{
-						zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+								//keyZoom Note: pathing doesn't use autoZoomMargin
+								if (Input.GetKey(fmZoomInKey))
+								{
+									zoomExp = Mathf.Clamp(zoomExp + (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+								}
+								else if (Input.GetKey(fmZoomOutKey))
+								{
+									zoomExp = Mathf.Clamp(zoomExp - (keyZoomSpeed * Time.fixedDeltaTime), 1, 8);
+								}
+							}
+							break;
+						case fmModeTypes.Speed:
+							{
+								if (Input.GetKey(fmUpKey))
+								{
+									fmSpeeds.y += freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+								}
+								else if (Input.GetKey(fmDownKey))
+								{
+									fmSpeeds.y -= freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+								}
+								if (Input.GetKey(fmForwardKey))
+								{
+									fmSpeeds.z += freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+								}
+								else if (Input.GetKey(fmBackKey))
+								{
+									fmSpeeds.z -= freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+								}
+								if (Input.GetKey(fmLeftKey))
+								{
+									fmSpeeds.x -= freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+								}
+								else if (Input.GetKey(fmRightKey))
+								{
+									fmSpeeds.x += freeMoveSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+								}
+								if (Input.GetKey(fmZoomInKey))
+								{
+									fmSpeeds.w += keyZoomSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+								}
+								else if (Input.GetKey(fmZoomOutKey))
+								{
+									fmSpeeds.w -= keyZoomSpeed * Time.fixedDeltaTime * Time.fixedDeltaTime;
+								}
+							}
+							break;
 					}
 				}
 
@@ -2801,6 +2963,7 @@ namespace CameraTools
 				fmZoomInKey = KeyBinding(fmZoomInKey, "Zoom In", ++line);
 				fmZoomOutKey = KeyBinding(fmZoomOutKey, "Zoom Out", ++line);
 				fmMovementModifier = KeyBinding(fmMovementModifier, "Modifier", ++line);
+				fmModeToggleKey = KeyBinding(fmModeToggleKey, "FM Mode", ++line);
 			}
 
 			Rect saveRect = new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight);
