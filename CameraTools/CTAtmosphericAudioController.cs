@@ -1,9 +1,12 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
 
 namespace CameraTools
 {
 	public class CTAtmosphericAudioController : MonoBehaviour
 	{
+		static Dictionary<string, AudioClip> audioClips;
+
 		AudioSource windAudioSource;
 		AudioSource windHowlAudioSource;
 		AudioSource windTearAudioSource;
@@ -19,6 +22,7 @@ namespace CameraTools
 
 		void Awake()
 		{
+			if (audioClips is null) audioClips = new Dictionary<string, AudioClip>();
 			vessel = GetComponent<Vessel>();
 
 			windAudioSource = new GameObject("windAS").AddComponent<AudioSource>();
@@ -26,7 +30,11 @@ namespace CameraTools
 			windAudioSource.maxDistance = 10000;
 			windAudioSource.dopplerLevel = .35f;
 			windAudioSource.spatialBlend = 1;
-			AudioClip windclip = GameDatabase.Instance.GetAudioClip("CameraTools/Sounds/windloop");
+			if (!audioClips.TryGetValue("CameraTools/Sounds/windloop", out AudioClip windclip))
+			{
+				windclip = GameDatabase.Instance.GetAudioClip("CameraTools/Sounds/windloop");
+				audioClips["CameraTools/Sounds/windloop"] = windclip;
+			}
 			if (!windclip)
 			{
 				Destroy(this);
@@ -40,7 +48,12 @@ namespace CameraTools
 			windHowlAudioSource.maxDistance = 7000;
 			windHowlAudioSource.dopplerLevel = .5f;
 			windHowlAudioSource.pitch = 0.25f;
-			windHowlAudioSource.clip = GameDatabase.Instance.GetAudioClip("CameraTools/Sounds/windhowl");
+			if (!audioClips.TryGetValue("CameraTools/Sounds/windhowl", out AudioClip windhowlclip))
+			{
+				windhowlclip = GameDatabase.Instance.GetAudioClip("CameraTools/Sounds/windhowl");
+				audioClips["CameraTools/Sounds/windhowl"] = windhowlclip;
+			}
+			windHowlAudioSource.clip = windhowlclip;
 			windHowlAudioSource.spatialBlend = 1;
 			windHowlAudioSource.transform.parent = vessel.transform;
 
@@ -49,7 +62,12 @@ namespace CameraTools
 			windTearAudioSource.maxDistance = 5000;
 			windTearAudioSource.dopplerLevel = 0.45f;
 			windTearAudioSource.pitch = 0.65f;
-			windTearAudioSource.clip = GameDatabase.Instance.GetAudioClip("CameraTools/Sounds/windtear");
+			if (!audioClips.TryGetValue("CameraTools/Sounds/windtear", out AudioClip windtearclip))
+			{
+				windtearclip = GameDatabase.Instance.GetAudioClip("CameraTools/Sounds/windtear");
+				audioClips["CameraTools/Sounds/windtear"] = windtearclip;
+			}
+			windTearAudioSource.clip = windtearclip;
 			windTearAudioSource.spatialBlend = 1;
 			windTearAudioSource.transform.parent = vessel.transform;
 
@@ -58,7 +76,12 @@ namespace CameraTools
 			sonicBoomSource.minDistance = 50;
 			sonicBoomSource.maxDistance = 20000;
 			sonicBoomSource.dopplerLevel = 0;
-			sonicBoomSource.clip = GameDatabase.Instance.GetAudioClip("CameraTools/Sounds/sonicBoom");
+			if (!audioClips.TryGetValue("CameraTools/Sounds/sonicBoom", out AudioClip sonicBoomclip))
+			{
+				sonicBoomclip = GameDatabase.Instance.GetAudioClip("CameraTools/Sounds/sonicBoom");
+				audioClips["CameraTools/Sounds/sonicBoom"] = sonicBoomclip;
+			}
+			sonicBoomSource.clip = sonicBoomclip;
 			sonicBoomSource.volume = Mathf.Clamp01(vessel.GetTotalMass() / 4f);
 			sonicBoomSource.Stop();
 			sonicBoomSource.spatialBlend = 1;

@@ -1,3 +1,7 @@
+Improvements / Bugfixes:
+- Initialise the "maxRelV" numeric field properly so that the field-width parameter is 6, not the min value.
+- Cache the atmospheric audio sound clips to avoid GC allocations.
+
 v1.23.0
 Improvements / Bugfixes:
 - Fix some memory leaks detected by KSPCF.
