@@ -1,6 +1,14 @@
+v1.24.0
 Improvements / Bugfixes:
 - Initialise the "maxRelV" numeric field properly so that the field-width parameter is 6, not the min value.
 - Cache the atmospheric audio sound clips to avoid GC allocations.
+- Include the fix (from BDArmory) for Apple Silicon (M1 chip) not calculating sqrt properly when multiplied by a float.
+	- https://issuetracker.unity3d.com/issues/m1-incorrect-calculation-of-values-using-multiplication-with-mathf-dot-sqrt-when-an-unused-variable-is-declared
+- Add an auto-landing option to the stationary camera.
+	- Without "Maintain Vel." enabled, the position of the camera is based on the vessel's current position.
+	- With "Maintain Vel." enabled, the position of the camera is based on the vessel's predicted terrain intercept if it follows a ballistic trajectory (no drag).
+	- The altitude of the camera above the terrain is defined by the "Up" component of the "Manual Flyby Position".
+	- An extra horizontal offset is defined by the "Fwd" (in the vessel's velocity direction when activated) and "Right" components.
 
 v1.23.0
 Improvements / Bugfixes:
