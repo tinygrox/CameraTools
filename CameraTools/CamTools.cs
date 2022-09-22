@@ -214,6 +214,8 @@ namespace CameraTools
 		#endregion
 
 		#region Stationary Camera Fields
+		[CTPersistantField] public bool autoLandingPosition = false;
+		bool autoLandingCamEnabled = false;
 		[CTPersistantField] public bool autoFlybyPosition = false;
 		[CTPersistantField] public bool autoFOV = false;
 		float manualFOV = 60;
@@ -520,7 +522,7 @@ namespace CameraTools
 						}
 					case ToolModes.StationaryCamera:
 						{
-							if (maintainInitialVelocity && !randomMode) // Don't maintain velocity when using random mode.
+							if (maintainInitialVelocity && !randomMode && !autoLandingCamEnabled) // Don't maintain velocity when using random mode or auto landing camera.
 							{
 								if (useOrbital && initialOrbit != null)
 								{
@@ -1243,7 +1245,9 @@ namespace CameraTools
 				lastVesselCoM = vessel.CoM;
 
 				// Camera position.
-				if (autoFlybyPosition || randomMode)
+				if (!randomMode && autoLandingPosition && GetAutoLandingPosition()) // Set up a landing shot if possible or fall back on other methods.
+				{ }
+				else if (autoFlybyPosition || randomMode)
 				{
 					setPresetOffset = false;
 
@@ -1345,6 +1349,39 @@ namespace CameraTools
 			if (hasSavedRotation) { flightCamera.transform.rotation = savedRotation; }
 		}
 
+		/// <summary>
+		/// Get the auto-landing position.
+		/// This is the vessel's current position + the manual offset.
+		/// If maintain velocity is enabled, then add an additional horizontal component for where the craft would land if it follows a ballistic trajectory, assuming flat terrain.
+		/// </summary>
+		/// <returns></returns>
+		bool GetAutoLandingPosition()
+		{
+			if (maintainInitialVelocity && !(vessel.situation == Vessel.Situations.FLYING || vessel.situation == Vessel.Situations.SUB_ORBITAL)) return false; // In orbit or on the surface already.
+			var velForwardAxis = Vector3.ProjectOnPlane(vessel.srf_vel_direction, cameraUp).normalized;
+			var velRightAxis = Vector3.Cross(cameraUp, velForwardAxis);
+			var position = vessel.transform.position + velForwardAxis * manualOffsetForward + velRightAxis * manualOffsetRight;
+			var heightAboveTerrain = GetRadarAltitudeAtPos(position);
+			if (maintainInitialVelocity) // Predict where the landing is going to be assuming it follows a ballistic trajectory.
+			{
+				var gravity = -FlightGlobals.getGeeForceAtPosition(vessel.transform.position).magnitude;
+				int count = 0;
+				float velOffset = 0;
+				float lastVelOffset = velOffset;
+				do
+				{
+					var timeToLanding = (-vessel.verticalSpeed - MathUtils.Sqrt(vessel.verticalSpeed * vessel.verticalSpeed - 2 * gravity * heightAboveTerrain)) / gravity; // G is <0, so - branch is always the right one.
+					lastVelOffset = velOffset;
+					velOffset = (float)(vessel.horizontalSrfSpeed * timeToLanding);
+					position = vessel.transform.position + velForwardAxis * (manualOffsetForward + velOffset) + velRightAxis * manualOffsetRight;
+					heightAboveTerrain = GetRadarAltitudeAtPos(position);
+				} while (++count < 10 && Mathf.Abs(velOffset - lastVelOffset) > 1f); // Up to 10 iterations to find a somewhat stable solution (within 1m).
+			}
+			flightCamera.transform.position = position + (manualOffsetUp - heightAboveTerrain) * cameraUp; // Correct the camera altitude.
+			autoLandingCamEnabled = true;
+			return true;
+		}
+
 		Vector3 lastOffset = Vector3.zero;
 		Vector3 offsetSinceLastFrame = Vector3.zero;
 		Vector3 lastOffsetSinceLastFrame = Vector3.zero;
@@ -1356,7 +1393,7 @@ namespace CameraTools
 				debug2Messages.Clear();
 			if (useAudioEffects)
 			{
-				speedOfSound = 233 * Math.Sqrt(1 + (FlightGlobals.getExternalTemperature(vessel.GetWorldPos3D(), vessel.mainBody) / 273.15));
+				speedOfSound = 233 * MathUtils.Sqrt(1 + (FlightGlobals.getExternalTemperature(vessel.GetWorldPos3D(), vessel.mainBody) / 273.15));
 				//Debug.Log("[CameraTools]: speed of sound: " + speedOfSound);
 			}
 
@@ -2543,12 +2580,13 @@ namespace CameraTools
 					}
 				}
 				autoFlybyPosition = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoFlybyPosition, "Auto Flyby Position");
-				if (autoFlybyPosition) manualOffset = false;
+				autoLandingPosition = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoLandingPosition, "Auto Landing Position"); ;
+				if (autoFlybyPosition || autoLandingPosition) { manualOffset = false; }
 				manualOffset = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), manualOffset, "Manual Flyby Position");
 				Color origGuiColor = GUI.color;
 				if (manualOffset)
-				{ autoFlybyPosition = false; }
-				else
+				{ autoFlybyPosition = false; autoLandingPosition = false; }
+				else if (!autoLandingPosition)
 				{ GUI.color = new Color(0.5f, 0.5f, 0.5f, origGuiColor.a); }
 
 				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 60, entryHeight), "Fwd:", leftLabel);
