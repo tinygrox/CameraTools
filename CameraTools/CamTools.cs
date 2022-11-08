@@ -174,8 +174,12 @@ namespace CameraTools
 		[CTPersistantField] public float dogfightOffsetX = 10f;
 		[CTPersistantField] public float dogfightOffsetY = 4f;
 		float dogfightMaxOffset = 50;
+		[CTPersistantField] public bool dogfightInertialChaseMode = false;
 		[CTPersistantField] public float dogfightLerp = 0.2f;
 		[CTPersistantField] public float dogfightRoll = 0f;
+		[CTPersistantField] public float dogfightInertialFactor = 0f;
+		Vector3 dogfightLerpDelta = default;
+		Vector3 dogfightLerpMomentum = default;
 		Quaternion dogfightCameraRoll = Quaternion.identity;
 		Vector3 dogfightCameraRollUp = Vector3.up;
 		[CTPersistantField] public float autoZoomMarginDogfight = 20;
@@ -415,6 +419,7 @@ namespace CameraTools
 				{"dogfightOffsetY", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset, 3)},
 				{"dogfightLerp", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightLerp, 0.01f, 0.5f, 3)},
 				{"dogfightRoll", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightRoll, 0f, 1f, 3)},
+				{"dogfightInertialFactor", gameObject.AddComponent<FloatInputField>().Initialise(0, dogfightInertialFactor, 0f, 0.1f, 3)},
 				{"pathingSecondarySmoothing", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingSecondarySmoothing, 0f, 1f, 4)},
 				{"pathingTimeScale", gameObject.AddComponent<FloatInputField>().Initialise(0, pathingTimeScale, 0.05f, 4f, 4)},
 				{"randomModeDogfightChance", gameObject.AddComponent<FloatInputField>().Initialise(0, randomModeDogfightChance, 0f, 100f, 3)},
@@ -895,7 +900,11 @@ namespace CameraTools
 			}
 			if (DEBUG) { Debug.Log("[CameraTools]: Starting dogfight camera."); DebugLog("Starting dogfight camera"); }
 
-			if (!dogfightTarget)
+			if (dogfightTarget)
+			{
+				dogfightVelocityChase = false;
+			}
+			else
 			{
 				if (false && randomMode && rng.Next(3) == 0)
 				{
@@ -905,10 +914,6 @@ namespace CameraTools
 				{
 					dogfightVelocityChase = true;
 				}
-			}
-			else
-			{
-				dogfightVelocityChase = false;
 			}
 
 			dogfightPrevTarget = dogfightTarget;
@@ -1015,22 +1020,37 @@ namespace CameraTools
 			{
 				dogfightCameraRollUp = cameraUp;
 			}
-
-			Vector3 offsetDirection = Vector3.Cross(dogfightCameraRollUp, dogfightLastTargetPosition - vessel.CoM).normalized; // FIXME This is changing when in high warp mode. Also, check this when suborbital (not changing).
-			Vector3 camPos = vessel.CoM + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance) + (dogfightOffsetX * offsetDirection) + (dogfightOffsetY * dogfightCameraRollUp);
+			Vector3 lagDirection = (dogfightLastTargetPosition - vessel.CoM).normalized;
+			Vector3 offsetDirectionY = dogfightInertialChaseMode ? Quaternion.RotateTowards(Quaternion.identity, Quaternion.FromToRotation(cameraUp, -vessel.ReferenceTransform.forward), Vector3.Angle(cameraUp, -vessel.ReferenceTransform.forward)) * cameraUp : dogfightCameraRollUp;
+			Vector3 offsetDirectionX = Vector3.Cross(offsetDirectionY, lagDirection).normalized;
+			Vector3 camPos = vessel.CoM + (-lagDirection * dogfightDistance) + (dogfightOffsetX * offsetDirectionX) + (dogfightOffsetY * offsetDirectionY);
 
 			Vector3 localCamPos = cameraParent.transform.InverseTransformPoint(camPos);
+			if (dogfightInertialChaseMode)
+			{
+				dogfightLerpMomentum /= dogfightLerpMomentum.sqrMagnitude * 2f / dogfightDistance + 1f;
+				dogfightLerpMomentum += dogfightLerpDelta * dogfightInertialFactor;
+				dogfightLerpDelta = -flightCamera.transform.localPosition;
+			}
 			flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, localCamPos, dogfightLerp);
+			if (dogfightInertialChaseMode)
+			{
+				flightCamera.transform.localPosition += dogfightLerpMomentum;
+				dogfightLerpDelta += flightCamera.transform.localPosition;
+				if (dogfightLerpDelta.sqrMagnitude > dogfightDistance * dogfightDistance) dogfightLerpDelta *= dogfightDistance / dogfightLerpDelta.magnitude;
+			}
 			if (DEBUG2 && Time.deltaTime > 0)
 			{
 				debug2Messages.Clear();
 				Debug2Log("time scale: " + Time.timeScale.ToString("G3") + ", Δt: " + Time.fixedDeltaTime.ToString("G3"));
-				Debug2Log("offsetDirection: " + offsetDirection.ToString("G3"));
+				Debug2Log("offsetDirection: " + offsetDirectionX.ToString("G3"));
 				Debug2Log("target offset: " + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance).ToString("G3"));
-				Debug2Log("xOff: " + (dogfightOffsetX * offsetDirection).ToString("G3"));
+				Debug2Log("xOff: " + (dogfightOffsetX * offsetDirectionX).ToString("G3"));
 				Debug2Log("yOff: " + (dogfightOffsetY * dogfightCameraRollUp).ToString("G3"));
 				Debug2Log("camPos - vessel.CoM: " + (camPos - vessel.CoM).ToString("G3"));
 				Debug2Log("localCamPos: " + localCamPos.ToString("G3") + ", " + flightCamera.transform.localPosition.ToString("G3"));
+				Debug2Log($"lerp momentum: {dogfightLerpMomentum:G3}");
+				Debug2Log($"lerp delta: {dogfightLerpDelta:G3}");
 			}
 
 			//rotation
@@ -2501,7 +2521,7 @@ namespace CameraTools
 			line++;
 
 			useAudioEffects = GUI.Toggle(LabelRect(++line), useAudioEffects, "Use Audio Effects");
-			if (bdArmory.hasBDA) bdArmory.autoEnableForBDA = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), bdArmory.autoEnableForBDA, "Auto-Enable for BDArmory");
+			if (bdArmory.hasBDA) bdArmory.autoEnableForBDA = GUI.Toggle(LabelRect(++line), bdArmory.autoEnableForBDA, "Auto-Enable for BDArmory");
 
 			line++;
 			if (autoFOV && toolMode != ToolModes.Pathing)
@@ -2695,14 +2715,14 @@ namespace CameraTools
 					bdArmory.useCentroid = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), bdArmory.useCentroid, "Target Dogfight Centroid");
 				}
 
-				line++;
+				++line;
 
-				GUI.Label(LeftRect(++line), "Distance: " + dogfightDistance.ToString("G3"));
+				GUI.Label(LeftRect(++line), $"Distance: {dogfightDistance:G3}");
 				if (!textInput)
 				{
 					line += 0.15f;
-					dogfightDistance = GUI.HorizontalSlider(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), dogfightDistance, 1f, 100f);
-					if (!enableKeypad) dogfightDistance = Mathf.RoundToInt(dogfightDistance * 2f) / 2f;
+					dogfightDistance = GUI.HorizontalSlider(LabelRect(++line), dogfightDistance, 1f, 100f);
+					if (!enableKeypad) dogfightDistance = MathUtils.RoundToUnit(dogfightDistance, 0.5f);
 				}
 				else
 				{
@@ -2746,6 +2766,21 @@ namespace CameraTools
 					inputFields["dogfightRoll"].tryParseValue(GUI.TextField(QuarterRect(line, 3), inputFields["dogfightRoll"].possibleValue, 8, inputFieldStyle));
 					dogfightRoll = inputFields["dogfightRoll"].currentValue;
 				}
+
+				GUI.Label(LeftRect(++line), $"Camera Inertia: {dogfightInertialFactor:G3}");
+				if (!textInput)
+				{
+					line += 0.15f;
+					dogfightInertialFactor = MathUtils.RoundToUnit(GUI.HorizontalSlider(RightRect(line), dogfightInertialFactor, 0f, 0.1f), 0.01f);
+				}
+				else
+				{
+					inputFields["dogfightInertialFactor"].tryParseValue(GUI.TextField(RightRect(line), inputFields["dogfightInertialFactor"].possibleValue, 8, inputFieldStyle));
+					dogfightInertialFactor = inputFields["dogfightInertialFactor"].currentValue;
+				}
+
+				if (dogfightInertialChaseMode != (dogfightInertialChaseMode = GUI.Toggle(LabelRect(++line), dogfightInertialChaseMode, "Inertial Chase Mode")))
+				{ StartDogfightCamera(); }
 			}
 			else if (toolMode == ToolModes.Pathing)
 			{

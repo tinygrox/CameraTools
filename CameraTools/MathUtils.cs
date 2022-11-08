@@ -23,6 +23,12 @@ namespace CameraTools
 			double sqrt1 = 1d * sqrt;
 			return sqrt1;
 		}
+
+		public static float RoundToUnit(float value, float unit = 1f)
+		{
+			var rounded = Mathf.Round(value / unit) * unit;
+			return (unit % 1 != 0) ? rounded : Mathf.Round(rounded); // Fix near-integer loss of precision.
+		}
 	}
 
 	[KSPAddon(KSPAddon.Startup.MainMenu, true)]
