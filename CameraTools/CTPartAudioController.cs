@@ -8,7 +8,6 @@ namespace CameraTools
 
 		public AudioSource audioSource;
 
-
 		float origMinDist = 1;
 		float origMaxDist = 1;
 
@@ -17,12 +16,12 @@ namespace CameraTools
 
 		AudioRolloffMode origRolloffMode;
 
+		// Note: other fields are adjusted in CamTools.SetDoppler and CamTools.ResetDoppler
+
 		void Awake()
 		{
 			part = GetComponentInParent<Part>();
 			vessel = part.vessel;
-
-			CamTools.OnResetCTools += OnResetCTools;
 		}
 
 		void Start()
@@ -38,6 +37,7 @@ namespace CameraTools
 			origRolloffMode = audioSource.rolloffMode;
 			audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
 			audioSource.spatialBlend = 1;
+			CamTools.OnResetCTools += OnResetCTools;
 		}
 
 		void FixedUpdate()

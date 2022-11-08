@@ -154,7 +154,7 @@ namespace CameraTools
 
 		#region Audio Fields
 		AudioSource[] audioSources;
-		float[] originalAudioSourceDoppler;
+		(float dopplerLevel, AudioVelocityUpdateMode velocityUpdateMode, bool bypassEffects, float spatialBlend, bool spatialize)[] originalAudioSourceDoppler;
 		HashSet<string> excludeAudioSources = new HashSet<string> { "MusicLogic", "windAS", "windHowlAS", "windTearAS", "sonicBoomAS" }; // Don't adjust music or atmospheric audio.
 		bool hasSetDoppler = false;
 		[CTPersistantField] public bool useAudioEffects = true;
@@ -2113,14 +2113,14 @@ namespace CameraTools
 			// Manually handling doppler effects won't work either as there's no events for newly added audioSources and no way to check when the pitch is adjusted for other reasons.
 
 			audioSources = FindObjectsOfType<AudioSource>();
-			originalAudioSourceDoppler = new float[audioSources.Length];
+			originalAudioSourceDoppler = new (float, AudioVelocityUpdateMode, bool, float, bool)[audioSources.Length];
 			// Debug.Log($"DEBUG AudioSource pitch: "+ string.Join(", ", audioSources.Where(a => a.isPlaying).Select(a => $"{a.name}: {a.pitch}")));
 
 			for (int i = 0; i < audioSources.Length; i++)
 			{
 				// Debug.Log("CameraTools.DEBUG audioSources: " + string.Join(", ", audioSources.Select(a => a.name)));
 				if (excludeAudioSources.Contains(audioSources[i].name)) continue;
-				originalAudioSourceDoppler[i] = audioSources[i].dopplerLevel;
+				originalAudioSourceDoppler[i] = (audioSources[i].dopplerLevel, audioSources[i].velocityUpdateMode, audioSources[i].bypassEffects, audioSources[i].spatialBlend, audioSources[i].spatialize);
 
 				if (!includeActiveVessel)
 				{
@@ -2140,7 +2140,7 @@ namespace CameraTools
 					CTPartAudioController pa = audioSources[i].gameObject.GetComponent<CTPartAudioController>();
 					if (pa == null) pa = audioSources[i].gameObject.AddComponent<CTPartAudioController>();
 					pa.audioSource = audioSources[i];
-					// if (audioSources[i].isPlaying) Debug.Log($"DEBUG adding part audio controller for {part} on {part.vessel.vesselName} for audiosource {i} ({audioSources[i].name}) with priority: {audioSources[i].priority}, doppler level {audioSources[i].dopplerLevel}, rollOff: {audioSources[i].rolloffMode}, spatialize: {audioSources[i].spatialize}, spatial blend: {audioSources[i].spatialBlend}, min/max dist:{audioSources[i].minDistance}/{audioSources[i].maxDistance}, clip: {audioSources[i].clip?.name}, output group: {audioSources[i].outputAudioMixerGroup}");
+					if (DEBUG && audioSources[i].isPlaying) Debug.Log($"DEBUG adding part audio controller for {part} on {part.vessel.vesselName} for audiosource {i} ({audioSources[i].name}) with priority: {audioSources[i].priority}, doppler level {audioSources[i].dopplerLevel}, rollOff: {audioSources[i].rolloffMode}, spatialize: {audioSources[i].spatialize}, spatial blend: {audioSources[i].spatialBlend}, min/max dist:{audioSources[i].minDistance}/{audioSources[i].maxDistance}, clip: {audioSources[i].clip?.name}, output group: {audioSources[i].outputAudioMixerGroup}");
 				}
 			}
 
@@ -2157,8 +2157,11 @@ namespace CameraTools
 			for (int i = 0; i < audioSources.Length; i++)
 			{
 				if (audioSources[i] == null || excludeAudioSources.Contains(audioSources[i].name)) continue;
-				audioSources[i].dopplerLevel = originalAudioSourceDoppler[i];
-				audioSources[i].velocityUpdateMode = AudioVelocityUpdateMode.Auto;
+				audioSources[i].dopplerLevel = originalAudioSourceDoppler[i].dopplerLevel;
+				audioSources[i].velocityUpdateMode = originalAudioSourceDoppler[i].velocityUpdateMode;
+				audioSources[i].bypassEffects = originalAudioSourceDoppler[i].bypassEffects;
+				audioSources[i].spatialBlend = originalAudioSourceDoppler[i].spatialBlend;
+				audioSources[i].spatialize = originalAudioSourceDoppler[i].spatialize;
 			}
 
 			hasSetDoppler = false;
