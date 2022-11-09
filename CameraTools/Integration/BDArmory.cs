@@ -35,6 +35,7 @@ namespace CameraTools.Integration
 		#region Private fields
 		CamTools camTools => CamTools.fetch;
 		Vessel vessel => CamTools.fetch.vessel;
+		public Dictionary<string, FloatInputField> inputFields;
 		object bdCompetitionInstance = null;
 		Func<object, bool> bdCompetitionStartingFieldGetter = null;
 		Func<object, bool> bdCompetitionIsActiveFieldGetter = null;
@@ -52,10 +53,12 @@ namespace CameraTools.Integration
 		Func<object, Vessel> bdWmMissileFieldGetter = null;
 		Func<object, bool> bdWmUnderFireFieldGetter = null;
 		Func<object, bool> bdWmUnderAttackFieldGetter = null;
+		Func<object, object> bdWmRecentlyFiringPropertyGetter = null;
 		object bdLoadedVesselSwitcherInstance = null;
 		Func<object, object> bdLoadedVesselSwitcherVesselsPropertyGetter = null;
 		Dictionary<string, List<Vessel>> bdActiveVessels = new Dictionary<string, List<Vessel>>();
 		float AItargetUpdateTime = 0;
+		[CTPersistantField] public float AItargetMinimumUpdateInterval = 3;
 		Vessel newAITarget = null;
 		List<Vessel> _bdWMVessels = new List<Vessel>();
 		float _bdWMVesselsLastUpdate = 0;
@@ -78,12 +81,16 @@ namespace CameraTools.Integration
 				GetMissileField();
 				GetUnderFireField();
 				GetUnderAttackField();
+				GetRecentlyFiringProperty();
 				if (FlightGlobals.ActiveVessel is not null)
 				{
 					CheckForBDAI(FlightGlobals.ActiveVessel);
 					CheckForBDWM(FlightGlobals.ActiveVessel);
 				}
 			}
+			inputFields = new Dictionary<string, FloatInputField> {
+				{"AItargetUpdateInterval", gameObject.AddComponent<FloatInputField>().Initialise(0, AItargetMinimumUpdateInterval, 0.5f, 5f, 4)},
+			};
 		}
 
 		void OnDestroy()
@@ -242,11 +249,32 @@ namespace CameraTools.Integration
 			if (autoTargetIncomingMissiles && hasBDWM && wmComponent != null && bdWmMissileFieldGetter != null)
 			{
 				var missile = bdWmMissileFieldGetter(wmComponent); // Priority 1: incoming missiles.
-				if (missile != null) return missile;
+				if (missile != null)
+				{
+					if (CamTools.DEBUG && missile != camTools.dogfightTarget) CamTools.DebugLog($"Incoming missile {missile.vesselName}");
+					return missile;
+				}
 			}
 
 			// Don't update too often unless there's no target.
-			if (camTools.dogfightTarget != null && Time.time - AItargetUpdateTime < 3) return camTools.dogfightTarget;
+			if (camTools.dogfightTarget != null && Time.time - AItargetUpdateTime < AItargetMinimumUpdateInterval)
+				return camTools.dogfightTarget;
+
+			// Recently firing on a target.
+			Vessel target = null;
+			if (hasBDAI && aiComponent != null && bdAITargetFieldGetter != null)
+			{
+				target = bdAITargetFieldGetter(aiComponent);
+			}
+			if (target != null && hasBDWM && wmComponent != null && bdWmRecentlyFiringPropertyGetter != null)
+			{
+				bool recentlyFiring = (bool)bdWmRecentlyFiringPropertyGetter(wmComponent); // Priority 2: recently firing on a target.
+				if (recentlyFiring)
+				{
+					if (CamTools.DEBUG && target != camTools.dogfightTarget) CamTools.DebugLog($"Recently firing on {target.vesselName}");
+					return target;
+				}
+			}
 
 			// Threats
 			if (hasBDWM && wmComponent != null && bdWmThreatFieldGetter != null)
@@ -256,16 +284,20 @@ namespace CameraTools.Integration
 
 				if (underFire || underAttack)
 				{
-					var threat = bdWmThreatFieldGetter(wmComponent); // Priority 2: incoming fire (can also be missiles).
-					if (threat != null) return threat;
+					var threat = bdWmThreatFieldGetter(wmComponent); // Priority 3: incoming fire (can also be missiles).
+					if (threat != null)
+					{
+						if (CamTools.DEBUG && threat != camTools.dogfightTarget) CamTools.DebugLog($"Incoming fire/missile {threat.vesselName}");
+						return threat;
+					}
 				}
 			}
 
 			// Targets
-			if (hasBDAI && aiComponent != null && bdAITargetFieldGetter != null)
+			if (target != null)
 			{
-				var target = bdAITargetFieldGetter(aiComponent); // Priority 3: the current vessel's target.
-				if (target != null) return target;
+				if (CamTools.DEBUG && target != camTools.dogfightTarget) CamTools.DebugLog($"Targeting {target.vesselName}");
+				return target; // Priority 4: the current vessel's target.
 			}
 			return null;
 		}
@@ -315,16 +347,22 @@ namespace CameraTools.Integration
 			if (hasBDAI && hasBDWM && useBDAutoTarget)
 			{
 				newAITarget = GetAITargetedVessel();
-				if (newAITarget != null && newAITarget != camTools.dogfightTarget)
+				if (newAITarget != null)
 				{
-					if (CamTools.DEBUG)
+					if (newAITarget != camTools.dogfightTarget)
 					{
-						var message = "Switching dogfight target to " + newAITarget.vesselName + (camTools.dogfightTarget != null ? " from " + camTools.dogfightTarget.vesselName : "");
-						Debug.Log("[CameraTools]: " + message);
-						CamTools.DebugLog(message);
+						if (CamTools.DEBUG)
+						{
+							var message = "Switching dogfight target to " + newAITarget.vesselName + (camTools.dogfightTarget != null ? " from " + camTools.dogfightTarget.vesselName : "");
+							CamTools.DebugLog(message);
+						}
+						camTools.dogfightTarget = newAITarget;
+						AItargetUpdateTime = Time.time;
 					}
-					camTools.dogfightTarget = newAITarget;
-					AItargetUpdateTime = Time.time;
+					else if (Time.time - AItargetUpdateTime >= AItargetMinimumUpdateInterval)
+					{
+						AItargetUpdateTime += 0.5f; // Delay the next update by 0.5s to avoid checking every frame once the minimum interval has elapsed.
+					}
 				}
 			}
 		}
@@ -499,6 +537,23 @@ namespace CameraTools.Integration
 			return null;
 		}
 
+		PropertyInfo GetRecentlyFiringProperty()
+		{
+			Type wmModType = WeaponManagerType();
+			if (wmModType == null) return null;
+
+			PropertyInfo[] propertyInfos = wmModType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+			foreach (var p in propertyInfos)
+			{
+				if (p != null && p.Name == "recentlyFiring")
+				{
+					bdWmRecentlyFiringPropertyGetter = ReflectionUtils.BuildGetAccessor(p.GetGetMethod());
+					if (CamTools.DEBUG) Debug.Log("[CameraTools]: Created bdWmRecentlyFiringPropertyGetter.");
+					return p;
+				}
+			}
+			return null;
+		}
 		public void GetBDVessels()
 		{
 			if (!hasBDA || bdLoadedVesselSwitcherVesselsPropertyGetter == null || bdLoadedVesselSwitcherInstance == null) return;
@@ -524,6 +579,37 @@ namespace CameraTools.Integration
 			}
 			centroid /= (float)count;
 			return centroid;
+		}
+
+		public void ToggleInputFields(bool textInput)
+		{
+			if (textInput)
+			{
+				foreach (var field in inputFields.Keys)
+				{
+					var fieldInfo = typeof(BDArmory).GetField(field);
+					if (fieldInfo != null) { inputFields[field].currentValue = (float)fieldInfo.GetValue(this); }
+					else
+					{
+						var propInfo = typeof(BDArmory).GetProperty(field);
+						inputFields[field].currentValue = (float)propInfo.GetValue(this);
+					}
+				}
+			}
+			else
+			{
+				foreach (var field in inputFields.Keys)
+				{
+					inputFields[field].tryParseValueNow();
+					var fieldInfo = typeof(BDArmory).GetField(field);
+					if (fieldInfo != null) { fieldInfo.SetValue(this, inputFields[field].currentValue); }
+					else
+					{
+						var propInfo = typeof(BDArmory).GetProperty(field);
+						propInfo.SetValue(this, inputFields[field].currentValue);
+					}
+				}
+			}
 		}
 	}
 }

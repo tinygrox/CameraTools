@@ -1,3 +1,12 @@
+v1.25.0
+Improvements / Bugfixes:
+- Add an inertial chase mode to the dogfight camera.
+	- Inertial factor provides a looseness to the camera position.
+	- Offsets are relative to the vessel frame of reference, instead of the camera frame of reference.
+- Save / restore other AudioSource fields that get modified as part of doppler SFX in case this is part of the cause of some sound bugs (not sure if it is or not, but better safe than sorry).
+- Rework the BDA secondary target priority to favour the vessel's target (instead of attacker) when it has recently been firing or fired a missile (requires the latest BDA+).
+- Add a slider to control the minimum update interval of the BDA secondary target selection after switching targets (updates occur every 0.5s after the minimum interval has elapsed).
+
 v1.24.0
 Improvements / Bugfixes:
 - Initialise the "maxRelV" numeric field properly so that the field-width parameter is 6, not the min value.

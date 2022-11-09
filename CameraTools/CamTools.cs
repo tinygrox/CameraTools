@@ -2423,12 +2423,26 @@ namespace CameraTools
 
 		Rect LabelRect(float line)
 		{ return new Rect(leftIndent, contentTop + line * entryHeight, contentWidth, entryHeight); }
+		Rect HalfRect(float line, int pos = 0)
+		{ return new Rect(leftIndent + pos * contentWidth / 2f, contentTop + line * entryHeight, contentWidth / 2, entryHeight); }
 		Rect LeftRect(float line)
 		{ return new Rect(leftIndent, contentTop + line * entryHeight, windowWidth / 2f + leftIndent * 2f, entryHeight); }
 		Rect RightRect(float line)
 		{ return new Rect(windowWidth / 2f + 3f * leftIndent, contentTop + line * entryHeight, contentWidth / 2f - 3f * leftIndent, entryHeight); }
 		Rect QuarterRect(float line, int quarter)
 		{ return new Rect(leftIndent + quarter * contentWidth / 4, contentTop + line * entryHeight, contentWidth / 4, entryHeight); }
+		Rect ThinRect(float line)
+		{ return new Rect(leftIndent, contentTop + line * entryHeight, contentWidth, entryHeight - 2); }
+		Rect ThinHalfRect(float line, int pos = 0)
+		{ return new Rect(leftIndent + pos * (contentWidth / 2f + 2f), contentTop + line * entryHeight, contentWidth / 2 - 2, entryHeight - 2); }
+		Rect SliderLabelLeft(float line, float indent)
+		{ return new Rect(leftIndent, contentTop + line * entryHeight, indent, entryHeight); }
+		Rect SliderLabelRight(float line)
+		{ return new Rect(leftIndent + contentWidth - 25f, contentTop + line * entryHeight, 25f, entryHeight); }
+		Rect SliderRect(float line, float indent)
+		{ return new Rect(leftIndent + indent, contentTop + line * entryHeight + 6f, contentWidth - indent - 30f, entryHeight); }
+		Rect RightSliderRect(float line)
+		{ return new Rect(windowWidth / 2f + 3f * leftIndent, contentTop + line * entryHeight + 6f, contentWidth / 2f - 3f * leftIndent, entryHeight); }
 		void SetupInputFieldStyle()
 		{
 			inputFieldStyle = new GUIStyle(GUI.skin.textField);
@@ -2517,6 +2531,7 @@ namespace CameraTools
 					if (DEBUG && fmMode == fmModeTypes.Speed) DebugLog("Disabling speed free move mode due to switching to numeric inputs.");
 					fmMode = fmModeTypes.Position; // Disable speed free move mode when using numeric inputs.
 				}
+				bdArmory.ToggleInputFields(textInput);
 			}
 			line++;
 
@@ -2590,7 +2605,7 @@ namespace CameraTools
 				string posButtonText = "Set Position w/ Click";
 				if (setPresetOffset) posButtonText = "Clear Position";
 				if (waitingForPosition) posButtonText = "Waiting...";
-				if (FlightGlobals.ActiveVessel != null && GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), posButtonText))
+				if (FlightGlobals.ActiveVessel != null && GUI.Button(ThinRect(++line), posButtonText))
 				{
 					if (setPresetOffset)
 					{
@@ -2602,10 +2617,10 @@ namespace CameraTools
 						mouseUp = false;
 					}
 				}
-				autoFlybyPosition = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoFlybyPosition, "Auto Flyby Position");
-				autoLandingPosition = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), autoLandingPosition, "Auto Landing Position"); ;
+				autoFlybyPosition = GUI.Toggle(LabelRect(++line), autoFlybyPosition, "Auto Flyby Position");
+				autoLandingPosition = GUI.Toggle(LabelRect(++line), autoLandingPosition, "Auto Landing Position"); ;
 				if (autoFlybyPosition || autoLandingPosition) { manualOffset = false; }
-				manualOffset = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), manualOffset, "Manual Flyby Position");
+				manualOffset = GUI.Toggle(LabelRect(++line), manualOffset, "Manual Flyby Position");
 				Color origGuiColor = GUI.color;
 				if (manualOffset)
 				{ autoFlybyPosition = false; autoLandingPosition = false; }
@@ -2645,31 +2660,31 @@ namespace CameraTools
 
 				string targetText = "None";
 				if (camTarget != null) targetText = camTarget.gameObject.name;
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Camera Target: " + targetText, leftLabel);
+				GUI.Label(LabelRect(++line), "Camera Target: " + targetText, leftLabel);
 				string tgtButtonText = "Set Target w/ Click";
 				if (waitingForTarget) tgtButtonText = "waiting...";
-				if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), tgtButtonText))
+				if (GUI.Button(ThinRect(++line), tgtButtonText))
 				{
 					waitingForTarget = true;
 					mouseUp = false;
 				}
-				if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), (contentWidth / 2) - 2, entryHeight - 2), "Target Self"))
+				if (GUI.Button(ThinHalfRect(++line, 0), "Target Self"))
 				{
 					camTarget = FlightGlobals.ActiveVessel.GetReferenceTransformPart();
 					hasTarget = true;
 				}
-				if (GUI.Button(new Rect(2 + leftIndent + contentWidth / 2, contentTop + (line * entryHeight), (contentWidth / 2) - 2, entryHeight - 2), "Clear Target"))
+				if (GUI.Button(ThinHalfRect(line, 1), "Clear Target"))
 				{
 					camTarget = null;
 					hasTarget = false;
 				}
-				targetCoM = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), targetCoM, "Vessel Center of Mass");
-				if (camTarget == null) saveRotation = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), saveRotation, "Save Rotation");
+				targetCoM = GUI.Toggle(ThinRect(++line), targetCoM, "Vessel Center of Mass");
+				if (camTarget == null) saveRotation = GUI.Toggle(ThinRect(++line), saveRotation, "Save Rotation");
 				if (!saveRotation) hasSavedRotation = false;
 			}
 			else if (toolMode == ToolModes.DogfightCamera)
 			{
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Secondary Target:");
+				GUI.Label(ThinRect(++line), "Secondary Target:");
 				string tVesselLabel;
 				if (showingVesselList)
 				{ tVesselLabel = "Clear"; }
@@ -2677,7 +2692,7 @@ namespace CameraTools
 				{ tVesselLabel = dogfightTarget.vesselName; }
 				else
 				{ tVesselLabel = "None"; }
-				if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), tVesselLabel))
+				if (GUI.Button(LabelRect(++line), tVesselLabel))
 				{
 					if (showingVesselList)
 					{
@@ -2704,25 +2719,35 @@ namespace CameraTools
 				}
 				if (bdArmory.hasBDA)
 				{
-					if (!bdArmory.useCentroid)
+					if (bdArmory.hasBDAI)
 					{
-						if (bdArmory.hasBDAI)
+						if (bdArmory.useBDAutoTarget != (bdArmory.useBDAutoTarget = GUI.Toggle(ThinRect(++line), bdArmory.useBDAutoTarget, "BDA AI Auto Target")) && bdArmory.useBDAutoTarget)
+						{ bdArmory.useCentroid = false; }
+						GUI.Label(SliderLabelLeft(++line, 110f), "Minimum Interval:");
+						if (!textInput)
 						{
-							bdArmory.useBDAutoTarget = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), bdArmory.useBDAutoTarget, "BDA AI Auto Target");
-							bdArmory.autoTargetIncomingMissiles = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), bdArmory.autoTargetIncomingMissiles, "Target Incoming Missiles");
+							bdArmory.AItargetMinimumUpdateInterval = MathUtils.RoundToUnit(GUI.HorizontalSlider(SliderRect(line, 110f), bdArmory.AItargetMinimumUpdateInterval, 0.5f, 5f), 0.5f);
+							GUI.Label(SliderLabelRight(line), $"{bdArmory.AItargetMinimumUpdateInterval:F1}s");
 						}
+						else
+						{
+							bdArmory.inputFields["AItargetUpdateInterval"].tryParseValue(GUI.TextField(RightRect(line), bdArmory.inputFields["AItargetUpdateInterval"].possibleValue, 8, inputFieldStyle));
+							bdArmory.AItargetMinimumUpdateInterval = bdArmory.inputFields["AItargetUpdateInterval"].currentValue;
+						}
+						bdArmory.autoTargetIncomingMissiles = GUI.Toggle(ThinRect(++line), bdArmory.autoTargetIncomingMissiles, "Target Incoming Missiles");
 					}
-					bdArmory.useCentroid = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight - 2), bdArmory.useCentroid, "Target Dogfight Centroid");
+					if (bdArmory.useCentroid != (bdArmory.useCentroid = GUI.Toggle(ThinRect(++line), bdArmory.useCentroid, "Target Dogfight Centroid")) && bdArmory.useCentroid)
+					{ bdArmory.useBDAutoTarget = false; }
 				}
 
 				++line;
 
-				GUI.Label(LeftRect(++line), $"Distance: {dogfightDistance:G3}");
+				GUI.Label(SliderLabelLeft(++line, 55f), $"Distance:");
 				if (!textInput)
 				{
-					line += 0.15f;
-					dogfightDistance = GUI.HorizontalSlider(LabelRect(++line), dogfightDistance, 1f, 100f);
-					if (!enableKeypad) dogfightDistance = MathUtils.RoundToUnit(dogfightDistance, 0.5f);
+					dogfightDistance = GUI.HorizontalSlider(SliderRect(++line, 0f), dogfightDistance, 1f, 100f);
+					if (!enableKeypad) dogfightDistance = MathUtils.RoundToUnit(dogfightDistance, 1f);
+					GUI.Label(SliderLabelRight(line), $"{dogfightDistance:G3}m");
 				}
 				else
 				{
@@ -2733,22 +2758,22 @@ namespace CameraTools
 				GUI.Label(LeftRect(++line), "Offset:");
 				if (!textInput)
 				{
-					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 15f, entryHeight), "X: ");
-					dogfightOffsetX = GUI.HorizontalSlider(new Rect(leftIndent + 15f, contentTop + (line * entryHeight) + 6f, contentWidth - 45f, entryHeight), dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
-					if (!enableKeypad) dogfightOffsetX = Mathf.RoundToInt(dogfightOffsetX * 2f) / 2f;
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightOffsetX.ToString("G3"));
-					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 15, entryHeight), "Y: ");
-					dogfightOffsetY = GUI.HorizontalSlider(new Rect(leftIndent + 15f, contentTop + (line * entryHeight) + 6f, contentWidth - 45f, entryHeight), dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
-					if (!enableKeypad) dogfightOffsetY = Mathf.RoundToInt(dogfightOffsetY * 2f) / 2f;
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25, entryHeight), dogfightOffsetY.ToString("G3"));
+					GUI.Label(SliderLabelLeft(++line, 15f), "X: ");
+					dogfightOffsetX = GUI.HorizontalSlider(SliderRect(line, 15f), dogfightOffsetX, -dogfightMaxOffset, dogfightMaxOffset);
+					if (!enableKeypad) dogfightOffsetX = MathUtils.RoundToUnit(dogfightOffsetX, 1f);
+					GUI.Label(SliderLabelRight(line), $"{dogfightOffsetX:G3}m");
+					GUI.Label(SliderLabelLeft(++line, 15f), "Y: ");
+					dogfightOffsetY = GUI.HorizontalSlider(SliderRect(line, 15f), dogfightOffsetY, -dogfightMaxOffset, dogfightMaxOffset);
+					if (!enableKeypad) dogfightOffsetY = MathUtils.RoundToUnit(dogfightOffsetY, 1f);
+					GUI.Label(SliderLabelRight(line), $"{dogfightOffsetY:G3}m");
 					line += 0.5f;
 
-					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 30f, entryHeight), "Lerp: ");
-					dogfightLerp = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + 30f, contentTop + (line * entryHeight) + 6f, contentWidth - 60f, entryHeight), dogfightLerp * 100f, 1f, 50f)) / 100f;
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightLerp.ToString("G3"));
-					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), 30f, entryHeight), "Roll: ");
-					dogfightRoll = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + 30f, contentTop + (line * entryHeight) + 6f, contentWidth - 60f, entryHeight), dogfightRoll * 20f, 0f, 20f)) / 20f;
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), dogfightRoll.ToString("G3"));
+					GUI.Label(SliderLabelLeft(++line, 30f), "Lerp: ");
+					dogfightLerp = Mathf.RoundToInt(GUI.HorizontalSlider(SliderRect(line, 30f), dogfightLerp * 100f, 1f, 50f)) / 100f;
+					GUI.Label(SliderLabelRight(line), $"{dogfightLerp:G3}");
+					GUI.Label(SliderLabelLeft(++line, 30f), "Roll: ");
+					dogfightRoll = Mathf.RoundToInt(GUI.HorizontalSlider(SliderRect(line, 30f), dogfightRoll * 20f, 0f, 20f)) / 20f;
+					GUI.Label(SliderLabelRight(line), $"{dogfightRoll:G3}");
 					line += 0.15f;
 				}
 				else
@@ -2767,11 +2792,11 @@ namespace CameraTools
 					dogfightRoll = inputFields["dogfightRoll"].currentValue;
 				}
 
-				GUI.Label(LeftRect(++line), $"Camera Inertia: {dogfightInertialFactor:G3}");
+				GUI.Label(SliderLabelLeft(++line, 95f), $"Camera Inertia:");
 				if (!textInput)
 				{
-					line += 0.15f;
-					dogfightInertialFactor = MathUtils.RoundToUnit(GUI.HorizontalSlider(RightRect(line), dogfightInertialFactor, 0f, 0.1f), 0.01f);
+					dogfightInertialFactor = MathUtils.RoundToUnit(GUI.HorizontalSlider(SliderRect(line, 95f), dogfightInertialFactor, 0f, 0.1f), 0.01f);
+					GUI.Label(SliderLabelRight(line), $"{dogfightInertialFactor:G3}");
 				}
 				else
 				{
@@ -2786,17 +2811,17 @@ namespace CameraTools
 			{
 				if (selectedPathIndex >= 0)
 				{
-					GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Path:");
+					GUI.Label(LabelRect(++line), "Path:");
 					currentPath.pathName = GUI.TextField(new Rect(leftIndent + 34, contentTop + (line * entryHeight), contentWidth - 34, entryHeight), currentPath.pathName);
 				}
 				else
-				{ GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Path: None"); }
+				{ GUI.Label(LabelRect(++line), "Path: None"); }
 				line += 0.25f;
-				if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Open Path"))
+				if (GUI.Button(LabelRect(++line), "Open Path"))
 				{ TogglePathList(); }
-				if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2f, entryHeight), "New Path"))
+				if (GUI.Button(HalfRect(++line, 0), "New Path"))
 				{ CreateNewPath(); }
-				if (GUI.Button(new Rect(leftIndent + (contentWidth / 2f), contentTop + (line * entryHeight), contentWidth / 2f, entryHeight), "Delete Path"))
+				if (GUI.Button(HalfRect(line, 1), "Delete Path"))
 				{ DeletePath(selectedPathIndex); }
 				line += 0.25f;
 
@@ -2827,7 +2852,7 @@ namespace CameraTools
 						inputFields["pathingTimeScale"].tryParseValue(GUI.TextField(RightRect(line), inputFields["pathingTimeScale"].possibleValue, 8, inputFieldStyle));
 						currentPath.timeScale = inputFields["pathingTimeScale"].currentValue;
 					}
-					if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), useRealTime ? "Real-time" : "In-Game time"))
+					if (GUI.Button(LabelRect(++line), useRealTime ? "Real-time" : "In-Game time"))
 					{
 						useRealTime = !useRealTime;
 					}
@@ -3016,15 +3041,15 @@ namespace CameraTools
 			}
 
 			line += 0.25f;
-			enableKeypad = GUI.Toggle(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), enableKeypad, "Keypad Control");
+			enableKeypad = GUI.Toggle(LabelRect(++line), enableKeypad, "Keypad Control");
 			if (enableKeypad)
 			{
-				GUI.Label(LeftRect(++line), "Move Speed:");
+				GUI.Label(SliderLabelLeft(++line, contentWidth / 2f - 30f), "Move Speed:");
 				if (!textInput)
 				{
-					freeMoveSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), freeMoveSpeedRaw, freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw) * 100f) / 100f;
+					freeMoveSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(SliderRect(line, contentWidth / 2f - 30f), freeMoveSpeedRaw, freeMoveSpeedMinRaw, freeMoveSpeedMaxRaw) * 100f) / 100f;
 					freeMoveSpeed = Mathf.Pow(10f, freeMoveSpeedRaw);
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), freeMoveSpeed.ToString("G4"));
+					GUI.Label(SliderLabelRight(line), freeMoveSpeed.ToString("G4"));
 				}
 				else
 				{
@@ -3032,12 +3057,12 @@ namespace CameraTools
 					freeMoveSpeed = inputFields["freeMoveSpeed"].currentValue;
 				}
 
-				GUI.Label(LeftRect(++line), "Zoom Speed:");
+				GUI.Label(SliderLabelLeft(++line, contentWidth / 2f - 30f), "Zoom Speed:");
 				if (!textInput)
 				{
-					zoomSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(new Rect(leftIndent + contentWidth / 2f - 30f, contentTop + (line * entryHeight) + 6f, contentWidth / 2f, entryHeight), zoomSpeedRaw, zoomSpeedMinRaw, zoomSpeedMaxRaw) * 100f) / 100f;
+					zoomSpeedRaw = Mathf.RoundToInt(GUI.HorizontalSlider(SliderRect(line, contentWidth / 2f - 30f), zoomSpeedRaw, zoomSpeedMinRaw, zoomSpeedMaxRaw) * 100f) / 100f;
 					keyZoomSpeed = Mathf.Pow(10f, zoomSpeedRaw);
-					GUI.Label(new Rect(leftIndent + contentWidth - 25f, contentTop + (line * entryHeight), 25f, entryHeight), keyZoomSpeed.ToString("G3"));
+					GUI.Label(SliderLabelRight(line), keyZoomSpeed.ToString("G3"));
 				}
 				else
 				{
@@ -3048,7 +3073,7 @@ namespace CameraTools
 			line++;
 
 			// Key bindings
-			if (GUI.Button(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), "Edit Keybindings"))
+			if (GUI.Button(LabelRect(++line), "Edit Keybindings"))
 			{ editingKeybindings = !editingKeybindings; }
 			if (editingKeybindings)
 			{
@@ -3067,12 +3092,11 @@ namespace CameraTools
 				fmModeToggleKey = KeyBinding(fmModeToggleKey, "FM Mode", ++line);
 			}
 
-			Rect saveRect = new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth / 2, entryHeight);
+			Rect saveRect = HalfRect(++line, 0);
 			if (GUI.Button(saveRect, "Save"))
 			{ Save(); }
 
-			Rect loadRect = new Rect(saveRect);
-			loadRect.x += contentWidth / 2;
+			Rect loadRect = HalfRect(line, 1);
 			if (GUI.Button(loadRect, "Reload"))
 			{
 				if (isPlayingPath) StopPlayingPath();
@@ -3083,7 +3107,7 @@ namespace CameraTools
 			if (timeSinceLastSaved < 1)
 			{
 				++line;
-				GUI.Label(new Rect(leftIndent, contentTop + (++line * entryHeight), contentWidth, entryHeight), timeSinceLastSaved < 0.5 ? "Saving..." : "Saved.", centerLabel);
+				GUI.Label(LabelRect(++line), timeSinceLastSaved < 0.5 ? "Saving..." : "Saved.", centerLabel);
 			}
 
 			//fix length
