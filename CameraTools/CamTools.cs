@@ -1219,6 +1219,11 @@ namespace CameraTools
 			if (bdArmory.hasBDA && bdArmory.hasBDAI && bdArmory.useBDAutoTarget)
 			{
 				bdArmory.UpdateAIDogfightTarget(); // Using delegates instead of reflection allows us to check every frame.
+				if (vessel.LandedOrSplashed)
+				{
+					var cameraRadarAltitude = GetRadarAltitudeAtPos(flightCamera.transform.position);
+					if (cameraRadarAltitude < 2f && (vessel.Landed || cameraRadarAltitude > -dogfightDistance)) flightCamera.transform.position += (2f - cameraRadarAltitude) * cameraUp; // Prevent viewing from under the surface if near the surface.
+				}
 			}
 
 			if (dogfightTarget != dogfightPrevTarget)
