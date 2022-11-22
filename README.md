@@ -1,8 +1,6 @@
-Camera Tools (forked by westamastaflash)
+Camera Tools continued
 
-Custom Camera angles for Cinematics!
+Custom Camera angles for Cinematics and BDArmory!
 
 KSP Forum Thread:
-http://forum.kerbalspaceprogram.com/index.php?/topic/84938-105-camera-tools-v151-dogfight-mode-autozoom-margin-slider-march-28/
-
-
+https://forum.kerbalspaceprogram.com/index.php?/topic/201063-camera-tools-continued-v1150/
