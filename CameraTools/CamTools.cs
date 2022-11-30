@@ -1010,7 +1010,7 @@ namespace CameraTools
 			}
 
 			//roll
-			if (dogfightRoll > 0)
+			if (dogfightRoll > 0 && !vessel.LandedOrSplashed && !vessel.isEVA)
 			{
 				var vesselRollTarget = Quaternion.RotateTowards(Quaternion.identity, Quaternion.FromToRotation(cameraUp, -vessel.ReferenceTransform.forward), dogfightRoll * Vector3.Angle(cameraUp, -vessel.ReferenceTransform.forward));
 				dogfightCameraRoll = Quaternion.Lerp(dogfightCameraRoll, vesselRollTarget, dogfightLerp);
@@ -1023,7 +1023,8 @@ namespace CameraTools
 			Vector3 lagDirection = (dogfightLastTargetPosition - vessel.CoM).normalized;
 			Vector3 offsetDirectionY = dogfightInertialChaseMode ? Quaternion.RotateTowards(Quaternion.identity, Quaternion.FromToRotation(cameraUp, -vessel.ReferenceTransform.forward), Vector3.Angle(cameraUp, -vessel.ReferenceTransform.forward)) * cameraUp : dogfightCameraRollUp;
 			Vector3 offsetDirectionX = Vector3.Cross(offsetDirectionY, lagDirection).normalized;
-			Vector3 camPos = vessel.CoM + (-lagDirection * dogfightDistance) + (dogfightOffsetX * offsetDirectionX) + (dogfightOffsetY * offsetDirectionY);
+			Vector3 camPos = vessel.CoM + (-lagDirection * dogfightDistance);
+			if (!vessel.isEVA) camPos += (dogfightOffsetX * offsetDirectionX) + (dogfightOffsetY * offsetDirectionY);
 
 			Vector3 localCamPos = cameraParent.transform.InverseTransformPoint(camPos);
 			if (dogfightInertialChaseMode)
