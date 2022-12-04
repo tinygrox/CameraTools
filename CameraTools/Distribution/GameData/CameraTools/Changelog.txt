@@ -1,5 +1,7 @@
 Improvements / Bugfixes:
 - Prevent the camera from going below the surface in dogfight mode when the vessel is landed or near the surface when splashed.
+- Disable roll and offset in dogfight mode when the vessel is an EVA kerbal.
+- Ignore ksp_dir.txt lines starting with # for post-build events in Linux (not sure how Windows should do this).
 
 v1.25.0
 Improvements / Bugfixes:
