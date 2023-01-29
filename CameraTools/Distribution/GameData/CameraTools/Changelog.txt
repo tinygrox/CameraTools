@@ -1,3 +1,4 @@
+v1.26.0
 Improvements / Bugfixes:
 - Prevent the camera from going below the surface in dogfight mode when the vessel is landed or near the surface when splashed.
 - Disable roll and offset in dogfight mode when the vessel is an EVA kerbal.
