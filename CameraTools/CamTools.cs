@@ -1224,7 +1224,9 @@ namespace CameraTools
 				{
 					var cameraRadarAltitude = GetRadarAltitudeAtPos(flightCamera.transform.position);
 					if (cameraRadarAltitude < 2f && (vessel.Landed || cameraRadarAltitude > -dogfightDistance)) flightCamera.transform.position += (2f - cameraRadarAltitude) * cameraUp; // Prevent viewing from under the surface if near the surface.
+					if (DEBUG2) Debug2Log($"camera altitude: {GetRadarAltitudeAtPos(flightCamera.transform.position):G3} ({cameraRadarAltitude:G3})");
 				}
+				else if (DEBUG2) Debug2Log($"vessel not landed");
 			}
 
 			if (dogfightTarget != dogfightPrevTarget)
@@ -2737,8 +2739,8 @@ namespace CameraTools
 						}
 						else
 						{
-							bdArmory.inputFields["AItargetUpdateInterval"].tryParseValue(GUI.TextField(RightRect(line), bdArmory.inputFields["AItargetUpdateInterval"].possibleValue, 8, inputFieldStyle));
-							bdArmory.AItargetMinimumUpdateInterval = bdArmory.inputFields["AItargetUpdateInterval"].currentValue;
+							bdArmory.inputFields["AItargetMinimumUpdateInterval"].tryParseValue(GUI.TextField(RightRect(line), bdArmory.inputFields["AItargetMinimumUpdateInterval"].possibleValue, 8, inputFieldStyle));
+							bdArmory.AItargetMinimumUpdateInterval = bdArmory.inputFields["AItargetMinimumUpdateInterval"].currentValue;
 						}
 						bdArmory.autoTargetIncomingMissiles = GUI.Toggle(ThinRect(++line), bdArmory.autoTargetIncomingMissiles, "Target Incoming Missiles");
 					}

@@ -89,7 +89,7 @@ namespace CameraTools.Integration
 				}
 			}
 			inputFields = new Dictionary<string, FloatInputField> {
-				{"AItargetUpdateInterval", gameObject.AddComponent<FloatInputField>().Initialise(0, AItargetMinimumUpdateInterval, 0.5f, 5f, 4)},
+				{"AItargetMinimumUpdateInterval", gameObject.AddComponent<FloatInputField>().Initialise(0, AItargetMinimumUpdateInterval, 0.5f, 5f, 4)},
 			};
 		}
 
@@ -587,12 +587,19 @@ namespace CameraTools.Integration
 			{
 				foreach (var field in inputFields.Keys)
 				{
-					var fieldInfo = typeof(BDArmory).GetField(field);
-					if (fieldInfo != null) { inputFields[field].currentValue = (float)fieldInfo.GetValue(this); }
-					else
+					try
 					{
-						var propInfo = typeof(BDArmory).GetProperty(field);
-						inputFields[field].currentValue = (float)propInfo.GetValue(this);
+						var fieldInfo = typeof(BDArmory).GetField(field);
+						if (fieldInfo != null) { inputFields[field].currentValue = (float)fieldInfo.GetValue(this); }
+						else
+						{
+							var propInfo = typeof(BDArmory).GetProperty(field);
+							inputFields[field].currentValue = (float)propInfo.GetValue(this);
+						}
+					}
+					catch (Exception e)
+					{
+						Debug.LogError($"[CameraTools.BDArmory]: Failed to get field/property {field}: {e.Message}");
 					}
 				}
 			}
@@ -600,13 +607,20 @@ namespace CameraTools.Integration
 			{
 				foreach (var field in inputFields.Keys)
 				{
-					inputFields[field].tryParseValueNow();
-					var fieldInfo = typeof(BDArmory).GetField(field);
-					if (fieldInfo != null) { fieldInfo.SetValue(this, inputFields[field].currentValue); }
-					else
+					try
 					{
-						var propInfo = typeof(BDArmory).GetProperty(field);
-						propInfo.SetValue(this, inputFields[field].currentValue);
+						inputFields[field].tryParseValueNow();
+						var fieldInfo = typeof(BDArmory).GetField(field);
+						if (fieldInfo != null) { fieldInfo.SetValue(this, inputFields[field].currentValue); }
+						else
+						{
+							var propInfo = typeof(BDArmory).GetProperty(field);
+							propInfo.SetValue(this, inputFields[field].currentValue);
+						}
+					}
+					catch (Exception e)
+					{
+						Debug.LogError($"[CameraTools.BDArmory]: Failed to set field/property {field}: {e.Message}");
 					}
 				}
 			}
