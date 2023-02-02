@@ -1,3 +1,5 @@
+- Fix dogfight centroid mode.
+
 v1.26.0
 Improvements / Bugfixes:
 - Prevent the camera from going below the surface in dogfight mode when the vessel is landed or near the surface when splashed.

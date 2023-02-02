@@ -344,7 +344,7 @@ namespace CameraTools.Integration
 
 		public void UpdateAIDogfightTarget()
 		{
-			if (hasBDAI && hasBDWM && useBDAutoTarget)
+			if (hasBDAI && hasBDWM && (useBDAutoTarget || (useCentroid && bdWMVessels.Count < 2)))
 			{
 				newAITarget = GetAITargetedVessel();
 				if (newAITarget != null)
@@ -564,18 +564,16 @@ namespace CameraTools.Integration
 
 		public Vector3 GetCentroid()
 		{
-			Vector3 centroid = Vector3.zero;
+			var activeVesselCoM = FlightGlobals.ActiveVessel.CoM;
+			Vector3 centroid = activeVesselCoM;
 			int count = 1;
 
 			foreach (var v in bdWMVessels)
 			{
-				if (v == null || !v.loaded || v.packed) continue;
-				if ((v.CoM - FlightGlobals.ActiveVessel.CoM).magnitude > 20000) continue;
-				if (!v.isActiveVessel)
-				{
-					centroid += v.transform.position;
-					++count;
-				}
+				if (v == null || !v.loaded || v.packed || v.isActiveVessel) continue;
+				if ((v.CoM - activeVesselCoM).magnitude > 20000) continue;
+				centroid += v.transform.position;
+				++count;
 			}
 			centroid /= (float)count;
 			return centroid;

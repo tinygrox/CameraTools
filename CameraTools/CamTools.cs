@@ -21,7 +21,6 @@ namespace CameraTools
 		public Vessel vessel;
 		List<ModuleEngines> engines = new List<ModuleEngines>();
 		List<ModuleCommand> cockpits = new List<ModuleCommand>();
-		// List<Vessel> bdWMVessels;
 		public static HashSet<VesselType> ignoreVesselTypesForAudio = new HashSet<VesselType> { VesselType.Debris, VesselType.SpaceObject, VesselType.Unknown, VesselType.Flag }; // Ignore some vessel types to avoid using up all the SoundManager's channels.
 		Vector3 origPosition;
 		Quaternion origRotation;
@@ -900,7 +899,12 @@ namespace CameraTools
 			}
 			if (DEBUG) { Debug.Log("[CameraTools]: Starting dogfight camera."); DebugLog("Starting dogfight camera"); }
 
-			if (dogfightTarget)
+			if (bdArmory.hasBDA && bdArmory.useCentroid && bdArmory.bdWMVessels.Count > 1)
+			{
+				dogfightLastTarget = true;
+				dogfightVelocityChase = false;
+			}
+			else if (dogfightTarget)
 			{
 				dogfightVelocityChase = false;
 			}
@@ -968,21 +972,21 @@ namespace CameraTools
 				{ return; }
 			}
 
-			if (dogfightTarget)
+			if (DEBUG2 && Time.deltaTime > 0) debug2Messages.Clear();
+
+			if (bdArmory.hasBDA && bdArmory.useCentroid && bdArmory.bdWMVessels.Count > 1)
+			{
+				dogfightLastTarget = true;
+				dogfightLastTargetVelocity = Vector3.zero;
+				dogfightLastTargetPosition = bdArmory.GetCentroid();
+				if (DEBUG2) Debug2Log($"Centroid: {dogfightLastTargetPosition:G3}");
+			}
+			else if (dogfightTarget)
 			{
 				if (loadedVessels == null) UpdateLoadedVessels();
-				if (bdArmory.hasBDA && bdArmory.useCentroid && bdArmory.bdWMVessels.Count > 2)
-				{
-					dogfightLastTarget = true;
-					dogfightLastTargetVelocity = Vector3.zero;
-					dogfightLastTargetPosition = bdArmory.GetCentroid();
-				}
-				else
-				{
-					dogfightLastTarget = true;
-					dogfightLastTargetPosition = dogfightTarget.CoM;
-					dogfightLastTargetVelocity = dogfightTarget.Velocity();
-				}
+				dogfightLastTarget = true;
+				dogfightLastTargetPosition = dogfightTarget.CoM;
+				dogfightLastTargetVelocity = dogfightTarget.Velocity();
 			}
 			else if (dogfightLastTarget)
 			{
@@ -1042,7 +1046,6 @@ namespace CameraTools
 			}
 			if (DEBUG2 && Time.deltaTime > 0)
 			{
-				debug2Messages.Clear();
 				Debug2Log("time scale: " + Time.timeScale.ToString("G3") + ", Δt: " + Time.fixedDeltaTime.ToString("G3"));
 				Debug2Log("offsetDirection: " + offsetDirectionX.ToString("G3"));
 				Debug2Log("target offset: " + ((vessel.CoM - dogfightLastTargetPosition).normalized * dogfightDistance).ToString("G3"));
@@ -1217,7 +1220,7 @@ namespace CameraTools
 				}
 			}
 
-			if (bdArmory.hasBDA && bdArmory.hasBDAI && bdArmory.useBDAutoTarget)
+			if (bdArmory.hasBDA && bdArmory.hasBDAI && (bdArmory.useBDAutoTarget || (bdArmory.useCentroid && bdArmory.bdWMVessels.Count < 2)))
 			{
 				bdArmory.UpdateAIDogfightTarget(); // Using delegates instead of reflection allows us to check every frame.
 				if (vessel.LandedOrSplashed)
@@ -2323,6 +2326,7 @@ namespace CameraTools
 				flightCamera.SetFoV(origFov);
 				currentFOV = origFov;
 				cameraParentWasStolen = false;
+				dogfightLastTarget = false;
 			}
 			if (HighLogic.LoadedSceneIsFlight)
 				flightCamera.mainCamera.nearClipPlane = origNearClip;
@@ -2696,6 +2700,8 @@ namespace CameraTools
 				string tVesselLabel;
 				if (showingVesselList)
 				{ tVesselLabel = "Clear"; }
+				else if (bdArmory.hasBDA && bdArmory.useCentroid)
+				{ tVesselLabel = "Centroid"; }
 				else if (dogfightTarget)
 				{ tVesselLabel = dogfightTarget.vesselName; }
 				else
