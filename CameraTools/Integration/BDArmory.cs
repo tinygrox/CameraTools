@@ -22,6 +22,7 @@ namespace CameraTools.Integration
 		public bool autoEnableOverride = false;
 		public bool hasBDAI = false;
 		public bool hasPilotAI = false;
+		public bool isBDMissile = false;
 		public List<Vessel> bdWMVessels
 		{
 			get
@@ -86,6 +87,7 @@ namespace CameraTools.Integration
 				{
 					CheckForBDAI(FlightGlobals.ActiveVessel);
 					CheckForBDWM(FlightGlobals.ActiveVessel);
+					if (!hasBDAI) CheckForBDMissile(FlightGlobals.ActiveVessel);
 				}
 			}
 			inputFields = new Dictionary<string, FloatInputField> {
@@ -194,11 +196,12 @@ namespace CameraTools.Integration
 		{
 			hasBDAI = false;
 			hasPilotAI = false;
+			isBDMissile = false;
 			aiComponent = null;
 			if (v)
 			{
 				foreach (Part p in v.parts)
-				{ // We actually want BDGenericAIBase, but we can't use GetComponent(string) to find it, so we look for its subclasses.
+				{ // We actually want BDGenericAIBase, but we can't use GetComponent(string) to find it (since it's abstract), so we look for its subclasses.
 					if (p.GetComponent("BDModulePilotAI"))
 					{
 						hasBDAI = true;
@@ -220,6 +223,21 @@ namespace CameraTools.Integration
 						aiComponent = (object)p.GetComponent("BDModuleSurfaceAI");
 						return;
 					}
+				}
+			}
+		}
+
+		public void CheckForBDMissile(Vessel v)
+		{
+			isBDMissile = false;
+			if (hasBDAI || hasBDWM) return; // If it has a WM or AI, then it's not a missile and we shouldn't even be checking.
+			if (v == null) return; // If the vessel is null, it's not a missile.
+			foreach (var p in v.parts)
+			{ // We actually want MissileBase, but we can't use GetComponent(string) to find it (since it's abstract), so we look for its subclasses.
+				if (p.GetComponent("MissileLauncher") || p.GetComponent("BDModularGuidance"))
+				{
+					isBDMissile = true;
+					return;
 				}
 			}
 		}
@@ -363,6 +381,16 @@ namespace CameraTools.Integration
 					{
 						AItargetUpdateTime += 0.5f; // Delay the next update by 0.5s to avoid checking every frame once the minimum interval has elapsed.
 					}
+				}
+			}
+			else if (isBDMissile && useBDAutoTarget)
+			{
+				camTools.dogfightTarget = null;
+				AItargetUpdateTime = Time.time;
+				if (CamTools.DEBUG)
+				{
+					var message = "Current vessel is a missile, using dogfight chase mode.";
+					CamTools.DebugLog(message);
 				}
 			}
 		}

@@ -790,7 +790,7 @@ namespace CameraTools
 						// Updating of the stationary camera is handled in Update.
 						if (fmMode == fmModeTypes.Speed)
 						{
-							manualPosition += cameraUp * fmSpeeds.y + forwardAxis * fmSpeeds.z + flightCamera.transform.right * fmSpeeds.x;
+							manualPosition += upAxis * fmSpeeds.y + forwardAxis * fmSpeeds.z + rightAxis * fmSpeeds.x;
 							if (!autoFOV)
 							{
 								zoomExp = Mathf.Clamp(zoomExp + fmSpeeds.w, 1f, 8f);
@@ -1014,7 +1014,7 @@ namespace CameraTools
 			}
 
 			//roll
-			if (dogfightRoll > 0 && !vessel.LandedOrSplashed && !vessel.isEVA)
+			if (dogfightRoll > 0 && !vessel.LandedOrSplashed && !vessel.isEVA && !bdArmory.isBDMissile)
 			{
 				var vesselRollTarget = Quaternion.RotateTowards(Quaternion.identity, Quaternion.FromToRotation(cameraUp, -vessel.ReferenceTransform.forward), dogfightRoll * Vector3.Angle(cameraUp, -vessel.ReferenceTransform.forward));
 				dogfightCameraRoll = Quaternion.Lerp(dogfightCameraRoll, vesselRollTarget, dogfightLerp);
@@ -1240,6 +1240,7 @@ namespace CameraTools
 		#endregion
 
 		#region Stationary Camera
+		Quaternion stationaryCameraRoll = Quaternion.identity;
 		void StartStationaryCamera()
 		{
 			toolMode = ToolModes.StationaryCamera;
@@ -1259,6 +1260,7 @@ namespace CameraTools
 					cameraUp = Vector3.up;
 				}
 				rightAxis = -Vector3.Cross(vessel.Velocity(), vessel.upAxis).normalized;
+				stationaryCameraRoll = Quaternion.identity;
 
 				if (flightCamera.transform.parent != cameraParent.transform)
 				{
@@ -1430,6 +1432,19 @@ namespace CameraTools
 
 			if (flightCamera.Target != null) flightCamera.SetTargetNone(); // Don't go to the next vessel if the vessel is destroyed.
 
+			if (Input.GetKey(fmMovementModifier))
+			{
+				upAxis = flightCamera.transform.up;
+				forwardAxis = flightCamera.transform.forward;
+				rightAxis = flightCamera.transform.right;
+			}
+			else
+			{
+				upAxis = stationaryCameraRoll * cameraUp;
+				forwardAxis = Vector3.RotateTowards(upAxis, flightCamera.transform.forward, Mathf.Deg2Rad * 90, 0).normalized;
+				rightAxis = Vector3.Cross(upAxis, forwardAxis);
+			}
+
 			// Set camera position before rotation to avoid jitter.
 			if (vessel != null)
 			{
@@ -1457,12 +1472,12 @@ namespace CameraTools
 					lookPosition = camTarget.vessel.CoM;
 				}
 
-				flightCamera.transform.rotation = Quaternion.LookRotation(lookPosition - flightCamera.transform.position, cameraUp);
+				flightCamera.transform.rotation = Quaternion.LookRotation(lookPosition - flightCamera.transform.position, upAxis);
 				lastTargetPosition = lookPosition;
 			}
 			else if (hasTarget)
 			{
-				flightCamera.transform.rotation = Quaternion.LookRotation(lastTargetPosition - flightCamera.transform.position, cameraUp);
+				flightCamera.transform.rotation = Quaternion.LookRotation(lastTargetPosition - flightCamera.transform.position, upAxis);
 			}
 
 			if (DEBUG2 && !GameIsPaused)
@@ -1492,10 +1507,6 @@ namespace CameraTools
 				lastCamParentPosition = cameraParent.transform.position;
 			}
 
-			//mouse panning, moving
-			forwardAxis = (Quaternion.AngleAxis(-90, cameraUp) * flightCamera.transform.right).normalized; // FIXME Why are these calculated like this? They ought to either use pre-existing axes or cross products.
-			rightAxis = (Quaternion.AngleAxis(90, forwardAxis) * cameraUp).normalized;
-
 			//free move
 			if (enableKeypad && !boundThisFrame)
 			{
@@ -1505,11 +1516,11 @@ namespace CameraTools
 						{
 							if (Input.GetKey(fmUpKey))
 							{
-								manualPosition += cameraUp * freeMoveSpeed * Time.fixedDeltaTime;
+								manualPosition += upAxis * freeMoveSpeed * Time.fixedDeltaTime;
 							}
 							else if (Input.GetKey(fmDownKey))
 							{
-								manualPosition -= cameraUp * freeMoveSpeed * Time.fixedDeltaTime;
+								manualPosition -= upAxis * freeMoveSpeed * Time.fixedDeltaTime;
 							}
 							if (Input.GetKey(fmForwardKey))
 							{
@@ -1521,11 +1532,11 @@ namespace CameraTools
 							}
 							if (Input.GetKey(fmLeftKey))
 							{
-								manualPosition -= flightCamera.transform.right * freeMoveSpeed * Time.fixedDeltaTime;
+								manualPosition -= rightAxis * freeMoveSpeed * Time.fixedDeltaTime;
 							}
 							else if (Input.GetKey(fmRightKey))
 							{
-								manualPosition += flightCamera.transform.right * freeMoveSpeed * Time.fixedDeltaTime;
+								manualPosition += rightAxis * freeMoveSpeed * Time.fixedDeltaTime;
 							}
 
 							//keyZoom
@@ -1596,18 +1607,26 @@ namespace CameraTools
 				}
 			}
 
-			if (camTarget == null && Input.GetKey(KeyCode.Mouse1))
+			if (Input.GetKey(KeyCode.Mouse1) && Input.GetKey(KeyCode.Mouse2))
 			{
-				flightCamera.transform.rotation *= Quaternion.AngleAxis(Input.GetAxis("Mouse X") * 1.7f, Vector3.up); //*(Mathf.Abs(Mouse.delta.x)/7)
-				flightCamera.transform.rotation *= Quaternion.AngleAxis(-Input.GetAxis("Mouse Y") * 1.7f, Vector3.right);
-				flightCamera.transform.rotation = Quaternion.LookRotation(flightCamera.transform.forward, cameraUp);
+				stationaryCameraRoll = Quaternion.AngleAxis(Input.GetAxis("Mouse X") * -1.7f, flightCamera.transform.forward) * stationaryCameraRoll;
+				flightCamera.transform.rotation = Quaternion.LookRotation(flightCamera.transform.forward, stationaryCameraRoll * cameraUp);
 			}
-			if (Input.GetKey(KeyCode.Mouse2))
+			else
 			{
-				manualPosition += flightCamera.transform.right * Input.GetAxis("Mouse X") * 2;
-				manualPosition += forwardAxis * Input.GetAxis("Mouse Y") * 2;
+				if (camTarget == null && Input.GetKey(KeyCode.Mouse1))
+				{
+					flightCamera.transform.rotation *= Quaternion.AngleAxis(Input.GetAxis("Mouse X") * 1.7f, Vector3.up); //*(Mathf.Abs(Mouse.delta.x)/7)
+					flightCamera.transform.rotation *= Quaternion.AngleAxis(-Input.GetAxis("Mouse Y") * 1.7f, Vector3.right);
+					flightCamera.transform.rotation = Quaternion.LookRotation(flightCamera.transform.forward, stationaryCameraRoll * cameraUp);
+				}
+				if (Input.GetKey(KeyCode.Mouse2))
+				{
+					manualPosition += rightAxis * Input.GetAxis("Mouse X") * 2;
+					manualPosition += forwardAxis * Input.GetAxis("Mouse Y") * 2;
+				}
 			}
-			manualPosition += cameraUp * 10 * Input.GetAxis("Mouse ScrollWheel");
+			manualPosition += upAxis * 10 * Input.GetAxis("Mouse ScrollWheel");
 
 			//autoFov
 			if (camTarget != null && autoFOV)
@@ -1812,7 +1831,6 @@ namespace CameraTools
 					{
 						flightCamera.transform.rotation *= Quaternion.AngleAxis(Input.GetAxis("Mouse X") * 1.7f / (zoomExp * zoomExp), Vector3.up);
 						flightCamera.transform.rotation *= Quaternion.AngleAxis(-Input.GetAxis("Mouse Y") * 1.7f / (zoomExp * zoomExp), Vector3.right);
-						flightCamera.transform.rotation = Quaternion.LookRotation(flightCamera.transform.forward, flightCamera.transform.up);
 					}
 					if (Input.GetKey(KeyCode.Mouse2)) // Middle: move left/right and forward/backward
 					{
@@ -2227,6 +2245,7 @@ namespace CameraTools
 			{
 				bdArmory.CheckForBDAI(v);
 				bdArmory.CheckForBDWM(v);
+				if (!bdArmory.hasBDAI) bdArmory.CheckForBDMissile(FlightGlobals.ActiveVessel);
 				bdArmory.UpdateAIDogfightTarget();
 			}
 			if (cameraToolActive)
@@ -2238,6 +2257,11 @@ namespace CameraTools
 					if (stationarySurfaceVessel || (bdArmory.hasPilotAI && vessel.radarAltitude < lowAlt))
 					{
 						StartStationaryCamera();
+					}
+					else if (bdArmory.hasBDA && bdArmory.isBDMissile)
+					{
+						dogfightTarget = null;
+						StartDogfightCamera(); // Use dogfight chase mode for BDA missiles.
 					}
 					else
 					{
