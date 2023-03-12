@@ -69,9 +69,10 @@
     <Compile Include="SplineUtils.cs" />
     <Compile Include="Vector3Animation.cs" />
     <Compile Include="VesselExtensions.cs" />
-    <Compile Include="Integration\BDArmory.cs" />
-    <Compile Include="Integration\TimeControl.cs" />
-    <Compile Include="Integration\BetterTimeWarp.cs" />
+    <Compile Include="ModIntegration\BDArmory.cs" />
+    <Compile Include="ModIntegration\BetterTimeWarp.cs" />
+    <Compile Include="ModIntegration\MouseAimFlight.cs" />
+    <Compile Include="ModIntegration\TimeControl.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">

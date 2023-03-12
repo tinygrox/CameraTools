@@ -6,7 +6,7 @@ using System;
 using UnityEngine;
 
 
-namespace CameraTools.Integration
+namespace CameraTools.ModIntegration
 {
 	[KSPAddon(KSPAddon.Startup.Flight, false)]
 	public class BDArmory : MonoBehaviour

@@ -6,7 +6,7 @@ using System.Reflection;
 using System;
 using UnityEngine;
 
-using CameraTools.Integration;
+using CameraTools.ModIntegration;
 
 namespace CameraTools
 {
@@ -214,6 +214,8 @@ namespace CameraTools
 		Vector3 dogfightLastTargetVelocity;
 		bool dogfightVelocityChase = false;
 		bool cockpitView = false;
+		Vector3 mouseAimFlightTarget = default;
+		Vector3 mouseAimFlightTargetLocal = default;
 		#endregion
 
 		#region Stationary Camera Fields
@@ -319,10 +321,10 @@ namespace CameraTools
 		[CTPersistantField] public bool useRealTime = true;
 		#endregion
 
-		#region Integration
+		#region Mod Integration
 		BDArmory bdArmory;
-		TimeControl timeControl;
 		BetterTimeWarp betterTimeWarp;
+		TimeControl timeControl;
 		#endregion
 		#endregion
 
@@ -366,8 +368,8 @@ namespace CameraTools
 			deathCam = new GameObject("CameraToolsDeathCam");
 
 			bdArmory = BDArmory.instance;
-			timeControl = TimeControl.instance;
 			betterTimeWarp = BetterTimeWarp.instance;
+			timeControl = TimeControl.instance;
 
 			if (FlightGlobals.ActiveVessel != null)
 			{
@@ -502,7 +504,7 @@ namespace CameraTools
 							else if (!inHighWarp && useObtVel != wasUsingObtVel) // Only needed when crossing the boundary.
 								floatingKrakenAdjustment += ((useObtVel ? vessel.obt_velocity : vessel.srf_velocity) - Krakensbane.GetFrameVelocity()) * TimeWarp.fixedDeltaTime;
 							cameraParent.transform.position += floatingKrakenAdjustment;
-							if (DEBUG2)
+							if (DEBUG2 && !GameIsPaused)
 							{
 								var cmb = FlightGlobals.currentMainBody;
 								Debug2Log("situation: " + vessel.situation);
@@ -731,6 +733,7 @@ namespace CameraTools
 			// Note: we have to perform several of the camera adjustments during FixedUpdate to avoid jitter in the Lerps in the camera position and rotation due to inconsistent numbers of physics updates per frame.
 			if (!FlightGlobals.ready || GameIsPaused) return;
 			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight) return;
+			if (DEBUG2 && !GameIsPaused) debug2Messages.Clear();
 
 			if (cameraToolActive)
 			{
@@ -899,7 +902,13 @@ namespace CameraTools
 			}
 			if (DEBUG) { Debug.Log("[CameraTools]: Starting dogfight camera."); DebugLog("Starting dogfight camera"); }
 
-			if (bdArmory.hasBDA && bdArmory.useCentroid && bdArmory.bdWMVessels.Count > 1)
+			if (MouseAimFlight.IsMouseAimActive())
+			{
+				dogfightTarget = null;
+				dogfightLastTarget = true;
+				dogfightVelocityChase = false;
+			}
+			else if (bdArmory.hasBDA && bdArmory.useCentroid && bdArmory.bdWMVessels.Count > 1)
 			{
 				dogfightLastTarget = true;
 				dogfightVelocityChase = false;
@@ -972,14 +981,23 @@ namespace CameraTools
 				{ return; }
 			}
 
-			if (DEBUG2 && Time.deltaTime > 0) debug2Messages.Clear();
-
-			if (bdArmory.hasBDA && bdArmory.useCentroid && bdArmory.bdWMVessels.Count > 1)
+			var cameraTransform = flightCamera.transform;
+			if (MouseAimFlight.IsMouseAimActive())
+			{ // We need to set these each time as MouseAimFlight can be enabled/disabled while CameraTools is active.
+				dogfightTarget = null;
+				dogfightLastTarget = true;
+				dogfightVelocityChase = false;
+				dogfightLastTargetVelocity = Vector3.zero;
+				mouseAimFlightTarget = MouseAimFlight.GetMouseAimTarget();
+				mouseAimFlightTargetLocal = cameraTransform.InverseTransformDirection(mouseAimFlightTarget);
+				dogfightLastTargetPosition = (mouseAimFlightTarget.normalized + vessel.srf_vel_direction) * 5000f + vessel.CoM;
+			}
+			else if (bdArmory.hasBDA && bdArmory.useCentroid && bdArmory.bdWMVessels.Count > 1)
 			{
 				dogfightLastTarget = true;
 				dogfightLastTargetVelocity = Vector3.zero;
 				dogfightLastTargetPosition = bdArmory.GetCentroid();
-				if (DEBUG2) Debug2Log($"Centroid: {dogfightLastTargetPosition:G3}");
+				if (DEBUG2 && !GameIsPaused) Debug2Log($"Centroid: {dogfightLastTargetPosition:G3}");
 			}
 			else if (dogfightTarget)
 			{
@@ -1001,11 +1019,11 @@ namespace CameraTools
 				var lastDogfightLastTargetPosition = dogfightLastTargetPosition;
 				if (vessel.Speed() > 1)
 				{
-					dogfightLastTargetPosition = vessel.CoM + vessel.Velocity().normalized * 5000;
+					dogfightLastTargetPosition = vessel.CoM + vessel.Velocity().normalized * 5000f;
 				}
 				else
 				{
-					dogfightLastTargetPosition = vessel.CoM + vessel.ReferenceTransform.up * 5000;
+					dogfightLastTargetPosition = vessel.CoM + vessel.ReferenceTransform.up * 5000f;
 				}
 				if (vessel.Splashed && vessel.Speed() < 10) // Don't bob around lots if the vessel is in water.
 				{
@@ -1035,16 +1053,16 @@ namespace CameraTools
 			{
 				dogfightLerpMomentum /= dogfightLerpMomentum.sqrMagnitude * 2f / dogfightDistance + 1f;
 				dogfightLerpMomentum += dogfightLerpDelta * dogfightInertialFactor;
-				dogfightLerpDelta = -flightCamera.transform.localPosition;
+				dogfightLerpDelta = -cameraTransform.localPosition;
 			}
-			flightCamera.transform.localPosition = Vector3.Lerp(flightCamera.transform.localPosition, localCamPos, dogfightLerp);
+			cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, localCamPos, dogfightLerp);
 			if (dogfightInertialChaseMode)
 			{
-				flightCamera.transform.localPosition += dogfightLerpMomentum;
-				dogfightLerpDelta += flightCamera.transform.localPosition;
+				cameraTransform.localPosition += dogfightLerpMomentum;
+				dogfightLerpDelta += cameraTransform.localPosition;
 				if (dogfightLerpDelta.sqrMagnitude > dogfightDistance * dogfightDistance) dogfightLerpDelta *= dogfightDistance / dogfightLerpDelta.magnitude;
 			}
-			if (DEBUG2 && Time.deltaTime > 0)
+			if (DEBUG2 && !GameIsPaused)
 			{
 				Debug2Log("time scale: " + Time.timeScale.ToString("G3") + ", Δt: " + Time.fixedDeltaTime.ToString("G3"));
 				Debug2Log("offsetDirection: " + offsetDirectionX.ToString("G3"));
@@ -1052,16 +1070,24 @@ namespace CameraTools
 				Debug2Log("xOff: " + (dogfightOffsetX * offsetDirectionX).ToString("G3"));
 				Debug2Log("yOff: " + (dogfightOffsetY * dogfightCameraRollUp).ToString("G3"));
 				Debug2Log("camPos - vessel.CoM: " + (camPos - vessel.CoM).ToString("G3"));
-				Debug2Log("localCamPos: " + localCamPos.ToString("G3") + ", " + flightCamera.transform.localPosition.ToString("G3"));
+				Debug2Log("localCamPos: " + localCamPos.ToString("G3") + ", " + cameraTransform.localPosition.ToString("G3"));
 				Debug2Log($"lerp momentum: {dogfightLerpMomentum:G3}");
 				Debug2Log($"lerp delta: {dogfightLerpDelta:G3}");
 			}
 
 			//rotation
-			Quaternion vesselLook = Quaternion.LookRotation(vessel.CoM - flightCamera.transform.position, dogfightCameraRollUp);
-			Quaternion targetLook = Quaternion.LookRotation(dogfightLastTargetPosition - flightCamera.transform.position, dogfightCameraRollUp);
+			Quaternion vesselLook = Quaternion.LookRotation(vessel.CoM - cameraTransform.position, dogfightCameraRollUp);
+			Quaternion targetLook = Quaternion.LookRotation(dogfightLastTargetPosition - cameraTransform.position, dogfightCameraRollUp);
 			Quaternion camRot = Quaternion.Lerp(vesselLook, targetLook, 0.5f);
-			flightCamera.transform.rotation = Quaternion.Lerp(flightCamera.transform.rotation, camRot, dogfightLerp);
+			cameraTransform.rotation = Quaternion.Lerp(cameraTransform.rotation, camRot, dogfightLerp);
+			if (MouseAimFlight.IsMouseAimActive())
+			{
+				// mouseAimFlightTarget keeps the target stationary (i.e., no change from the default)
+				// cameraTransform.TransformDirection(mouseAimFlightTargetLocal) moves the target fully with the camera
+				var newMouseAimFlightTarget = cameraTransform.TransformDirection(mouseAimFlightTargetLocal);
+				newMouseAimFlightTarget = Vector3.Lerp(newMouseAimFlightTarget, mouseAimFlightTarget, Mathf.Min((newMouseAimFlightTarget - mouseAimFlightTarget).magnitude * 0.01f, 0.5f));
+				MouseAimFlight.SetMouseAimTarget(newMouseAimFlightTarget); // Adjust how MouseAimFlight updates the target position for easier control in combat.
+			}
 
 			//autoFov
 			if (autoFOV)
@@ -1073,7 +1099,7 @@ namespace CameraTools
 				}
 				else
 				{
-					float angle = Vector3.Angle(dogfightLastTargetPosition - flightCamera.transform.position, vessel.CoM - flightCamera.transform.position);
+					float angle = Vector3.Angle(dogfightLastTargetPosition - cameraTransform.position, vessel.CoM - cameraTransform.position);
 					targetFoV = Mathf.Clamp(angle + autoZoomMargin, 0.1f, 60f);
 				}
 				manualFOV = targetFoV;
@@ -1225,11 +1251,11 @@ namespace CameraTools
 				bdArmory.UpdateAIDogfightTarget(); // Using delegates instead of reflection allows us to check every frame.
 				if (vessel.LandedOrSplashed)
 				{
-					var cameraRadarAltitude = GetRadarAltitudeAtPos(flightCamera.transform.position);
-					if (cameraRadarAltitude < 2f && (vessel.Landed || cameraRadarAltitude > -dogfightDistance)) flightCamera.transform.position += (2f - cameraRadarAltitude) * cameraUp; // Prevent viewing from under the surface if near the surface.
-					if (DEBUG2) Debug2Log($"camera altitude: {GetRadarAltitudeAtPos(flightCamera.transform.position):G3} ({cameraRadarAltitude:G3})");
+					var cameraRadarAltitude = GetRadarAltitudeAtPos(cameraTransform.position);
+					if (cameraRadarAltitude < 2f && (vessel.Landed || cameraRadarAltitude > -dogfightDistance)) cameraTransform.position += (2f - cameraRadarAltitude) * cameraUp; // Prevent viewing from under the surface if near the surface.
+					if (DEBUG2 && !GameIsPaused) Debug2Log($"camera altitude: {GetRadarAltitudeAtPos(cameraTransform.position):G3} ({cameraRadarAltitude:G3})");
 				}
-				else if (DEBUG2) Debug2Log($"vessel not landed");
+				else if (DEBUG2 && !GameIsPaused) Debug2Log($"vessel not landed");
 			}
 
 			if (dogfightTarget != dogfightPrevTarget)
@@ -1422,8 +1448,6 @@ namespace CameraTools
 		Vector3 lastCamParentPosition = Vector3.zero;
 		void UpdateStationaryCamera()
 		{
-			if (DEBUG2 && !GameIsPaused)
-				debug2Messages.Clear();
 			if (useAudioEffects)
 			{
 				speedOfSound = 233 * MathUtils.Sqrt(1 + (FlightGlobals.getExternalTemperature(vessel.GetWorldPos3D(), vessel.mainBody) / 273.15));
@@ -2452,7 +2476,7 @@ namespace CameraTools
 			{
 				if (debug2Messages.Count > 0)
 				{
-					GUI.Label(new Rect(Screen.width - 750, 100, 700, 400), string.Join("\n", debug2Messages.Select(m => m.Item1.ToString("0.000") + " " + m.Item2)));
+					GUI.Label(new Rect(Screen.width - 750, 100, 700, Screen.height / 2), string.Join("\n", debug2Messages.Select(m => m.Item1.ToString("0.000") + " " + m.Item2)));
 				}
 			}
 		}
@@ -2722,7 +2746,9 @@ namespace CameraTools
 			{
 				GUI.Label(ThinRect(++line), "Secondary Target:");
 				string tVesselLabel;
-				if (showingVesselList)
+				if (MouseAimFlight.IsMouseAimActive())
+				{ tVesselLabel = "MouseAimFlight"; }
+				else if (showingVesselList)
 				{ tVesselLabel = "Clear"; }
 				else if (bdArmory.hasBDA && bdArmory.useCentroid)
 				{ tVesselLabel = "Centroid"; }
@@ -2745,6 +2771,7 @@ namespace CameraTools
 				}
 				if (showingVesselList)
 				{
+					if (MouseAimFlight.IsMouseAimActive()) showingVesselList = false;
 					foreach (var v in loadedVessels)
 					{
 						if (!v || !v.loaded) continue;

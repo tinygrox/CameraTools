@@ -2,7 +2,7 @@ using UnityEngine;
 using System;
 using System.Reflection;
 
-namespace CameraTools.Integration
+namespace CameraTools.ModIntegration
 {
 	[KSPAddon(KSPAddon.Startup.Flight, false)]
 	public class TimeControl : MonoBehaviour

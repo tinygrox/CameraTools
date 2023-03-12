@@ -1,6 +1,7 @@
 - Fix dogfight centroid mode.
 - Add checks for the active vessel being a BDA missile and use dogfight chase mode if it is.
 - Add roll option to stationary camera using right+middle mouse buttons, with the movement modifier key (keypad enter) switching between camera and world coordinate systems.
+- Add support for using the MouseAimFlight in dogfight camera mode.
 
 v1.26.0
 Improvements / Bugfixes:
