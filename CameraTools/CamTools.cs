@@ -37,6 +37,7 @@ namespace CameraTools
 		public bool cameraToolActive = false;
 		bool cameraParentWasStolen = false;
 		bool autoEnableOverriden = false; // Override auto-enabling for various integrations, e.g., BDArmory.
+		bool revertWhenInFlightMode = false; // Revert the camera on returning to flight mode (if triggered in a different mode).
 		System.Random rng;
 		Vessel.Situations lastVesselSituation = Vessel.Situations.FLYING;
 		[CTPersistantField] public static bool DEBUG = false;
@@ -452,18 +453,27 @@ namespace CameraTools
 			{
 				wasActiveBeforeModeChange = cameraToolActive;
 				cameraToolActive = false;
+				Debug.Log($"[CameraTools]: Deactivating due to switching to {mode} camera mode.");
 			}
 			else if (mode == CameraManager.CameraMode.Flight)
 			{
 				if (wasActiveBeforeModeChange && !autoEnableOverriden && !bdArmory.autoEnableOverride)
 				{
-					Debug.Log("[CameraTools]: Camera mode changed to " + mode + ", reactivating " + toolMode + ".");
+					Debug.Log($"[CameraTools]: Camera mode changed to {mode}, reactivating {toolMode}.");
 					cockpitView = false; // Don't go back into cockpit view in case it was triggered by the user.
 					cameraToolActive = true;
 					RevertCamera();
 					flightCamera.transform.position = deathCam.transform.position;
 					flightCamera.transform.rotation = deathCam.transform.rotation;
-					cameraActivate();
+					if (!revertWhenInFlightMode)
+						cameraActivate();
+				}
+				else if (revertWhenInFlightMode)
+				{
+					Debug.Log($"[CameraTools]: Camera mode changed to {mode}, applying delayed revert.");
+					cockpitView = false; // Don't go back into cockpit view in case it was triggered by the user.
+					cameraToolActive = true;
+					RevertCamera();
 				}
 			}
 		}
@@ -666,6 +676,9 @@ namespace CameraTools
 					}
 				}
 			}
+			boundThisFrame = false;
+
+			if (MapView.MapIsEnabled) return; // Don't do anything else in map mode.
 
 			if (Input.GetMouseButtonUp(0))
 			{
@@ -725,7 +738,6 @@ namespace CameraTools
 						break;
 				}
 			}
-			boundThisFrame = false;
 		}
 
 		void FixedUpdate()
@@ -733,6 +745,7 @@ namespace CameraTools
 			// Note: we have to perform several of the camera adjustments during FixedUpdate to avoid jitter in the Lerps in the camera position and rotation due to inconsistent numbers of physics updates per frame.
 			if (!FlightGlobals.ready || GameIsPaused) return;
 			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight) return;
+			if (MapView.MapIsEnabled) return; // Don't do anything in map mode.
 			if (DEBUG2 && !GameIsPaused) debug2Messages.Clear();
 
 			if (cameraToolActive)
@@ -864,6 +877,7 @@ namespace CameraTools
 
 		public void cameraActivate()
 		{
+			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight) return; // Don't activate if we're not in Flight mode.
 			if (DEBUG) { Debug.Log("[CameraTools]: Activating camera."); DebugLog("Activating camera"); }
 			if (!cameraToolActive)
 			{
@@ -2326,17 +2340,23 @@ namespace CameraTools
 
 		public void RevertCamera()
 		{
+			if (!(CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.Flight || CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA)) // Don't revert if not in Flight or IVA mode, it's already been deactivated, but the flight camera isn't available to be reconfigured.
+			{
+				revertWhenInFlightMode = true;
+				return;
+			}
 			if (DEBUG)
 			{
 				message = "Reverting camera.";
 				Debug.Log("[CameraTools]: " + message);
 				DebugLog(message);
 			}
-			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight)
+			if (CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA) // If we were in IVA mode, go back to Flight mode and pretend we were active.
 			{
 				CameraManager.Instance.SetCameraFlight();
 				cameraToolActive = true;
 			}
+			revertWhenInFlightMode = false;
 
 			if (cameraToolActive)
 			{

@@ -98,7 +98,7 @@ namespace CameraTools.ModIntegration
 			lastChecked = 0;
 			if (!hasMouseAimFlight || activeVessel == null) return;
 			mouseAimFlightInstance = (object)activeVessel.GetComponent(mouseAimFlightType);
-			if (CamTools.DEBUG) Debug.Log($"[CameraTools.Integration.MouseAimFlight]: Mouse Aim Flight module {(mouseAimFlightInstance != null ? "" : "not ")}found on {activeVessel.vesselName}");
+			if (CamTools.DEBUG) Debug.Log($"[CameraTools.ModIntegration.MouseAimFlight]: Mouse Aim Flight module {(mouseAimFlightInstance != null ? "" : "not ")}found on {activeVessel.vesselName}");
 		}
 
 		bool CheckMouseAimActive()
