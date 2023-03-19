@@ -38,6 +38,7 @@ namespace CameraTools
 		bool cameraParentWasStolen = false;
 		bool autoEnableOverriden = false; // Override auto-enabling for various integrations, e.g., BDArmory.
 		bool revertWhenInFlightMode = false; // Revert the camera on returning to flight mode (if triggered in a different mode).
+		bool activateWhenInFlightMode = false; // Activate the camera on returning to flight mode (if triggered in a different mode).
 		System.Random rng;
 		Vessel.Situations lastVesselSituation = Vessel.Situations.FLYING;
 		[CTPersistantField] public static bool DEBUG = false;
@@ -457,7 +458,7 @@ namespace CameraTools
 			}
 			else if (mode == CameraManager.CameraMode.Flight)
 			{
-				if (wasActiveBeforeModeChange && !autoEnableOverriden && !bdArmory.autoEnableOverride)
+				if ((wasActiveBeforeModeChange || activateWhenInFlightMode) && !autoEnableOverriden && !bdArmory.autoEnableOverride)
 				{
 					Debug.Log($"[CameraTools]: Camera mode changed to {mode}, reactivating {toolMode}.");
 					cockpitView = false; // Don't go back into cockpit view in case it was triggered by the user.
@@ -877,7 +878,13 @@ namespace CameraTools
 
 		public void cameraActivate()
 		{
-			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight) return; // Don't activate if we're not in Flight mode.
+			if (CameraManager.Instance.currentCameraMode != CameraManager.CameraMode.Flight)
+			{
+				activateWhenInFlightMode = true;
+				revertWhenInFlightMode = false;
+				return; // Don't activate if we're not in Flight mode.
+			}
+			activateWhenInFlightMode = false;
 			if (DEBUG) { Debug.Log("[CameraTools]: Activating camera."); DebugLog("Activating camera"); }
 			if (!cameraToolActive)
 			{
@@ -2343,8 +2350,10 @@ namespace CameraTools
 			if (!(CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.Flight || CameraManager.Instance.currentCameraMode == CameraManager.CameraMode.IVA)) // Don't revert if not in Flight or IVA mode, it's already been deactivated, but the flight camera isn't available to be reconfigured.
 			{
 				revertWhenInFlightMode = true;
+				activateWhenInFlightMode = false;
 				return;
 			}
+			revertWhenInFlightMode = false;
 			if (DEBUG)
 			{
 				message = "Reverting camera.";
@@ -2356,7 +2365,6 @@ namespace CameraTools
 				CameraManager.Instance.SetCameraFlight();
 				cameraToolActive = true;
 			}
-			revertWhenInFlightMode = false;
 
 			if (cameraToolActive)
 			{
